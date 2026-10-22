@@ -48,3 +48,7 @@ uploads/*
 # generated manual html (PDF and images are committed)
 docs/manual/manual.html
 !.env.example
+
+# docker
+.env.docker
+!.env.docker.example

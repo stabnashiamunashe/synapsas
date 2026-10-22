@@ -1,0 +1,10 @@
+{
+	# Let's Encrypt registration email (optional but recommended)
+	email admin@{$DOMAIN}
+}
+
+# HTTPS for the domain, with automatic certificates.
+{$DOMAIN}, www.{$DOMAIN} {
+	encode gzip zstd
+	reverse_proxy app:3000
+}

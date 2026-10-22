@@ -41,7 +41,45 @@ Demo workspace **acme** (password for all: `Password123!`):
 
 Tenant-branded login: `/login?org=acme`.
 
-## Deploying on an Ubuntu server
+## Deploying with Docker (recommended)
+
+The stack in `docker-compose.yml` runs three containers: the app (UI + API, published on host port **3443**), MySQL 8, and Caddy, which terminates HTTPS for the domain on ports 80/443 with automatic Let's Encrypt certificates.
+
+One-time setup on an Ubuntu VM:
+
+```bash
+curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker $USER && newgrp docker
+git clone https://github.com/stabnashiamunashe/synapsas.git synapsas && cd synapsas
+cp .env.docker.example .env.docker && nano .env.docker   # DB passwords, AUTH_SECRET, PLATFORM_ADMIN_KEY, DOMAIN, APP_URL
+docker compose up -d --build
+docker compose --profile seed run --rm seed              # optional: demo workspace, first time only
+```
+
+Open the firewall for 80, 443 and 3443 (`sudo ufw allow 80,443,3443/tcp`). Every later release is one command:
+
+```bash
+bash scripts/deploy-docker.sh
+```
+
+| URL | Served by |
+| --- | --- |
+| `https://synapsas.tech` | Caddy → app (HTTPS, certificate auto-renewed) |
+| `http://<vm-ip>:3443` | app directly, plain HTTP |
+
+### Pointing synapsas.tech at the VM (Hostinger)
+
+In Hostinger hPanel open **Domains → synapsas.tech → DNS / Name Servers → DNS records** and set:
+
+| Type | Name | Points to | TTL |
+| --- | --- | --- | --- |
+| A | `@` | `<VM public IP>` | 300 |
+| A | `www` | `<VM public IP>` | 300 |
+
+Delete any other `A` or `AAAA` records for `@` and `www` (Hostinger adds parking records by default). Propagation usually takes a few minutes; check with `dig +short synapsas.tech`. Caddy requests the certificate automatically the first time the name resolves to the VM, so start the stack after the records are in place, or run `docker compose restart caddy` afterwards.
+
+Useful commands: `docker compose logs -f app`, `docker compose exec db mysql -u root -p documentdb`, `docker compose down` (data stays in the `db_data` and `uploads` volumes).
+
+## Deploying on an Ubuntu server without Docker
 
 One-time setup (Node 20+, MySQL 8, git, pm2):
 

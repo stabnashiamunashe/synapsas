@@ -2,7 +2,8 @@
 // JSON-ish columns are stored as TEXT/LONGTEXT (JSON text) so the model stays portable.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {

@@ -1,0 +1,75 @@
+# Synapsas production stack: app (UI + API) on host port 3443, MySQL 8, Caddy for HTTPS on the domain.
+#   cp .env.docker.example .env.docker && nano .env.docker
+#   docker compose up -d --build
+#   docker compose --profile seed run --rm seed      # optional demo data, first time only
+
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_DATABASE: documentdb
+      MYSQL_USER: synapsas
+      MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env.docker}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD in .env.docker}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  app:
+    build: .
+    image: synapsas/app:latest
+    restart: unless-stopped
+    env_file: .env.docker
+    environment:
+      DATABASE_URL: mysql://synapsas:${DB_PASSWORD}@db:3306/documentdb
+      PORT: "3000"
+      UPLOAD_DIR: /app/uploads
+    ports:
+      - "3443:3000"          # direct access: http://<vm-ip>:3443
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:-synapsas.tech}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+  # One-off: load the demo workspace (owner@acme.test / Password123!).
+  seed:
+    profiles: ["seed"]
+    build:
+      context: .
+      target: build
+    env_file: .env.docker
+    environment:
+      DATABASE_URL: mysql://synapsas:${DB_PASSWORD}@db:3306/documentdb
+    command: ["npx", "tsx", "prisma/seed.ts"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:
+  uploads:
+  caddy_data:
+  caddy_config:
