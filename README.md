@@ -55,7 +55,7 @@ docker compose up -d --build
 docker compose --profile seed run --rm seed              # optional: demo workspace, first time only
 ```
 
-Open the firewall for 80, 443 and 3443 (`sudo ufw allow 80,443,3443/tcp`). Every later release is one command:
+Before starting the stack, open inbound TCP ports **80, 443 and 3443** in the Hostinger VPS firewall (hPanel → VPS → Firewall; add rules for each port, source Any). Every later release is one command:
 
 ```bash
 bash scripts/deploy-docker.sh
