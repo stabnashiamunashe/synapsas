@@ -14,6 +14,11 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
+# Prisma CLI with all of its dependencies, installed on its own so the runtime can run `db push`.
+FROM deps AS cli
+WORKDIR /opt/prisma
+RUN npm init -y >/dev/null && npm i --no-audit --no-fund --omit=dev "prisma@$(node -p "require('/app/node_modules/prisma/package.json').version")"
+
 FROM node:20-bookworm-slim AS runner
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
@@ -27,11 +32,9 @@ ENV NODE_ENV=production \
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public
-# Prisma CLI + engines so the container can sync the schema at start-up
+# Prisma schema + CLI so the container can sync the schema at start-up
 COPY --from=build /app/prisma ./prisma
-COPY --from=build /app/node_modules/prisma ./node_modules/prisma
-COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=cli /opt/prisma/node_modules /opt/prisma/node_modules
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh && mkdir -p /app/uploads && chown -R node:node /app

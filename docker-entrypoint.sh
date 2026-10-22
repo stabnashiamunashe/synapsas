@@ -9,7 +9,7 @@ fi
 
 echo "==> Waiting for the database"
 i=0
-until echo "SELECT 1;" | node node_modules/prisma/build/index.js db execute --url "$DATABASE_URL" --stdin >/dev/null 2>/tmp/dbwait.err; do
+until echo "SELECT 1;" | node /opt/prisma/node_modules/prisma/build/index.js db execute --url "$DATABASE_URL" --stdin >/dev/null 2>/tmp/dbwait.err; do
   i=$((i + 1))
   if [ "$i" -ge 60 ]; then
     echo "Database not reachable after 60 attempts. Last error:" >&2
@@ -20,7 +20,7 @@ until echo "SELECT 1;" | node node_modules/prisma/build/index.js db execute --ur
 done
 
 echo "==> Syncing database schema"
-node node_modules/prisma/build/index.js db push --skip-generate
+node /opt/prisma/node_modules/prisma/build/index.js db push --skip-generate
 
 echo "==> Starting Synapsas on port ${PORT:-3000}"
 exec "$@"
