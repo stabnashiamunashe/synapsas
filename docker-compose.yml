@@ -1,22 +1,23 @@
-# Synapsas production stack: app (UI + API) on host port 3443 and MySQL 8. Put nginx in front for the domain (deploy/nginx/).
+# Synapsas production stack: app (UI + API) on host port 3443 and MariaDB 11. Put nginx in front for the domain (deploy/nginx/).
 #   cp .env.docker.example .env && nano .env
 #   docker compose up -d --build
 #   docker compose --profile seed run --rm seed      # optional demo data, first time only
 
 services:
   db:
-    image: mysql:8.4
+    # MariaDB (same family as XAMPP's bundled server): accepts the schema's TEXT column defaults, which MySQL 8 rejects.
+    image: mariadb:11
     restart: unless-stopped
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     environment:
-      MYSQL_DATABASE: documentdb
-      MYSQL_USER: synapsas
-      MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD in .env}
+      MARIADB_DATABASE: documentdb
+      MARIADB_USER: synapsas
+      MARIADB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD in .env}
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 10s
       timeout: 5s
       retries: 12

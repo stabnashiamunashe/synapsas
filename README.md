@@ -43,7 +43,7 @@ Tenant-branded login: `/login?org=acme`.
 
 ## Deploying with Docker (recommended)
 
-`docker-compose.yml` runs two containers: the app (UI + API, published on host port **3443**) and MySQL 8. nginx on the host serves the domain and proxies to port 3443, so it coexists with anything else already running on the VM.
+`docker-compose.yml` runs two containers: the app (UI + API, published on host port **3443**) and MariaDB 11 (MySQL 8 rejects the schema's TEXT defaults; MariaDB, as bundled with XAMPP, accepts them). nginx on the host serves the domain and proxies to port 3443, so it coexists with anything else already running on the VM.
 
 One-time setup on the VM (Docker already installed):
 
@@ -88,7 +88,7 @@ In Hostinger hPanel open **Domains → synapsas.tech → DNS / Name Servers → 
 
 Delete any other `A` or `AAAA` records for `@` and `www` (Hostinger adds parking records by default). Check with `dig +short synapsas.tech`; run certbot only after the name resolves to the VM.
 
-Useful commands: `docker compose logs -f app`, `docker compose exec db mysql -u root -p documentdb`, `docker compose down` (data stays in the `db_data` and `uploads` volumes).
+Useful commands: `docker compose logs -f app`, `docker compose exec db mariadb -u root -p documentdb`, `docker compose down` (data stays in the `db_data` and `uploads` volumes).
 
 ## Deploying on an Ubuntu server without Docker
 
