@@ -1,0 +1,399 @@
+// Prisma schema for MySQL (database: documentdb).
+// JSON-ish columns are stored as TEXT/LONGTEXT (JSON text) so the model stays portable.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id           String    @id @default(cuid())
+  name         String
+  slug         String    @unique
+  plan         String    @default("FREE") // FREE | STARTER | BUSINESS | ENTERPRISE (the plan paid for / trialing)
+  planRenewsAt DateTime? // current period end
+  // --- billing / subscription state ---
+  planStatus            String    @default("TRIALING") // TRIALING | ACTIVE | PAST_DUE | CANCELLED | EXPIRED | FREE
+  billingCycle          String    @default("monthly") // monthly | yearly
+  trialEndsAt           DateTime?
+  graceEndsAt           DateTime? // after PAST_DUE, when the workspace becomes read-only
+  cancelAtPeriodEnd     Boolean   @default(false)
+  billingEmail          String?
+  billingProvider       String?   // stripe | paynow | manual
+  providerCustomerId    String?
+  providerSubscriptionId String?
+  onboardingCompletedAt DateTime?
+  invoices     Invoice[]
+  branding     String    @default("{}") @db.Text // JSON: BrandingSettings
+  settings     String    @default("{}") @db.Text // JSON: OrgSettings
+  customDomain String?   @unique
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  users         User[]
+  departments   Department[]
+  templates     WorkflowTemplate[]
+  requests      Request[]
+  auditLogs     AuditLog[]
+  notifications Notification[]
+  apiKeys       ApiKey[]
+  webhooks      Webhook[]
+  invitations   Invitation[]
+  delegations   Delegation[]
+  projects      Project[]
+}
+
+model User {
+  id           String    @id @default(cuid())
+  orgId        String
+  email        String
+  passwordHash String
+  name         String
+  role         String    @default("MEMBER") // OWNER | ADMIN | MANAGER | MEMBER
+  jobTitle     String?
+  avatarUrl    String?   @db.Text
+  departmentId String?
+  managerId    String?
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  // --- security ---
+  twoFactorEnabled    Boolean   @default(false)
+  twoFactorSecret     String?   // pending or active TOTP secret (base32)
+  backupCodes         String    @default("[]") @db.Text // JSON: sha256 hashes of unused backup codes
+  sessionVersion      Int       @default(0) // bump to invalidate every session
+  forcePasswordChange Boolean   @default(false)
+  passwordChangedAt   DateTime?
+  failedLogins        Int       @default(0)
+  lockedUntil         DateTime?
+  lastLoginIp         String?
+  prefs               String    @default("{}") @db.Text // JSON: NotificationPrefs
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  department Department?  @relation("DeptMembers", fields: [departmentId], references: [id], onDelete: SetNull)
+  passwordResets PasswordReset[]
+  manager    User?        @relation("Manager", fields: [managerId], references: [id], onDelete: SetNull)
+  reports    User[]       @relation("Manager")
+
+  requests        Request[]         @relation("Requester")
+  ownedProjects   Project[]         @relation("ProjectOwner")
+  approvals       RequestApproval[] @relation("Approver")
+  comments        Comment[]
+  attachments     Attachment[]
+  notifications   Notification[]
+  auditLogs       AuditLog[]
+  headOf          Department[]      @relation("DeptHead")
+  delegationsFrom Delegation[]      @relation("DelegFrom")
+  delegationsTo   Delegation[]      @relation("DelegTo")
+
+  @@unique([orgId, email])
+  @@index([orgId])
+  @@index([departmentId])
+  @@index([managerId])
+}
+
+model Department {
+  id         String   @id @default(cuid())
+  orgId      String
+  name       String
+  code       String?
+  headUserId String?
+  createdAt  DateTime @default(now())
+
+  org     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  head    User?        @relation("DeptHead", fields: [headUserId], references: [id], onDelete: SetNull)
+  members User[]       @relation("DeptMembers")
+
+  @@unique([orgId, name])
+  @@index([headUserId])
+}
+
+model WorkflowTemplate {
+  id          String   @id @default(cuid())
+  orgId       String
+  name        String
+  description String?  @db.Text
+  category    String   @default("CUSTOM") // MEMO | REQUISITION | DOCUMENT | LEAVE | EXPENSE | CUSTOM
+  icon        String?
+  color       String?
+  prefix      String   @default("REQ")
+  counter     Int      @default(0)
+  fields      String   @default("[]") @db.LongText // JSON: FieldDef[]
+  levels      String   @default("[]") @db.LongText // JSON: LevelDef[]
+  settings    String   @default("{}") @db.Text // JSON: TemplateSettings
+  isActive    Boolean  @default(true)
+  version     Int      @default(1)
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  org      Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  requests Request[]
+
+  @@index([orgId])
+}
+
+model Request {
+  id               String    @id @default(cuid())
+  orgId            String
+  templateId       String
+  referenceNo      String
+  title            String    @db.VarChar(255)
+  requesterId      String
+  data             String    @default("{}") @db.LongText // JSON form values
+  status           String    @default("DRAFT") // DRAFT | PENDING | APPROVED | REJECTED | RETURNED | CANCELLED
+  priority         String    @default("NORMAL") // LOW | NORMAL | HIGH | URGENT
+  projectId        String?
+  costAmount       Decimal?  @db.Decimal(18, 2) // extracted from the workflow's cost field at save/submit
+  currentLevel     Int       @default(0)
+  templateSnapshot String    @default("{}") @db.LongText // JSON: { fields, levels, name, category }
+  activeLevels     String    @default("[]") @db.Text // JSON: level orders applicable after conditions
+  dueAt            DateTime?
+  submittedAt      DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  org         Organization      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  template    WorkflowTemplate  @relation(fields: [templateId], references: [id])
+  requester   User              @relation("Requester", fields: [requesterId], references: [id])
+  project     Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  approvals   RequestApproval[]
+  comments    Comment[]
+  attachments Attachment[]
+
+  @@unique([orgId, referenceNo])
+  @@index([orgId, status])
+  @@index([requesterId])
+  @@index([templateId])
+  @@index([projectId])
+}
+
+model RequestApproval {
+  id            String    @id @default(cuid())
+  requestId     String
+  levelOrder    Int
+  levelName     String
+  approverId    String
+  status        String    @default("PENDING") // PENDING | APPROVED | REJECTED | RETURNED | SKIPPED | DELEGATED | ESCALATED
+  comment       String?   @db.Text
+  delegatedToId String?
+  dueAt         DateTime?
+  actedAt       DateTime?
+  createdAt     DateTime  @default(now())
+
+  request  Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  approver User    @relation("Approver", fields: [approverId], references: [id])
+
+  @@index([approverId, status])
+  @@index([requestId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  requestId String
+  userId    String
+  body      String   @db.Text
+  isSystem  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  request Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@index([requestId])
+  @@index([userId])
+}
+
+model Attachment {
+  id           String   @id @default(cuid())
+  requestId    String
+  uploadedById String
+  fileName     String   @db.VarChar(255)
+  mimeType     String
+  size         Int
+  storagePath  String   @db.VarChar(500)
+  createdAt    DateTime @default(now())
+
+  request    Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  uploadedBy User    @relation(fields: [uploadedById], references: [id])
+
+  @@index([requestId])
+  @@index([uploadedById])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  orgId      String
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  meta       String   @default("{}") @db.Text
+  ip         String?
+  userAgent  String?  @db.VarChar(500)
+  createdAt  DateTime @default(now())
+
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, createdAt])
+  @@index([userId])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  orgId     String
+  userId    String
+  title     String    @db.VarChar(255)
+  body      String?   @db.Text
+  link      String?   @db.VarChar(500)
+  type      String    @default("INFO")
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([orgId])
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  orgId      String
+  name       String
+  prefix     String
+  keyHash    String    @unique
+  scopes     String    @default("[\"read\",\"write\"]")
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+}
+
+model Webhook {
+  id          String    @id @default(cuid())
+  orgId       String
+  url         String    @db.VarChar(2000)
+  events      String    @default("[]") @db.Text
+  secret      String
+  isActive    Boolean   @default(true)
+  lastStatus  Int?
+  lastFiredAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+}
+
+model Invitation {
+  id           String    @id @default(cuid())
+  orgId        String
+  email        String
+  role         String    @default("MEMBER")
+  departmentId String?
+  token        String    @unique
+  invitedById  String?
+  expiresAt    DateTime
+  acceptedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+}
+
+model Invoice {
+  id           String    @id @default(cuid())
+  orgId        String
+  number       String    @unique // INV-2026-000123
+  plan         String
+  cycle        String    @default("monthly")
+  amountCents  Int
+  currency     String    @default("USD")
+  status       String    @default("PENDING") // PENDING | PAID | FAILED | VOID
+  provider     String    // stripe | paynow | manual
+  providerRef  String?   // checkout session / paynow reference / bank ref
+  checkoutUrl  String?   @db.VarChar(2000)
+  pollUrl      String?   @db.VarChar(2000)
+  description  String?   @db.Text
+  periodStart  DateTime
+  periodEnd    DateTime
+  dueAt        DateTime?
+  paidAt       DateTime?
+  meta         String    @default("{}") @db.Text
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, status])
+  @@index([providerRef])
+}
+
+model Project {
+  id           String    @id @default(cuid())
+  orgId        String
+  code         String    // short reference, unique per org, e.g. HQ-FITOUT
+  name         String
+  description  String?   @db.Text
+  status       String    @default("ACTIVE") // ACTIVE | ON_HOLD | CLOSED | ARCHIVED
+  budgetAmount Decimal?  @db.Decimal(18, 2)
+  currency     String    @default("USD")
+  ownerUserId  String?
+  departmentId String?
+  startsAt     DateTime?
+  endsAt       DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  org      Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  owner    User?        @relation("ProjectOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  requests Request[]
+
+  @@unique([orgId, code])
+  @@index([orgId, status])
+  @@index([ownerUserId])
+}
+
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Delegation {
+  id         String   @id @default(cuid())
+  orgId      String
+  fromUserId String
+  toUserId   String
+  reason     String?  @db.Text
+  startsAt   DateTime
+  endsAt     DateTime
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  from User         @relation("DelegFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  to   User         @relation("DelegTo", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([fromUserId])
+  @@index([toUserId])
+}
