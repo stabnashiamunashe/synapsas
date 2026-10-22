@@ -43,27 +43,38 @@ Tenant-branded login: `/login?org=acme`.
 
 ## Deploying with Docker (recommended)
 
-The stack in `docker-compose.yml` runs three containers: the app (UI + API, published on host port **3443**), MySQL 8, and Caddy, which terminates HTTPS for the domain on ports 80/443 with automatic Let's Encrypt certificates.
+`docker-compose.yml` runs two containers: the app (UI + API, published on host port **3443**) and MySQL 8. nginx on the host serves the domain and proxies to port 3443, so it coexists with anything else already running on the VM.
 
-One-time setup on an Ubuntu VM:
+One-time setup on the VM (Docker already installed):
 
 ```bash
-curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker $USER && newgrp docker
 git clone https://github.com/stabnashiamunashe/synapsas.git synapsas && cd synapsas
-cp .env.docker.example .env && nano .env   # DB passwords, AUTH_SECRET, PLATFORM_ADMIN_KEY, DOMAIN, APP_URL
+cp .env.docker.example .env && nano .env   # DB passwords, AUTH_SECRET, PLATFORM_ADMIN_KEY, APP_URL
 docker compose up -d --build
 docker compose --profile seed run --rm seed              # optional: demo workspace, first time only
 ```
 
-Before starting the stack, open inbound TCP ports **80, 443 and 3443** in the Hostinger VPS firewall (hPanel → VPS → Firewall; add rules for each port, source Any). Every later release is one command:
+Open inbound TCP **80, 443 and 3443** in the Hostinger VPS firewall. Every later release is one command:
 
 ```bash
 bash scripts/deploy-docker.sh
 ```
 
+### nginx for synapsas.tech
+
+```bash
+sudo apt install -y nginx certbot python3-certbot-nginx
+sudo cp deploy/nginx/synapsas.tech.conf /etc/nginx/sites-available/synapsas.tech
+sudo ln -s /etc/nginx/sites-available/synapsas.tech /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d synapsas.tech -d www.synapsas.tech
+```
+
+The config only declares `server_name synapsas.tech www.synapsas.tech`, so other sites on the box are untouched. certbot adds the HTTPS block and the HTTP→HTTPS redirect and renews automatically.
+
 | URL | Served by |
 | --- | --- |
-| `https://synapsas.tech` | Caddy → app (HTTPS, certificate auto-renewed) |
+| `https://synapsas.tech` | nginx → app |
 | `http://<vm-ip>:3443` | app directly, plain HTTP |
 
 ### Pointing synapsas.tech at the VM (Hostinger)
@@ -75,7 +86,7 @@ In Hostinger hPanel open **Domains → synapsas.tech → DNS / Name Servers → 
 | A | `@` | `<VM public IP>` | 300 |
 | A | `www` | `<VM public IP>` | 300 |
 
-Delete any other `A` or `AAAA` records for `@` and `www` (Hostinger adds parking records by default). Propagation usually takes a few minutes; check with `dig +short synapsas.tech`. Caddy requests the certificate automatically the first time the name resolves to the VM, so start the stack after the records are in place, or run `docker compose restart caddy` afterwards.
+Delete any other `A` or `AAAA` records for `@` and `www` (Hostinger adds parking records by default). Check with `dig +short synapsas.tech`; run certbot only after the name resolves to the VM.
 
 Useful commands: `docker compose logs -f app`, `docker compose exec db mysql -u root -p documentdb`, `docker compose down` (data stays in the `db_data` and `uploads` volumes).
 

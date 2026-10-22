@@ -12,4 +12,3 @@ docs
 tsconfig.tsbuildinfo
 Dockerfile
 docker-compose.yml
-Caddyfile

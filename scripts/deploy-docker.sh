@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pull the latest code and rebuild/restart the Docker stack (app on :3443, MySQL, Caddy on :80/:443).
+# Pull the latest code and rebuild/restart the Docker stack (app on :3443, MySQL).
 #   bash scripts/deploy-docker.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
