@@ -4,9 +4,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-if [ ! -f .env.docker ]; then
-  cp .env.docker.example .env.docker
-  echo ".env.docker created from .env.docker.example. Set DB_PASSWORD, DB_ROOT_PASSWORD, AUTH_SECRET, PLATFORM_ADMIN_KEY and DOMAIN, then re-run."
+if [ ! -f .env ]; then
+  cp .env.docker.example .env
+  echo ".env created from .env.docker.example. Set DB_PASSWORD, DB_ROOT_PASSWORD, AUTH_SECRET, PLATFORM_ADMIN_KEY and DOMAIN, then re-run."
   exit 1
 fi
 
@@ -20,4 +20,4 @@ echo "==> Pruning old images"
 docker image prune -f >/dev/null
 
 docker compose ps
-echo "==> Done. App: http://$(hostname -I | awk '{print $1}'):3443  and  https://$(grep -E '^DOMAIN=' .env.docker | cut -d= -f2)"
+echo "==> Done. App: http://$(hostname -I | awk '{print $1}'):3443  and  https://$(grep -E '^DOMAIN=' .env | cut -d= -f2)"

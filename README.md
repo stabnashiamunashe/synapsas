@@ -50,7 +50,7 @@ One-time setup on an Ubuntu VM:
 ```bash
 curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker $USER && newgrp docker
 git clone https://github.com/stabnashiamunashe/synapsas.git synapsas && cd synapsas
-cp .env.docker.example .env.docker && nano .env.docker   # DB passwords, AUTH_SECRET, PLATFORM_ADMIN_KEY, DOMAIN, APP_URL
+cp .env.docker.example .env && nano .env   # DB passwords, AUTH_SECRET, PLATFORM_ADMIN_KEY, DOMAIN, APP_URL
 docker compose up -d --build
 docker compose --profile seed run --rm seed              # optional: demo workspace, first time only
 ```

@@ -1,5 +1,5 @@
 # Synapsas production stack: app (UI + API) on host port 3443, MySQL 8, Caddy for HTTPS on the domain.
-#   cp .env.docker.example .env.docker && nano .env.docker
+#   cp .env.docker.example .env && nano .env
 #   docker compose up -d --build
 #   docker compose --profile seed run --rm seed      # optional demo data, first time only
 
@@ -11,8 +11,8 @@ services:
     environment:
       MYSQL_DATABASE: documentdb
       MYSQL_USER: synapsas
-      MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env.docker}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD in .env.docker}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD in .env}
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:
@@ -25,7 +25,7 @@ services:
     build: .
     image: synapsas/app:latest
     restart: unless-stopped
-    env_file: .env.docker
+    env_file: .env
     environment:
       DATABASE_URL: mysql://synapsas:${DB_PASSWORD}@db:3306/documentdb
       PORT: "3000"
@@ -60,7 +60,7 @@ services:
     build:
       context: .
       target: build
-    env_file: .env.docker
+    env_file: .env
     environment:
       DATABASE_URL: mysql://synapsas:${DB_PASSWORD}@db:3306/documentdb
     command: ["npx", "tsx", "prisma/seed.ts"]

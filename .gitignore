@@ -49,6 +49,4 @@ uploads/*
 docs/manual/manual.html
 !.env.example
 
-# docker
-.env.docker
 !.env.docker.example
