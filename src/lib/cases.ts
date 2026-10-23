@@ -6,6 +6,7 @@ import { audit, notify } from "./notify";
 import { ApiError } from "./api";
 import { hasRole } from "./roles";
 import { sendCaseUpdateEmail } from "./emails";
+import { notifyReporterWhatsApp } from "./whatsapp/notify";
 import { CASE_DONE, CASE_TRANSITIONS, DEFAULT_CASE_SETTINGS, slaState, type CasePriority, type CaseSettings, type CaseStatus } from "./caseTypes";
 import type { OrgSettings, Role, SessionUser } from "./types";
 
@@ -148,6 +149,7 @@ export async function createCase(orgId: string, input: CreateCaseInput, actor: {
       }
       await audit(orgId, actor?.id || null, "case.created", "Case", c.id, { referenceNo, source, status }, ctx);
       if (c.reporterEmail) void sendCaseUpdateEmail({ email: c.reporterEmail, name: c.reporterName, orgId }, c, "created");
+      void notifyReporterWhatsApp(c, "created");
       return c;
     } catch (e) {
       if ((e as { code?: string }).code === "P2002" && attempt < 2) continue; // reference collision under concurrency
@@ -180,6 +182,7 @@ export async function changeCaseStatus(orgId: string, caseId: string, to: CaseSt
   if (c.assigneeId && c.assigneeId !== actor.id) await notify(orgId, [c.assigneeId], { title: `${c.referenceNo} is now ${to.toLowerCase().replace("_", " ")}`, body: `${actor.name}${reason ? `: ${reason}` : ""}`, link: `/app/cases?open=${c.id}`, type: "STATUS" });
   if (c.reporterUserId && c.reporterUserId !== actor.id) await notify(orgId, [c.reporterUserId], { title: `${c.referenceNo} is now ${to.toLowerCase().replace("_", " ")}`, body: c.title, link: `/app/cases?open=${c.id}`, type: "STATUS" });
   if (c.reporterEmail && ["IN_PROGRESS", "RESOLVED", "REJECTED", "CLOSED"].includes(to)) void sendCaseUpdateEmail({ email: c.reporterEmail, name: c.reporterName, orgId }, updated, "status", reason || undefined);
+  if (["IN_PROGRESS", "RESOLVED", "REJECTED", "CLOSED"].includes(to)) void notifyReporterWhatsApp(updated, "status", reason || undefined);
   await audit(orgId, actor.id, "case.status", "Case", c.id, { from, to, reason }, ctx);
   return updated;
 }
@@ -235,6 +238,7 @@ export async function linkDuplicate(orgId: string, caseId: string, originalId: s
   });
   await audit(orgId, actor.id, "case.duplicate_linked", "Case", c.id, { of: o.referenceNo });
   if (c.reporterEmail) void sendCaseUpdateEmail({ email: c.reporterEmail, name: c.reporterName, orgId }, updated, "status", `This report duplicates ${o.referenceNo}, which is already being handled.`);
+  void notifyReporterWhatsApp(updated, "status", `Duplicate of ${o.referenceNo}, which is already being handled.`);
   return updated;
 }
 

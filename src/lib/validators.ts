@@ -297,7 +297,7 @@ export const caseCreateSchema = z.object({
   reporterName: z.string().min(2).max(255),
   reporterPhone: z.string().max(50).optional().nullable(),
   reporterEmail: z.string().email().optional().nullable().or(z.literal("")),
-  source: z.enum(["STAFF", "PUBLIC", "PHONE", "WALK_IN", "EMAIL"]).optional(),
+  source: z.enum(["STAFF", "PUBLIC", "PHONE", "WALK_IN", "EMAIL", "WHATSAPP"]).optional(),
   locationAddress: z.string().max(500).optional().nullable(),
   latitude: z.number().min(-90).max(90).optional().nullable(),
   longitude: z.number().min(-180).max(180).optional().nullable(),
@@ -354,4 +354,5 @@ export const caseSettingsSchema = z.object({
   announcementActive: z.boolean().optional(),
   defaultView: z.enum(["board", "table"]).optional(),
   boardColumns: z.array(caseStatusSchema).min(2).optional(),
+  whatsapp: z.object({ enabled: z.boolean().optional(), greeting: z.string().max(500).optional(), notifyAllReporters: z.boolean().optional(), helpText: z.string().max(1000).optional() }).optional(),
 });

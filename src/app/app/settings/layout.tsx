@@ -17,6 +17,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
       { key: "/app/settings/branding", label: <Link href="/app/settings/branding">Branding & white-label</Link> },
       { key: "/app/settings/organization", label: <Link href="/app/settings/organization">Organisation & security</Link> },
       { key: "/app/settings/service-desk", label: <Link href="/app/settings/service-desk">Service desk & portal</Link> },
+      { key: "/app/settings/whatsapp", label: <Link href="/app/settings/whatsapp">WhatsApp</Link> },
       { key: "/app/settings/api", label: <Link href="/app/settings/api">API & webhooks</Link> },
     ] : []),
     { key: "/app/settings/delegations", label: <Link href="/app/settings/delegations">Out of office</Link> },

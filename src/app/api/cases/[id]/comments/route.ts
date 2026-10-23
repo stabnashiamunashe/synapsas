@@ -4,6 +4,7 @@ import { caseCommentSchema } from "@/lib/validators";
 import { audit, notify } from "@/lib/notify";
 import { caseScope } from "@/lib/cases";
 import { sendCaseUpdateEmail } from "@/lib/emails";
+import { notifyReporterWhatsApp } from "@/lib/whatsapp/notify";
 
 export const GET = withAuth(async (_req, { params, user }) => {
   const scope = await caseScope(user);
@@ -24,6 +25,7 @@ export const POST = withAuth(async (req, { params, user }) => {
   const audience = [c.assigneeId, c.reporterUserId].filter((x): x is string => !!x && x !== user.id);
   if (audience.length) await notify(c.orgId, isInternal ? audience.filter((a) => a !== c.reporterUserId) : audience, { title: `${isInternal ? "Note" : "Update"} on ${c.referenceNo}`, body: body.slice(0, 200), link: `/app/cases?open=${c.id}`, type: "COMMENT" });
   if (!isInternal && c.reporterEmail) void sendCaseUpdateEmail({ email: c.reporterEmail, name: c.reporterName, orgId: c.orgId }, c, "status", body);
+  if (!isInternal) void notifyReporterWhatsApp(c, "status", body);
   await audit(c.orgId, user.id, isInternal ? "case.note" : "case.reply", "Case", c.id, {});
   return ok(comment, { status: 201 });
 });

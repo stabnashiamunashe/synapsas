@@ -3,7 +3,7 @@ export const CASE_STATUSES = ["NEW", "TRIAGED", "ASSIGNED", "IN_PROGRESS", "ON_H
 export type CaseStatus = (typeof CASE_STATUSES)[number];
 export const CASE_PRIORITIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
 export type CasePriority = (typeof CASE_PRIORITIES)[number];
-export const CASE_SOURCES = ["STAFF", "PUBLIC", "PHONE", "WALK_IN", "EMAIL"] as const;
+export const CASE_SOURCES = ["STAFF", "PUBLIC", "PHONE", "WALK_IN", "EMAIL", "WHATSAPP"] as const;
 export type CaseSource = (typeof CASE_SOURCES)[number];
 
 export const CASE_STATUS_LABELS: Record<CaseStatus, string> = {
@@ -17,7 +17,7 @@ export const CASE_STATUS_COLORS: Record<CaseStatus, string> = {
 };
 export const CASE_PRIORITY_COLORS: Record<CasePriority, string> = { LOW: "#2E9E6D", MEDIUM: "#E2A33D", HIGH: "#E0672B", CRITICAL: "#C6433B" };
 export const CASE_PRIORITY_LABELS: Record<CasePriority, string> = { LOW: "Low", MEDIUM: "Medium", HIGH: "High", CRITICAL: "Critical" };
-export const CASE_SOURCE_LABELS: Record<CaseSource, string> = { STAFF: "Staff", PUBLIC: "Public portal", PHONE: "Phone", WALK_IN: "Walk-in", EMAIL: "Email" };
+export const CASE_SOURCE_LABELS: Record<CaseSource, string> = { STAFF: "Staff", PUBLIC: "Public portal", PHONE: "Phone", WALK_IN: "Walk-in", EMAIL: "Email", WHATSAPP: "WhatsApp" };
 
 /** Statuses that count as closed for workload and SLA purposes. */
 export const CASE_DONE: CaseStatus[] = ["RESOLVED", "CLOSED", "REJECTED"];
@@ -55,6 +55,8 @@ export interface CaseSettings {
   announcementActive?: boolean;
   defaultView?: "board" | "table";
   boardColumns?: CaseStatus[];
+  /** WhatsApp Business intake (credentials live in the environment; these are behaviour switches) */
+  whatsapp?: { enabled?: boolean; greeting?: string; notifyAllReporters?: boolean; helpText?: string };
 }
 
 export const DEFAULT_CASE_SETTINGS: Required<Pick<CaseSettings, "prefix" | "autoAssign" | "requireTriage" | "requireTransitionReason" | "slaWarningHours" | "publicPortal" | "defaultView" | "boardColumns">> = {

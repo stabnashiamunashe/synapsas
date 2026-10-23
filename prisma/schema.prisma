@@ -599,3 +599,38 @@ model SavedView {
 
   @@index([userId])
 }
+
+// ==================== WhatsApp Business intake ====================
+
+/// One conversation per phone number; the bot is a button/list driven state machine (see src/lib/whatsapp/bot.ts).
+model WhatsAppSession {
+  id                String   @id @default(cuid())
+  orgId             String
+  phone             String   @unique @db.VarChar(32)
+  profileName       String?  @db.VarChar(255)
+  step              String   @default("IDLE")
+  data              String   @default("{}") @db.Text
+  lastInteractionAt DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([orgId, lastInteractionAt])
+}
+
+/// Every inbound and outbound WhatsApp message, with delivery status; inbound ids are unique so webhooks are idempotent.
+model WhatsAppMessage {
+  id          String   @id @default(cuid())
+  orgId       String?
+  waMessageId String?  @unique @db.VarChar(128)
+  direction   String // IN | OUT
+  phone       String   @db.VarChar(32)
+  kind        String // text | interactive | list | button | location | template | system
+  body        String   @db.Text
+  status      String   @default("received") // received | sent | delivered | read | failed | simulated | skipped
+  error       String?  @db.Text
+  caseId      String?
+  createdAt   DateTime @default(now())
+
+  @@index([phone, createdAt])
+  @@index([orgId, createdAt])
+}

@@ -91,5 +91,5 @@ Alongside form-based approvals, the **Service desk** handles tickets and public 
 | Citizen portal: report, track, rate | `/report` (anonymous, categories, location with GPS, up to 3 photos, honeypot and rate limits) and `/track/<ref>` (status, timeline, public updates, rating once resolved, verified by the reporter's phone or email). |
 | Branding and portal texts, announcement banner | Settings > Service desk & portal: heading, introduction, contacts, announcement, reference prefix, routing rules, board columns. |
 | Analytics summary | KPIs on the board (open, resolution rate, average resolution hours, SLA breached) and `GET /api/cases/stats` (status, priority, source and section breakdowns, 14-day trend). |
-| WhatsApp (Twilio/Infobip) intake and sandbox | Not ported: it needs a paid messaging account. The case engine accepts a `source` of PHONE / WALK_IN / EMAIL so a future channel only needs to call `POST /api/cases`. |
+| WhatsApp (Twilio/Infobip) intake and sandbox | Re-implemented on the **Meta WhatsApp Business Cloud API** with a button/list driven conversation, approved templates for outbound updates, signed webhooks and an in-app sandbox. Optional and fail-safe. See docs/WHATSAPP.md. |
 | Multi-council tenancy, super-admin console, workspaces | Not needed in the single-organisation edition; "workspaces" map to **Projects & surveys**. |
