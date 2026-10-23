@@ -5,7 +5,7 @@ import { Background, Controls, Handle, MarkerType, Position, ReactFlow, type Edg
 import "@xyflow/react/dist/style.css";
 import { CheckCircleFilled, ClockCircleOutlined, CloseCircleFilled, MinusCircleOutlined, RollbackOutlined } from "@ant-design/icons";
 import type { LevelDef } from "@/lib/types";
-import { describeApprover, describeCondition, type UserOption } from "./LevelSettingsForm";
+import { describeApprover, describeCondition, registerDepartmentNames, type UserOption } from "./LevelSettingsForm";
 import { useApi } from "@/lib/client";
 
 export type LevelState = "done" | "active" | "waiting" | "skipped" | "rejected" | "returned";
@@ -153,8 +153,11 @@ export function WorkflowDiagram({ levels, activeLevels, approvals, currentLevel,
   // Resolve named approvers to people when the caller did not supply a user list.
   const needsUsers = !usersProp && levels.some((l) => l.approverType === "USER");
   const { data: fetched } = useApi<UserOption[]>(needsUsers ? "/api/users?all=1" : null);
+  const needsDepts = levels.some((l) => l.approverType === "DEPARTMENT");
+  const { data: departments } = useApi<{ id: string; name: string }[]>(needsDepts ? "/api/departments" : null);
+  registerDepartmentNames(departments);
   const users = usersProp || fetched || undefined;
-  const { nodes, edges } = useMemo(() => buildGraph(levels, { activeLevels, approvals, currentLevel, status, users, compact }), [levels, activeLevels, approvals, currentLevel, status, users, compact]);
+  const { nodes, edges } = useMemo(() => buildGraph(levels, { activeLevels, approvals, currentLevel, status, users, compact }), [levels, activeLevels, approvals, currentLevel, status, users, compact, departments]);
   return (
     <div style={{ height, border: "1px solid #e5e8ec", borderRadius: 2, background: "#fbfbf7" }}>
       <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} fitView fitViewOptions={{ padding: 0.15, maxZoom: 1 }} nodesDraggable={false} nodesConnectable={false} elementsSelectable={false} zoomOnScroll={false} panOnScroll proOptions={{ hideAttribution: true }} minZoom={0.3}>
