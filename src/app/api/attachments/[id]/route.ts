@@ -18,7 +18,7 @@ export const GET = withAuth(async (req, { params, user }) => {
   if (!a) throw notFound();
   const involved = a.request.requesterId === user.id || a.request.approvals.some((x) => x.approverId === user.id);
   if (!involved && !hasRole(user, "MANAGER")) throw forbidden();
-  const root = path.resolve(process.env.UPLOAD_DIR || "./uploads");
+  const root = path.resolve(/*turbopackIgnore: true*/ process.env.UPLOAD_DIR || "./uploads");
   const abs = path.resolve(root, a.storagePath);
   if (!abs.startsWith(root + path.sep)) throw notFound();
   const buf = await readFile(/*turbopackIgnore: true*/ abs);

@@ -32,7 +32,7 @@ export const escapeHtml = (s: string) =>
 export interface MailBrand { productName?: string; primaryColor?: string; logoUrl?: string | null; footerText?: string | null; supportEmail?: string | null }
 
 const DEFAULT_BRAND: Required<Pick<MailBrand, "productName" | "primaryColor">> = {
-  productName: process.env.NEXT_PUBLIC_APP_NAME || "Synapsas",
+  productName: process.env.NEXT_PUBLIC_APP_NAME || "ZimStat Approvals",
   primaryColor: "#003B32",
 };
 

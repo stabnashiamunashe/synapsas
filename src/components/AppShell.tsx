@@ -1,10 +1,10 @@
 "use client";
 
-import { Alert, App, Avatar, Button, Drawer, Dropdown, Form, Grid, Input, Layout, Menu, Modal, Space, Tag, Typography, theme } from "antd";
+import { Alert, App, Avatar, Button, Drawer, Dropdown, Form, Grid, Input, Layout, Menu, Modal, Space, Typography, theme } from "antd";
 import {
   ApartmentOutlined, AuditOutlined, BarChartOutlined, DashboardOutlined, FileTextOutlined, InboxOutlined, LogoutOutlined,
   MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined, PlusOutlined, SafetyCertificateOutlined, SearchOutlined, SettingOutlined,
-  TeamOutlined, UserOutlined, ThunderboltOutlined, BranchesOutlined, ClockCircleOutlined, CalendarOutlined, FolderOpenOutlined,
+  TeamOutlined, UserOutlined, BranchesOutlined, ClockCircleOutlined, CalendarOutlined, FolderOpenOutlined,
 } from "@ant-design/icons";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -19,18 +19,18 @@ import { PASSWORD_POLICY } from "@/lib/security";
 
 const { Header, Sider, Content } = Layout;
 
-export function AppShell({ branding, orgName, plan, session, children }: {
-  branding: BrandingSettings; orgName: string; plan: string; session: SessionUser; children: React.ReactNode;
+export function AppShell({ branding, orgName, session, children }: {
+  branding: BrandingSettings; orgName: string; session: SessionUser; children: React.ReactNode;
 }) {
   return (
     <BrandProvider branding={branding}>
-      <Shell branding={branding} orgName={orgName} plan={plan} session={session}>{children}</Shell>
+      <Shell branding={branding} orgName={orgName} session={session}>{children}</Shell>
     </BrandProvider>
   );
 }
 
-function Shell({ branding, orgName, plan, session, children }: {
-  branding: BrandingSettings; orgName: string; plan: string; session: SessionUser; children: React.ReactNode;
+function Shell({ branding, orgName, session, children }: {
+  branding: BrandingSettings; orgName: string; session: SessionUser; children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -75,7 +75,7 @@ function Shell({ branding, orgName, plan, session, children }: {
     {
       label: "Workflows",
       items: [
-        { key: "/app/projects", icon: <FolderOpenOutlined />, label: "Projects" },
+        { key: "/app/projects", icon: <FolderOpenOutlined />, label: "Projects & surveys" },
         { key: "/app/templates", icon: <BranchesOutlined />, label: "Workflow designs", show: isAdmin },
         { key: "/app/requests/new", icon: <PlusOutlined />, label: "New request" },
         { key: "/app/settings/delegations", icon: <CalendarOutlined />, label: "Out of office" },
@@ -85,7 +85,7 @@ function Shell({ branding, orgName, plan, session, children }: {
       label: "Organisation",
       items: [
         { key: "/app/users", icon: <TeamOutlined />, label: "People", show: isAdmin },
-        { key: "/app/departments", icon: <ApartmentOutlined />, label: "Departments", show: isAdmin },
+        { key: "/app/departments", icon: <ApartmentOutlined />, label: "Sections & divisions", show: isAdmin },
         { key: "/app/audit", icon: <AuditOutlined />, label: "Audit log", show: isAdmin },
         { key: "/app/settings", icon: <SettingOutlined />, label: "Settings", show: isAdmin },
       ],
@@ -117,9 +117,6 @@ function Shell({ branding, orgName, plan, session, children }: {
   const mustChangePassword = !!me?.security?.mustChangePassword;
   const mustSetup2fa = !!me?.security?.mustSetup2fa && !mustChangePassword;
   const showLabels = isMobile || !collapsed;
-  const billing = me?.billing;
-  const needsOnboarding = !!me && me.onboarding && !me.onboarding.completed && me.user.role === "OWNER" && !pathname.startsWith("/app/onboarding");
-  useEffect(() => { if (needsOnboarding) router.replace("/app/onboarding"); }, [needsOnboarding, router]);
 
   const nav = (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
@@ -151,16 +148,6 @@ function Shell({ branding, orgName, plan, session, children }: {
         );
       })}
       <div style={{ flex: 1 }} />
-      {showLabels && isAdmin && (
-        <div className="side-promo">
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <ThunderboltOutlined style={{ color: b.primaryColor }} />
-            <Typography.Text strong style={{ color: "inherit" }}>{billing?.status === "TRIALING" ? `Trial · ${billing.trialDaysLeft} days left` : `${plan.charAt(0)}${plan.slice(1).toLowerCase()} plan`}</Typography.Text>
-          </div>
-          <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 10 }}>{billing?.status === "TRIALING" ? "Keep your team, workflows and history after the trial." : "Usage, invoices and plan changes."}</div>
-          <Link href="/app/settings/billing"><Button size="small" type="primary" block>{billing?.status === "TRIALING" ? "Choose a plan" : "Manage plan"}</Button></Link>
-        </div>
-      )}
     </div>
   );
 
@@ -197,12 +184,11 @@ function Shell({ branding, orgName, plan, session, children }: {
               <Input ref={searchRef as never} value={search} onChange={(e) => setSearch(e.target.value)} onPressEnter={goSearch} prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />} placeholder="Search requests…" allowClear
                 suffix={<span style={{ fontSize: 11, color: token.colorTextTertiary, border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 5, padding: "0 5px" }}>⌘K</span>} style={{ width: 280, borderRadius: 8, background: token.colorFillAlter }} />
             )}
-            {!isMobile && <Tag color={plan === "FREE" ? "default" : "gold"} style={{ marginInlineEnd: 0, borderRadius: 6 }}>{plan}</Tag>}
             <NotificationTray />
             <Dropdown
               menu={{
                 items: [
-                  { key: "who", label: <span><b>{me?.user.name || session.name}</b><br /><span className="muted" style={{ fontSize: 11 }}>{role.toLowerCase()} · {plan}</span></span>, disabled: true },
+                  { key: "who", label: <span><b>{me?.user.name || session.name}</b><br /><span className="muted" style={{ fontSize: 11 }}>{role.toLowerCase()}</span></span>, disabled: true },
                   { type: "divider" },
                   { key: "profile", icon: <UserOutlined />, label: <Link href="/app/profile">My profile</Link> },
                   { key: "security", icon: <SafetyCertificateOutlined />, label: <Link href="/app/profile?tab=security">Security{me?.user.twoFactorEnabled ? "" : " (2FA off)"}</Link> },
@@ -223,19 +209,15 @@ function Shell({ branding, orgName, plan, session, children }: {
           </div>
         </Header>
         <Content className="app-content">
-          {billing?.banner && !pathname.startsWith("/app/settings/billing") && (
-            <Alert type={billing.banner.level} showIcon style={{ marginBottom: 16 }} title={billing.banner.text}
-              action={isAdmin ? <Link href="/app/settings/billing"><Button size="small" type={billing.banner.level === "error" ? "primary" : "default"} danger={billing.banner.level === "error"}>{billing.locked ? "Pay now" : "Plan & billing"}</Button></Link> : undefined} />
-          )}
           {mustSetup2fa && pathname !== "/app/profile" && (
             <Alert type="warning" showIcon style={{ marginBottom: 16 }} title="Two-factor authentication is required for administrators in this workspace."
               action={<Link href="/app/profile?tab=security"><Button size="small" type="primary">Set up now</Button></Link>} />
           )}
           {children}
         </Content>
-        {(b.footerText || !b.hideVendorBranding) && (
+        {b.footerText && (
           <div className="muted no-print" style={{ textAlign: "center", padding: "8px 0 16px", fontSize: 12 }}>
-            {b.footerText || `Powered by ${DEFAULT_BRANDING.productName}`}
+            {b.footerText}
           </div>
         )}
       </Layout>

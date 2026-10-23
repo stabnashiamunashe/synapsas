@@ -1,8 +1,8 @@
 # Security
 
-Synapsas is built against the **OWASP Application Security Verification Standard (ASVS) 4.0, Level 2** and the **OWASP Top 10 (2021)**. This document maps the controls to the code so auditors can verify them, and lists the operational duties that remain with the operator.
+ZimStat Approvals is built against the **OWASP Application Security Verification Standard (ASVS) 4.0, Level 2** and the **OWASP Top 10 (2021)**. This document maps the controls to the code so auditors can verify them, and lists the operational duties that remain with the operator.
 
-Report vulnerabilities to **security@synapsas.tech** (see `/.well-known/security.txt`). Please do not open public issues for security reports.
+Report vulnerabilities to **ict@zimstat.co.zw** (see `/.well-known/security.txt`). Please do not open public issues for security reports.
 
 ## Control map
 
@@ -44,7 +44,7 @@ Templates escape all dynamic content, use table layout for Outlook, and never in
 | --- | --- |
 | SPF (TXT @) | `v=spf1 include:<your SMTP provider's SPF> -all` |
 | DKIM (TXT selector._domainkey) | the public key your SMTP provider gives you |
-| DMARC (TXT _dmarc) | `v=DMARC1; p=quarantine; rua=mailto:dmarc@synapsas.tech; adkim=s; aspf=s` |
+| DMARC (TXT _dmarc) | `v=DMARC1; p=quarantine; rua=mailto:dmarc@zimstat.co.zw; adkim=s; aspf=s` |
 
 ## Residual risks and operator duties
 

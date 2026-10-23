@@ -1,5 +1,3 @@
-Contact: mailto:security@synapsas.tech
+Contact: mailto:ict@zimstat.co.zw
 Expires: 2027-12-31T23:59:59.000Z
 Preferred-Languages: en
-Policy: https://synapsas.tech/security
-Canonical: https://synapsas.tech/.well-known/security.txt

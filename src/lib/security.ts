@@ -14,7 +14,7 @@ const COMMON = new Set([
   "password123", "password1234", "password12345", "passw0rd1234", "welcome123!", "welcome12345", "qwerty12345", "qwerty123456",
   "admin12345", "admin123456", "letmein12345", "changeme123", "changeme1234", "iloveyou1234", "football1234", "sunshine1234",
   "princess1234", "monkey123456", "dragon123456", "baseball1234", "superman1234", "trustno1trustno1", "summer2024!", "summer2025!",
-  "winter2024!", "winter2025!", "spring2025!", "autumn2025!", "january2025!", "company2025!", "synapsas123!", "synapsas2025!",
+  "winter2024!", "winter2025!", "spring2025!", "autumn2025!", "january2025!", "company2025!", "synapsas123!", "zimstat123!", "zimstat2025!", "zimstat@2025",
 ]);
 
 export function passwordProblems(pw: string, context: string[] = []): string[] {
@@ -45,7 +45,7 @@ export async function isBreachedPassword(pw: string): Promise<boolean> {
   const prefix = sha1.slice(0, 5), suffix = sha1.slice(5);
   try {
     const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
-      headers: { "Add-Padding": "true", "User-Agent": "Synapsas-password-check" },
+      headers: { "Add-Padding": "true", "User-Agent": "ZimStat-Approvals-password-check" },
       signal: AbortSignal.timeout(2500),
     });
     if (!res.ok) return false;

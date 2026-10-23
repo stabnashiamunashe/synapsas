@@ -1,4 +1,4 @@
-# Synapsas production stack: app (UI + API) on host port 3443 and MariaDB 11. Put nginx in front for the domain (deploy/nginx/).
+# ZimStat Approvals production stack: app (UI + API) on host port 3443 and MariaDB 11. Put nginx in front for the domain (deploy/nginx/).
 #   cp .env.docker.example .env && nano .env
 #   docker compose up -d --build
 #   docker compose --profile seed run --rm seed      # optional demo data, first time only
@@ -26,7 +26,7 @@ services:
 
   app:
     build: .
-    image: synapsas/app:latest
+    image: zimstat/approvals:latest
     restart: unless-stopped
     env_file: .env
     environment:
@@ -51,7 +51,7 @@ services:
       db:
         condition: service_healthy
 
-  # One-off: load the demo workspace (owner@acme.test / Password123!).
+  # One-off: load the demo workspace (ict.admin@zimstat.co.zw / Password123!).
   seed:
     profiles: ["seed"]
     build:

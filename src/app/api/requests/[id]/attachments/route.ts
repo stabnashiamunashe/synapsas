@@ -55,7 +55,7 @@ export const POST = withAuth(async (req, { params, user }) => {
     const problem = validateUpload(file.name, file.type, bytes);
     if (problem) throw badRequest(problem);
     const storageName = `${nanoid(24)}.${extensionOf(file.name)}`;
-    const target = path.join(dir, storageName);
+    const target = path.join(/*turbopackIgnore: true*/ dir, storageName);
     if (!target.startsWith(dir + path.sep)) throw badRequest("Invalid file name");
     await writeFile(/*turbopackIgnore: true*/ target, bytes, { mode: 0o600 });
     const a = await prisma.attachment.create({
@@ -65,7 +65,7 @@ export const POST = withAuth(async (req, { params, user }) => {
         fileName: file.name.slice(0, 200),
         mimeType: safeMimeFor(file.name),
         size: file.size,
-        storagePath: path.join(user.orgId, storageName),
+        storagePath: path.join(/*turbopackIgnore: true*/ user.orgId, storageName),
       },
       include: { uploadedBy: { select: { id: true, name: true } } },
     });

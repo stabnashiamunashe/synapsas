@@ -1,7 +1,7 @@
 import { Secret, TOTP } from "otpauth";
 import { decryptSecret, encryptSecret } from "./crypto";
 
-const ISSUER = process.env.NEXT_PUBLIC_APP_NAME || "Synapsas";
+const ISSUER = process.env.NEXT_PUBLIC_APP_NAME || "ZimStat Approvals";
 const PERIOD = 30;
 
 export function newTotpSecret() {

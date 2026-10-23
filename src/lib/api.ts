@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { ZodError, type ZodSchema } from "zod";
 import { getSessionOrApiKey, hasRole } from "./auth";
 import { clientInfo, rateLimit, sameOrigin } from "./security";
-import { orgEntitlements } from "./billing";
 import type { Role, SessionUser } from "./types";
 
 export class ApiError extends Error {
@@ -53,13 +52,9 @@ type Ctx = { params: Promise<Record<string, string>> };
 export type AuthedUser = SessionUser & { viaApiKey?: boolean };
 type Handler = (req: Request, ctx: { params: Record<string, string>; user: AuthedUser }) => Promise<Response>;
 
-/** Routes that stay writable while a workspace is locked for non-payment. */
-const BILLING_SAFE = ["/api/billing/", "/api/auth/", "/api/notifications", "/api/onboarding"];
-
 /**
  * Wrap a route handler: resolves params, requires a verified session (or API key), enforces a minimum role,
- * rejects cross-site mutations for cookie sessions, blocks writes when the workspace is locked for
- * non-payment (HTTP 402), and maps errors to JSON.
+ * rejects cross-site mutations for cookie sessions, and maps errors to JSON.
  */
 export function withAuth(handler: Handler, minRole: Role = "MEMBER") {
   return async (req: Request, ctx: Ctx) => {
@@ -75,10 +70,6 @@ export function withAuth(handler: Handler, minRole: Role = "MEMBER") {
       // Per-principal throttle: 600 requests/min for sessions, 300/min for API keys.
       throttle(req, `user:${user.viaApiKey ? user.apiKeyId : user.id}`, user.viaApiKey ? 300 : 600, 60_000);
       if (user.viaApiKey && mutating && !(user.scopes || []).includes("write")) throw forbidden("This API key is read-only");
-      if (mutating && !BILLING_SAFE.some((p) => new URL(req.url).pathname.startsWith(p))) {
-        const ent = await orgEntitlements(user.orgId);
-        if (ent.locked) throw new ApiError(402, "This workspace is read-only until its outstanding invoice is paid. Go to Settings → Plan & billing.");
-      }
       const params = ctx?.params ? await ctx.params : {};
       return await handler(req, { params, user });
     } catch (e) {

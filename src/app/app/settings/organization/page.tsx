@@ -23,7 +23,7 @@ export default function OrganizationSettingsPage() {
   return (
     <Space orientation="vertical" style={{ width: "100%" }} size={16}>
       <Card title="Organisation">
-        <Form layout="vertical" onFinish={save} initialValues={{ name: me.org.name, currency: "USD", requireCommentOnReject: true, allowSelfApproval: false, emailNotifications: true, sessionHours: 8, lockoutThreshold: 5, require2faForAdmins: false, ...me.org.settings }}>
+        <Form layout="vertical" onFinish={save} initialValues={{ name: me.org.name, currency: "USD", requireCommentOnReject: true, allowSelfApproval: false, emailNotifications: true, sessionHours: 8, lockoutThreshold: 5, annualLeaveDays: 12, require2faForAdmins: false, ...me.org.settings }}>
           <Row gutter={16}>
             <Col xs={24} md={12}><Form.Item name="name" label="Organisation name" rules={[{ required: true, min: 2 }]}><Input /></Form.Item></Col>
             <Col xs={12} md={6}><Form.Item name="currency" label="Currency"><Select options={["USD", "EUR", "GBP", "ZAR", "ZWG", "KES", "NGN", "INR", "AUD", "CAD"].map((c) => ({ value: c, label: c }))} showSearch /></Form.Item></Col>
@@ -42,6 +42,7 @@ export default function OrganizationSettingsPage() {
           <Row gutter={16}>
             <Col xs={12} md={6}><Form.Item name="sessionHours" label="Session length (hours)" extra="Users are signed out after this long."><InputNumber min={1} max={168} style={{ width: "100%" }} /></Form.Item></Col>
             <Col xs={12} md={6}><Form.Item name="lockoutThreshold" label="Lock account after failed sign-ins" extra="Locked for 15 minutes; admins can unlock."><InputNumber min={3} max={20} style={{ width: "100%" }} /></Form.Item></Col>
+            <Col xs={12} md={6}><Form.Item name="annualLeaveDays" label="Annual leave entitlement (days / year)" extra="Shown as the balance on every leave application."><InputNumber min={0} max={60} style={{ width: "100%" }} /></Form.Item></Col>
             <Col xs={24} md={12}><Form.Item name="require2faForAdmins" valuePropName="checked" label="Require two-factor authentication for owners and admins" extra="Admins without 2FA are prompted to enrol at sign-in."><Switch /></Form.Item></Col>
           </Row>
           <Button type="primary" htmlType="submit">Save</Button>

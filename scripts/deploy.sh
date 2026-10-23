@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-APP_NAME="${APP_NAME:-synapsas}"
+APP_NAME="${APP_NAME:-zimstat-approvals}"
 PORT="${PORT:-3000}"
 
 if [ ! -f .env ]; then

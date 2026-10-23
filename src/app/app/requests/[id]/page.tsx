@@ -11,6 +11,7 @@ import { ProjectPicker } from "@/components/ProjectPicker";
 import { DataView } from "@/components/DataView";
 import { RequestTimeline, type ApprovalRow } from "@/components/RequestTimeline";
 import { WorkflowDiagram } from "@/components/WorkflowDiagram";
+import { LeaveBalance } from "@/components/LeaveBalance";
 import { DynamicFields } from "@/components/DynamicForm";
 import type { FieldDef, LevelDef, TemplateSettings, TemplateSnapshot } from "@/lib/types";
 
@@ -44,6 +45,7 @@ export default function RequestDetailPage() {
 
   if (isLoading || !r) return <Skeleton active />;
   const snap = r.templateSnapshot && r.templateSnapshot.fields ? r.templateSnapshot : { fields: r.template.fields, levels: r.template.levels, settings: r.template.settings, name: r.template.name };
+  const isLeave = ((r.templateSnapshot as { category?: string } | null)?.category || (r.template as { category?: string }).category) === "LEAVE";
   const fields = snap.fields;
   const levels = snap.levels;
   const currentLevelDef = levels.find((l) => l.order === r.currentLevel);
@@ -148,6 +150,7 @@ export default function RequestDetailPage() {
       {levels.length > 0 && (
         <Card title="Where this request is in the flow" size="small" style={{ marginBottom: 16 }} styles={{ body: { padding: 8 } }}>
           <WorkflowDiagram levels={levels} activeLevels={r.activeLevels || []} approvals={r.approvals} currentLevel={r.currentLevel} status={r.status} height={200} compact />
+          {isLeave && <div style={{ marginTop: 12 }}><LeaveBalance userId={r.requester.id} requestedDays={Number((r.data as Record<string, unknown>).daysRequired) || undefined} compact /></div>}
         </Card>
       )}
 

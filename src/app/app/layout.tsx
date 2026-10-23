@@ -15,7 +15,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!org) redirect("/login");
   const branding = parseJson<BrandingSettings>(org.branding, {});
   return (
-    <AppShell branding={branding} orgName={org.name} plan={org.plan} session={session}>
+    <AppShell branding={branding} orgName={org.name} session={session}>
       {children}
     </AppShell>
   );

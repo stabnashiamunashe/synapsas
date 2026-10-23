@@ -59,11 +59,6 @@ export interface MeResponse {
   pendingApprovals: number;
   recentNotifications: { id: string; title: string; body?: string | null; link?: string | null; type: string; readAt?: string | null; createdAt: string }[];
   security: { mustChangePassword: boolean; mustSetup2fa: boolean };
-  billing: {
-    plan: string; subscribedPlan: string; status: string; locked: boolean; trialDaysLeft: number | null; graceDaysLeft: number | null;
-    renewsAt: string | null; limits: import("@/lib/plans").PlanLimits; banner: { level: "info" | "warning" | "error"; text: string } | null;
-  };
-  onboarding: { completed: boolean };
 }
 
 export function useMe() {

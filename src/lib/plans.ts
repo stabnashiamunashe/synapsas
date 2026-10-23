@@ -82,8 +82,9 @@ export const PLANS: Record<Plan, PlanLimits> = {
   },
 };
 
-export function limitsFor(plan: string): PlanLimits {
-  return PLANS[(plan as Plan) in PLANS ? (plan as Plan) : "FREE"];
+export function limitsFor(_plan?: string): PlanLimits {
+  // Single-organisation edition: no plans, every feature and limit is unlocked.
+  return PLANS.ENTERPRISE;
 }
 
 export function withinLimit(limit: number, current: number) {

@@ -118,7 +118,8 @@ export type ApproverType =
   | "DEPARTMENT_HEAD" // head of the requester's department
   | "REQUESTER_MANAGER" // requester's line manager
   | "FIELD_USER" // user chosen in a form field of type "user"
-  | "FIELD_DEPARTMENT_HEAD"; // head of department chosen in a "department" field
+  | "FIELD_DEPARTMENT_HEAD" // head of department chosen in a "department" field
+  | "DEPARTMENT"; // any active member of a named section/department (e.g. Finance Section, Registry, Internal Audit)
 
 export interface LevelDef {
   id: string;
@@ -130,6 +131,9 @@ export interface LevelDef {
   approverRole?: Role;
   restrictToRequesterDepartment?: boolean;
   fieldKey?: string;
+  /** for approverType DEPARTMENT: the section whose members act at this level (optionally only those with at least this role) */
+  departmentId?: string;
+  minRole?: Role;
   /** ANY = first approver decides, ALL = every approver must approve */
   mode: "ANY" | "ALL";
   slaHours?: number;
@@ -182,6 +186,8 @@ export interface BrandingSettings {
 }
 
 export interface OrgSettings {
+  /** annual leave entitlement per officer per calendar year (ZimStat: 12 days) */
+  annualLeaveDays?: number;
   timezone?: string;
   currency?: string;
   dateFormat?: string;

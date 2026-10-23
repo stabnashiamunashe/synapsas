@@ -5,6 +5,7 @@ import { ArrowLeftOutlined } from "@ant-design/icons";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { LeaveBalance } from "@/components/LeaveBalance";
 import { api, useApi, useMe } from "@/lib/client";
 import { DynamicFields, defaultsFor } from "@/components/DynamicForm";
 import { ProjectPicker } from "@/components/ProjectPicker";
@@ -21,6 +22,7 @@ function NewRequest() {
   const { data: templates, isLoading } = useApi<Template[]>("/api/templates?active=1");
   const [templateId, setTemplateId] = useState<string | null>(params.get("template"));
   const [form] = Form.useForm();
+  const daysWatch = Form.useWatch("daysRequired", form);
   const [saving, setSaving] = useState<"draft" | "submit" | null>(null);
   const template = templates?.find((t) => t.id === templateId) || null;
   const currency = me?.org.settings.currency || "USD";
@@ -84,6 +86,7 @@ function NewRequest() {
                   <Col xs={24} md={7}><Form.Item name="projectId" label="Project" rules={template.settings.requireProject ? [{ required: true, message: "Choose a project" }] : []} extra="Costs on this request count towards the project."><ProjectPicker placeholder={template.settings.requireProject ? "Choose a project" : "No project"} /></Form.Item></Col>
                   <Col xs={24} md={5}><Form.Item name="priority" label="Priority"><Select options={["LOW", "NORMAL", "HIGH", "URGENT"].map((p) => ({ value: p, label: p }))} /></Form.Item></Col>
                 </Row>
+                {template.category === "LEAVE" && <LeaveBalance requestedDays={Number(daysWatch) || undefined} compact />}
                 <DynamicFields fields={template.fields} currency={currency} />
               </Form>
             </Card>

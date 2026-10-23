@@ -95,6 +95,15 @@ export async function resolveApprovers(
       }
       break;
     }
+    case "DEPARTMENT": {
+      if (level.departmentId) {
+        const rank: Record<string, number> = { MEMBER: 0, MANAGER: 1, ADMIN: 2, OWNER: 3 };
+        const members = await prisma.user.findMany({ where: { orgId, isActive: true, departmentId: level.departmentId }, select: { id: true, role: true } });
+        const min = rank[level.minRole || "MEMBER"] ?? 0;
+        ids = members.filter((m) => (rank[m.role] ?? 0) >= min).map((m) => m.id);
+      }
+      break;
+    }
   }
   // Only active users in this org.
   if (ids.length) {

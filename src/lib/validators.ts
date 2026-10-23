@@ -90,11 +90,13 @@ export const levelSchema = z.object({
   order: z.number().int().min(1),
   name: z.string().min(1),
   description: z.string().optional(),
-  approverType: z.enum(["USER", "ROLE", "DEPARTMENT_HEAD", "REQUESTER_MANAGER", "FIELD_USER", "FIELD_DEPARTMENT_HEAD"]),
+  approverType: z.enum(["USER", "ROLE", "DEPARTMENT_HEAD", "REQUESTER_MANAGER", "FIELD_USER", "FIELD_DEPARTMENT_HEAD", "DEPARTMENT"]),
   approverUserIds: z.array(z.string()).optional(),
   approverRole: roleSchema.optional(),
   restrictToRequesterDepartment: z.boolean().optional(),
   fieldKey: z.string().optional(),
+  departmentId: z.string().optional().nullable(),
+  minRole: roleSchema.optional(),
   mode: z.enum(["ANY", "ALL"]).default("ANY"),
   slaHours: z.number().min(0).optional().nullable(),
   condition: conditionSchema,
@@ -226,6 +228,7 @@ export const orgSettingsSchema = z.object({
   require2faForAdmins: z.boolean().optional(),
   sessionHours: z.number().min(1).max(168).optional(),
   lockoutThreshold: z.number().min(3).max(20).optional(),
+  annualLeaveDays: z.number().min(0).max(60).optional(),
 });
 
 export const orgUpdateSchema = z.object({

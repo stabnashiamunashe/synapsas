@@ -22,5 +22,5 @@ done
 echo "==> Syncing database schema"
 node /opt/prisma/node_modules/prisma/build/index.js db push --skip-generate
 
-echo "==> Starting Synapsas on port ${PORT:-3000}"
+echo "==> Starting ZimStat Approvals on port ${PORT:-3000}"
 exec "$@"

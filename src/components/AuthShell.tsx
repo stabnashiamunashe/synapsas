@@ -3,7 +3,6 @@
 import { Card, Space, Typography } from "antd";
 import { useEffect, useState } from "react";
 import { BrandProvider, DEFAULT_BRANDING } from "./Providers";
-import { BrandMark } from "./BrandMark";
 import type { BrandingSettings } from "@/lib/types";
 import { api } from "@/lib/client";
 
@@ -30,23 +29,14 @@ export function AuthShell({ slug, title, subtitle, children, onBrand }: {
       }}>
         <Card style={{ width: 420, maxWidth: "100%", borderTop: `4px solid ${b.primaryColor}` }} styles={{ body: { padding: 32 } }}>
           <Space orientation="vertical" align="center" style={{ width: "100%", marginBottom: 24 }}>
-            {b.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={b.logoUrl} alt={productName} style={{ height: 48, maxWidth: 200, objectFit: "contain" }} />
-            ) : (
-              <BrandMark size={44} color={b.primaryColor} />
-            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={b.logoUrl || "/brand/zimstat-logo.png"} alt={productName} style={{ height: 96, maxWidth: 240, objectFit: "contain" }} />
             <Typography.Title level={3} style={{ margin: 0 }}>{productName}</Typography.Title>
             {b.loginTagline && <Typography.Text type="secondary">{b.loginTagline}</Typography.Text>}
           </Space>
           <Typography.Title level={4} style={{ marginTop: 0 }}>{title}</Typography.Title>
           {subtitle && <Typography.Paragraph type="secondary">{subtitle}</Typography.Paragraph>}
           {children}
-          {!b.hideVendorBranding && (
-            <Typography.Paragraph type="secondary" style={{ textAlign: "center", marginTop: 24, marginBottom: 0, fontSize: 12 }}>
-              Powered by {DEFAULT_BRANDING.productName}
-            </Typography.Paragraph>
-          )}
         </Card>
       </div>
     </BrandProvider>

@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { ok, withAuth } from "@/lib/api";
 import { hydrate, parseJson } from "@/lib/json";
 import { limitsFor } from "@/lib/plans";
-import { effectivePlan, entitlementsFor } from "@/lib/billing";
+import { effectivePlan } from "@/lib/billing";
 import { userSelect } from "@/lib/userSelect";
 import { hasRole } from "@/lib/roles";
 import type { OrgSettings } from "@/lib/types";
@@ -26,7 +26,5 @@ export const GET = withAuth(async (_req, { user }) => {
     pendingApprovals,
     recentNotifications: recent,
     security: { mustChangePassword: !!me.forcePasswordChange && !user.viaApiKey, mustSetup2fa },
-    billing: entitlementsFor(org),
-    onboarding: { completed: !!org.onboardingCompletedAt },
   });
 });

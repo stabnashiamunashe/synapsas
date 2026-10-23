@@ -16,7 +16,6 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     ...(isAdmin ? [
       { key: "/app/settings/branding", label: <Link href="/app/settings/branding">Branding & white-label</Link> },
       { key: "/app/settings/organization", label: <Link href="/app/settings/organization">Organisation & security</Link> },
-      { key: "/app/settings/billing", label: <Link href="/app/settings/billing">Plan & billing</Link> },
       { key: "/app/settings/api", label: <Link href="/app/settings/api">API & webhooks</Link> },
     ] : []),
     { key: "/app/settings/delegations", label: <Link href="/app/settings/delegations">Out of office</Link> },

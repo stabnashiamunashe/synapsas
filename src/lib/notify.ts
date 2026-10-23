@@ -117,7 +117,7 @@ export async function dispatchWebhooks(orgId: string, event: WebhookEvent, data:
             method: "POST",
             headers: {
               "content-type": "application/json",
-              "user-agent": "Synapsas-Webhooks/1.0",
+              "user-agent": "ZimStat-Approvals-Webhooks/1.0",
               "x-webhook-event": event,
               "x-webhook-timestamp": ts,
               "x-webhook-signature": `t=${ts},v1=${sig}`,

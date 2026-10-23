@@ -9,12 +9,12 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 
 export const metadata: Metadata = {
-  title: process.env.NEXT_PUBLIC_APP_NAME || "Synapsas",
-  description: "Configurable, white-label approval workflows for memos, requisitions and document approvals.",
+  title: process.env.NEXT_PUBLIC_APP_NAME || "ZimStat Approvals",
+  description: "Zimbabwe National Statistics Agency: travel and subsistence advances and claims, leave applications and internal approvals.",
   icons: { icon: "/favicon.png" },
 };
 
-export const viewport = { width: "device-width", initialScale: 1, themeColor: "#003B32" };
+export const viewport = { width: "device-width", initialScale: 1, themeColor: "#1414D2" };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Per-request CSP nonce set by src/proxy.ts; applied to Ant Design's injected styles.

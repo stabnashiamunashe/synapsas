@@ -1,42 +1,41 @@
-# Synapsas test accounts
+# ZimStat demo accounts
 
-Loaded by the demo seed (`docker compose --profile seed run --rm seed`, or `npm run db:seed` locally).
-Workspace: **Acme Limited**, slug `acme`.
+Loaded by the seed (`docker compose --profile seed run --rm seed`, or `npm run db:seed` locally). All names are fictional.
 
-Sign-in page: `https://synapsas.tech/login?org=acme` (locally `http://localhost:3000/login?org=acme`).
+Sign-in page: `https://<your-host>/login` (locally `http://localhost:3000/login`).
 
 **Password for every account: `Password123!`**
 
-| Email | Name | Role | Job title | Department | Reports to | Use it to test |
-| --- | --- | --- | --- | --- | --- | --- |
-| owner@acme.test | Olivia Owner | OWNER | Chief Executive | – | – | Everything: branding, organisation, billing, API keys, workflow designs, people. Final approver on document sign-off (ALL mode with Legal). Fallback approver on memos. |
-| cfo@acme.test | Frank Finance | ADMIN | Chief Financial Officer | Finance (head) | Olivia Owner | CFO level on purchase requisitions when total ≥ $5,000. Head office approver on Travel & subsistence. |
-| ops.head@acme.test | Hannah Head | MANAGER | Head of Operations | Operations (head) | Olivia Owner | Department-head level for Operations staff; escalation and fallback target for line-manager levels. |
-| manager@acme.test | Mike Manager | MANAGER | Operations Manager | Operations | Hannah Head | Line manager of Sam Staff and Jane Junior: first level on most requests. Head of Sales department. |
-| procurement@acme.test | Priya Procurement | MANAGER | Procurement Lead | Operations | Hannah Head | Procurement review level on purchase requisitions. |
-| legal@acme.test | Lena Legal | MANAGER | Legal Counsel | Legal (head) | – | Legal & executive sign-off on Policy and Contract documents (ALL mode with Olivia). |
-| member@acme.test | Sam Staff | MEMBER | Operations Officer | Operations | Mike Manager | Raising requests as an ordinary employee. |
-| jane@acme.test | Jane Junior | MEMBER | Sales Executive | Sales | Mike Manager | Raising requests from a second department. |
+| Email | Name | Role | Position | Section | Reports to |
+| --- | --- | --- | --- | --- | --- |
+| ict.admin@zimstat.co.zw | Tendai Moyo | OWNER | ICT Systems Administrator | ICT Section | Head of ICT |
+| dg@zimstat.co.zw | Dr. Rufaro Chikwanha | ADMIN | Director General | Office of the DG | – |
+| director.finance@zimstat.co.zw | Nyasha Dube | ADMIN | Director, Finance & Administration (head of Finance Section) | Finance | DG |
+| accountant@zimstat.co.zw | Farai Ncube | MANAGER | Accountant | Finance | Director Finance |
+| finance.officer@zimstat.co.zw | Rudo Mutasa | MEMBER | Finance Officer (advances / cashier) | Finance | Accountant |
+| hr.head@zimstat.co.zw | Chipo Mlambo | MANAGER | Head of Human Resources (head of HR & Admin) | HR & Administration | DG |
+| registry@zimstat.co.zw | Blessing Sibanda | MEMBER | Registry Clerk | HR & Administration | Head of HR |
+| internal.audit@zimstat.co.zw | Tapiwa Gumbo | MANAGER | Internal Auditor (head of Internal Audit) | Internal Audit | DG |
+| ict.head@zimstat.co.zw | Kudzai Mhlanga | MANAGER | Head of ICT Section | ICT Section | DG |
+| surveys.head@zimstat.co.zw | Tariro Chigumba | MANAGER | Head of Population Census & Surveys Division | Surveys | DG |
+| field.supervisor@zimstat.co.zw | Munyaradzi Zvobgo | MANAGER | Field Supervisor / Team Leader | Surveys | Head of Surveys |
+| l.officer@zimstat.co.zw | Leonard Officer | MEMBER | Statistical Officer | ICT Section | Head of ICT |
+| p.officer@zimstat.co.zw | Pamela Officer | MEMBER | Enumerator Supervisor | Surveys | Field Supervisor |
 
-## Suggested test flows
+## Walk-throughs
 
-| Flow | Raise as | Then approve as |
+| Flow | Raise as | Then act as |
 | --- | --- | --- |
-| Purchase requisition under $5,000 | member@acme.test | manager@acme.test → procurement@acme.test |
-| Purchase requisition ≥ $5,000 | member@acme.test | manager@acme.test → procurement@acme.test → cfo@acme.test (comment required) |
-| Internal memo (not confidential) | jane@acme.test | manager@acme.test |
-| Internal memo (confidential) | jane@acme.test | manager@acme.test → ops.head@acme.test |
-| Document approval, type Policy or Contract | member@acme.test (pick a reviewer and owning department on the form) | reviewer → department head → legal@acme.test **and** owner@acme.test |
-| Travel & subsistence (if set up via `scripts/setup-travel.mjs`) | member@acme.test | manager@acme.test → ops.head@acme.test → cfo@acme.test |
-| Return for changes / loop-back | any | approver clicks **Return for changes**; requester edits and resubmits |
-| Out-of-office delegation | manager@acme.test sets a delegate under Settings → Out of office | delegate sees the item marked "On behalf of" |
+| T&S advance (TSA) | l.officer | ict.head (recommend) → finance.officer or accountant (certify balance, comment required) → dg or director.finance (approve) → finance.officer (disburse) |
+| T&S expense claim (TSC) | p.officer, attach receipts | field.supervisor (certify) → any Finance officer (checked / not previously paid) → accountant or director.finance (pass for payment) → internal.audit (examine) |
+| Application for Leave (LV) | p.officer | field.supervisor (recommend) → surveys.head (approve) → registry (record and file) |
+| Annual leave / off days (AL) | l.officer | ict.head (recommend) → ict.head (approve; same person as section head) → registry (record). The balance panel shows 9 of 12 days remaining after the seeded 3-day leave |
+| Internal memo | anyone | section head → DG (only when "Requires Director General's approval" is ticked) |
 
-## Platform console
-
-`https://synapsas.tech/platform` — enter the value of `PLATFORM_ADMIN_KEY` from `.env` on the server (example file default: `change-me-platform-admin-key`; change it in production).
+Seeded data: one approved TSA (Kadoma, USD 870, ZDHS project), one TSC awaiting Accounts (MICS), one approved 3-day annual leave, one vacation leave awaiting the supervisor.
 
 ## Notes
 
-- All seed passwords are identical and public. Deactivate or reset these accounts before real users join a production workspace, or run without the seed and register a fresh workspace at `/register`.
-- Two-factor authentication is off for every seed account; enable it under Profile → Security to test the TOTP flow.
-- The seed is idempotent: it skips if the `acme` workspace already exists.
+- Seed passwords are public. Reset or deactivate these accounts before go-live, or run without the seed and create staff under People.
+- Two-factor authentication is off for every seed account; enable it under Profile → Security.
+- The seed is idempotent: it skips if the `zimstat` organisation already exists.

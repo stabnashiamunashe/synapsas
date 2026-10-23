@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Multi-stage build for the Synapsas Next.js app (standalone output + Prisma/MySQL).
+# Multi-stage build for the ZimStat Approvals Next.js app (standalone output + Prisma/MySQL).
 
 FROM node:20-bookworm-slim AS deps
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*

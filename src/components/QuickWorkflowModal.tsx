@@ -11,7 +11,7 @@ import { APPROVER_TYPES, type UserOption } from "./LevelSettingsForm";
 import { PRESETS } from "./TemplateBuilder";
 import { WorkflowDiagram } from "./WorkflowDiagram";
 
-type Stage = { id: string; name: string; approverType: ApproverType; loopBack?: number; userIds?: string[]; role?: Role };
+type Stage = { id: string; name: string; approverType: ApproverType; loopBack?: number; userIds?: string[]; role?: Role; departmentId?: string };
 
 const DEFAULT_STAGES: Stage[] = [
   { id: nanoid(6), name: "Line manager approval", approverType: "REQUESTER_MANAGER" },
@@ -30,12 +30,14 @@ export function QuickWorkflowModal({ open, onClose }: { open: boolean; onClose: 
   const [stages, setStages] = useState<Stage[]>(DEFAULT_STAGES);
   const [saving, setSaving] = useState(false);
   const { data: users } = useApi<UserOption[]>(open ? "/api/users" : null);
+  const { data: departments } = useApi<{ id: string; name: string }[]>(open ? "/api/departments" : null);
 
   const levels: LevelDef[] = stages.map((s, i) => ({
     id: s.id, order: i + 1, name: s.name || `Stage ${i + 1}`, approverType: s.approverType, mode: "ANY", slaHours: 48,
     allowDelegate: true, allowReturn: true, skipIfRequester: true,
     ...(s.approverType === "USER" ? { approverUserIds: s.userIds || [] } : {}),
     ...(s.approverType === "ROLE" ? { approverRole: s.role || "MANAGER" } : {}),
+    ...(s.approverType === "DEPARTMENT" ? { departmentId: s.departmentId } : {}),
     ...(s.loopBack ? { returnTo: s.loopBack } : {}),
   }));
 
@@ -47,6 +49,8 @@ export function QuickWorkflowModal({ open, onClose }: { open: boolean; onClose: 
     if (stages.some((s) => !s.name.trim())) return message.error("Every stage needs a name");
     const missing = stages.findIndex((s) => s.approverType === "USER" && !(s.userIds && s.userIds.length));
     if (missing >= 0) return message.error(`Stage ${missing + 1} needs at least one named approver`);
+    const noDept = stages.findIndex((s) => s.approverType === "DEPARTMENT" && !s.departmentId);
+    if (noDept >= 0) return message.error(`Stage ${noDept + 1} needs a section`);
     setSaving(true);
     try {
       const preset = PRESETS[category] || {};
@@ -94,9 +98,12 @@ export function QuickWorkflowModal({ open, onClose }: { open: boolean; onClose: 
                 <Button type="text" size="small" icon={<ArrowDownOutlined />} onClick={() => move(i, 1)} />
                 <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => setStages((st) => st.filter((_, idx) => idx !== i))} />
               </Space>
-              {(s.approverType === "USER" || s.approverType === "ROLE") && (
+              {(s.approverType === "USER" || s.approverType === "ROLE" || s.approverType === "DEPARTMENT") && (
                 <div style={{ gridColumn: "2 / span 3" }}>
-                  {s.approverType === "USER" ? (
+                  {s.approverType === "DEPARTMENT" ? (
+                    <Select showSearch optionFilterProp="label" placeholder="Which section acts at this stage?" style={{ width: "100%" }} value={s.departmentId} onChange={(departmentId) => setStage(i, { departmentId })}
+                      options={(departments || []).map((d) => ({ value: d.id, label: d.name }))} />
+                  ) : s.approverType === "USER" ? (
                     <Select mode="multiple" showSearch optionFilterProp="label" placeholder="Choose the approver(s) for this stage" style={{ width: "100%" }} value={s.userIds || []} onChange={(userIds) => setStage(i, { userIds })}
                       options={(users || []).map((u) => ({ value: u.id, label: `${u.name} · ${u.role.toLowerCase()}` }))} />
                   ) : (

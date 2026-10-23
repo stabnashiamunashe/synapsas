@@ -5,7 +5,7 @@ import { parseJson } from "./json";
 import type { BrandingSettings } from "./types";
 
 async function brandFor(orgId?: string | null): Promise<{ brand: MailBrand; orgName: string; slug: string }> {
-  if (!orgId) return { brand: {}, orgName: process.env.NEXT_PUBLIC_APP_NAME || "Synapsas", slug: "" };
+  if (!orgId) return { brand: {}, orgName: process.env.NEXT_PUBLIC_APP_NAME || "ZimStat Approvals", slug: "" };
   const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { name: true, slug: true, branding: true } });
   const b = parseJson<BrandingSettings>(org?.branding || "{}", {});
   return {

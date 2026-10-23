@@ -98,7 +98,7 @@ function LoginForm() {
         <Button type="primary" htmlType="submit" size="large" block loading={loading}>Sign in</Button>
       </Form>
       <Typography.Paragraph style={{ textAlign: "center", marginTop: 16, marginBottom: 0 }}>
-        <Link href={`/forgot-password${slug ? `?org=${slug}` : ""}`}>Forgot password?</Link> · New here? <Link href="/register">Create a workspace</Link>
+        <Link href={`/forgot-password${slug ? `?org=${slug}` : ""}`}>Forgot password?</Link> · Accounts are created by the ICT administrator.
       </Typography.Paragraph>
     </AuthShell>
   );

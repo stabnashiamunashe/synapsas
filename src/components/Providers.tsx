@@ -5,16 +5,16 @@ import { useNonce } from "./AntdRegistry";
 import { useEffect } from "react";
 import type { BrandingSettings } from "@/lib/types";
 
-/** Defaults: Synapsas green primary, light surfaces, soft radii, pill controls. Tenants override via branding. */
+/** Defaults: ZimStat blue primary, light surfaces, soft radii, pill controls. Overridable under Settings → Branding. */
 export const DEFAULT_BRANDING: Required<Pick<BrandingSettings, "productName" | "primaryColor" | "sidebarTheme" | "borderRadius">> = {
-  productName: process.env.NEXT_PUBLIC_APP_NAME || "Synapsas",
-  primaryColor: "#003B32", // Synapsas deep green
+  productName: process.env.NEXT_PUBLIC_APP_NAME || "ZimStat Approvals",
+  primaryColor: "#1414D2", // ZimStat blue (logo wordmark)
   sidebarTheme: "light",
-  borderRadius: 12,
+  borderRadius: 8,
 };
 
-/** Synapsas palette: deep green, cream, black. */
-export const BRAND = { green: "#003B32", greenDeep: "#022A24", cream: "#FFFDF0", black: "#000000", white: "#FFFFFF" };
+/** ZimStat palette from the agency logo: blue wordmark, red star, gold bird, black. */
+export const BRAND = { blue: "#1414D2", blueDeep: "#0B0B8F", red: "#D7262D", gold: "#F0D040", black: "#000000", white: "#FFFFFF", cream: "#FFFFFF" };
 
 /** Neutral UI surfaces (light, airy dashboard look). */
 export const UI = {
@@ -91,7 +91,7 @@ export function BrandProvider({ branding, children }: { branding?: BrandingSetti
           wireframe: false,
         },
         components: {
-          Layout: { siderBg: b.sidebarTheme === "dark" ? BRAND.greenDeep : UI.sidebarBg, headerBg: UI.surface, bodyBg: UI.pageBg },
+          Layout: { siderBg: b.sidebarTheme === "dark" ? BRAND.blueDeep : UI.sidebarBg, headerBg: UI.surface, bodyBg: UI.pageBg },
           Menu: {
             itemBorderRadius: 10,
             subMenuItemBorderRadius: 10,
@@ -101,8 +101,8 @@ export function BrandProvider({ branding, children }: { branding?: BrandingSetti
             itemSelectedBg: tint(b.primaryColor, 0.9),
             itemSelectedColor: b.primaryColor,
             itemHoverBg: UI.hover,
-            darkItemBg: BRAND.greenDeep,
-            darkSubMenuItemBg: BRAND.greenDeep,
+            darkItemBg: BRAND.blueDeep,
+            darkSubMenuItemBg: BRAND.blueDeep,
             darkItemSelectedBg: "rgba(255,255,255,0.14)",
             darkItemHoverBg: "rgba(255,255,255,0.06)",
             iconSize: 16,
