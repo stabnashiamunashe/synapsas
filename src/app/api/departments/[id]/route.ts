@@ -9,8 +9,8 @@ export const PATCH = withAuth(async (req, { params, user }) => {
   const body = await parseBody(req, departmentSchema.partial());
   const updated = await prisma.department.update({
     where: { id: d.id },
-    data: { name: body.name, code: body.code, headUserId: body.headUserId === undefined ? undefined : body.headUserId || null },
-    include: { head: { select: { id: true, name: true } }, _count: { select: { members: true } } },
+    data: { name: body.name, code: body.code, headUserId: body.headUserId === undefined ? undefined : body.headUserId || null, defaultAssigneeId: body.defaultAssigneeId === undefined ? undefined : body.defaultAssigneeId || null },
+    include: { head: { select: { id: true, name: true } }, defaultAssignee: { select: { id: true, name: true } }, _count: { select: { members: true } } },
   });
   await audit(user.orgId, user.id, "department.updated", "Department", d.id);
   return ok(updated);

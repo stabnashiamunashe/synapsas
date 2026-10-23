@@ -6,7 +6,7 @@ import { audit } from "@/lib/notify";
 export const GET = withAuth(async (_req, { user }) => {
   const list = await prisma.department.findMany({
     where: { orgId: user.orgId },
-    include: { head: { select: { id: true, name: true } }, _count: { select: { members: true } } },
+    include: { head: { select: { id: true, name: true } }, defaultAssignee: { select: { id: true, name: true } }, _count: { select: { members: true } } },
     orderBy: { name: "asc" },
   });
   return ok(list);

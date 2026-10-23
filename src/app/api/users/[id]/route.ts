@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { reassignCasesOnDeactivation } from "@/lib/cases";
 import { badRequest, forbidden, notFound, ok, parseBody, withAuth } from "@/lib/api";
 import { userUpdateSchema } from "@/lib/validators";
 import { hashPassword, hasRole } from "@/lib/auth";
@@ -59,6 +60,7 @@ export const PATCH = withAuth(async (req, { params, user }) => {
     select: userSelect,
   });
   const keys = Object.keys(body).filter((k) => k !== "password");
+  if (body.isActive === false && target.isActive) await reassignCasesOnDeactivation(user.orgId, target.id, user.name);
   await audit(user.orgId, user.id, adminReset ? "user.password_reset_by_admin" : "user.updated", "User", target.id, { keys }, clientInfo(req));
   return ok(hydrate(updated, ["prefs"]));
 });
@@ -79,6 +81,7 @@ export const DELETE = withAuth(async (req, { params, user }) => {
   if (target.id === user.id) throw badRequest("You cannot deactivate yourself");
   if (target.role === "OWNER") throw forbidden("Owners cannot be deactivated");
   await prisma.user.update({ where: { id: target.id }, data: { isActive: false, sessionVersion: { increment: 1 } } });
+  await reassignCasesOnDeactivation(user.orgId, target.id, user.name);
   await audit(user.orgId, user.id, "user.deactivated", "User", target.id, {}, clientInfo(req));
   return ok({ id: target.id, isActive: false });
 }, "ADMIN");

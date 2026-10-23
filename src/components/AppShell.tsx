@@ -4,7 +4,7 @@ import { Alert, App, Avatar, Button, Drawer, Dropdown, Form, Grid, Input, Layout
 import {
   ApartmentOutlined, AuditOutlined, BarChartOutlined, DashboardOutlined, FileTextOutlined, InboxOutlined, LogoutOutlined,
   MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined, PlusOutlined, SafetyCertificateOutlined, SearchOutlined, SettingOutlined,
-  TeamOutlined, UserOutlined, BranchesOutlined, ClockCircleOutlined, CalendarOutlined, FolderOpenOutlined,
+  TeamOutlined, UserOutlined, BranchesOutlined, ClockCircleOutlined, CalendarOutlined, FolderOpenOutlined, CustomerServiceOutlined, TagsOutlined,
 } from "@ant-design/icons";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -70,6 +70,14 @@ function Shell({ branding, orgName, session, children }: {
         { key: "/app/requests", icon: <FileTextOutlined />, label: "Requests" },
         { key: "/app/reports", icon: <BarChartOutlined />, label: "Reports", show: isManager },
         { key: "/app/notifications", icon: <ClockCircleOutlined />, label: "Activity" },
+      ],
+    },
+    {
+      label: "Service desk",
+      items: [
+        { key: "/app/cases", icon: <CustomerServiceOutlined />, label: "Cases" },
+        { key: "/app/cases/new", icon: <PlusOutlined />, label: "Log a case" },
+        { key: "/app/cases/categories", icon: <TagsOutlined />, label: "Categories & SLAs", show: isAdmin },
       ],
     },
     {

@@ -137,3 +137,22 @@ export async function sendDigestEmail(user: { email: string; name: string; orgId
   });
   await sendMail({ to: user.email, subject: `[${brand.productName || orgName}] ${period === "daily" ? "Daily" : "Weekly"} summary`, html, text, category: "digest", orgId: user.orgId });
 }
+
+/* ---------- service desk (cases) ---------- */
+
+export async function sendCaseUpdateEmail(to: { email: string; name: string; orgId: string }, c: { referenceNo: string; title: string; status: string; slaHours: number; slaDueAt: Date | null }, kind: "created" | "status", note?: string) {
+  const { brand, orgName } = await brandFor(to.orgId);
+  const status = c.status.toLowerCase().replace("_", " ");
+  const trackUrl = `${appUrl()}/track/${encodeURIComponent(c.referenceNo)}`;
+  const { html, text } = renderEmail({
+    brand,
+    title: kind === "created" ? `We received your report: ${c.referenceNo}` : `${c.referenceNo} is now ${status}`,
+    intro: `Hi ${e(to.name)},`,
+    paragraphs: kind === "created"
+      ? [`Your report <b>${e(c.title)}</b> has been logged with reference <b>${e(c.referenceNo)}</b>. Our target is to attend to it within ${c.slaHours} hours${c.slaDueAt ? ` (by ${e(c.slaDueAt.toUTCString())})` : ""}.`]
+      : [`Your report <b>${e(c.title)}</b> (${e(c.referenceNo)}) has been updated to <b>${e(status)}</b>.`, ...(note ? [e(note)] : [])],
+    cta: { label: "Track this report", url: trackUrl },
+    footerNote: `Quote ${c.referenceNo} in any correspondence with ${orgName}.`,
+  });
+  await sendMail({ to: to.email, subject: kind === "created" ? `[${c.referenceNo}] Report received` : `[${c.referenceNo}] Update: ${status}`, html, text, category: "notification", orgId: to.orgId });
+}

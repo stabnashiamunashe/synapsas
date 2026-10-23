@@ -341,6 +341,39 @@ async function main() {
     ],
   });
 
+  // --- Service desk: categories with SLAs and a few cases ---
+  const cat = (name: string, departmentId: string, defaultSlaHours: number, defaultPriority: string, icon: string, description: string, isPublic = true) =>
+    prisma.caseCategory.create({ data: { orgId: org.id, name, departmentId, defaultSlaHours, defaultPriority, icon, description, isPublic } });
+  const catData = await cat("Statistical data request", surveys.id, 120, "MEDIUM", "📊", "Request tables, microdata or publications (census, surveys, CPI, trade).");
+  const catPublication = await cat("Publication or release query", surveys.id, 72, "LOW", "📰", "Questions about a published release or dissemination schedule.");
+  const catIct = await cat("ICT support", ictSec.id, 24, "HIGH", "💻", "Email, network, laptop, printer, system access.", false);
+  const catSystem = await cat("System access / password", ictSec.id, 8, "HIGH", "🔐", "Account creation, password reset, access to applications.", false);
+  const catFacilities = await cat("Facilities & office maintenance", hr.id, 72, "MEDIUM", "🏢", "Lifts, lights, plumbing, furniture, office equipment.", false);
+  const catComplaint = await cat("Complaint about service", directorate.id, 48, "HIGH", "📣", "Complaints about a ZimStat service, officer or field visit.");
+  const catPayment = await cat("Payment or finance query", finance.id, 72, "MEDIUM", "💵", "Advance, claim or supplier payment queries.", false);
+
+  const mkCase = async (d: { ref: string; title: string; description: string; category: { id: string; departmentId: string; defaultSlaHours: number }; status: string; priority: string; assigneeId?: string | null; reporterName: string; reporterPhone?: string; reporterEmail?: string; reporterUserId?: string | null; source: string; location?: string; office?: string; ageHours: number; resolvedHoursAgo?: number; projectId?: string | null }) => {
+    const created = hoursAgo(d.ageHours);
+    const c = await prisma.case.create({
+      data: {
+        orgId: org.id, referenceNo: d.ref, title: d.title, description: d.description, status: d.status, priority: d.priority, departmentId: d.category.departmentId, categoryId: d.category.id,
+        assigneeId: d.assigneeId ?? null, projectId: d.projectId ?? null, reporterName: d.reporterName, reporterPhone: d.reporterPhone, reporterEmail: d.reporterEmail, reporterUserId: d.reporterUserId ?? null, source: d.source,
+        locationAddress: d.location, office: d.office, slaHours: d.category.defaultSlaHours, slaDueAt: new Date(created.getTime() + d.category.defaultSlaHours * 3600000), createdAt: created, lastActivityAt: created,
+        resolvedAt: d.resolvedHoursAgo !== undefined ? hoursAgo(d.resolvedHoursAgo) : null,
+        events: { create: [{ fromStatus: null, toStatus: d.assigneeId ? "ASSIGNED" : "TRIAGED", changedByName: d.reporterUserId ? d.reporterName : `${d.reporterName} (reporter)`, reason: `Logged via ${d.source.toLowerCase().replace("_", " ")}`, createdAt: created }] },
+      },
+    });
+    return c;
+  };
+  const c1 = await mkCase({ ref: `ZS-${year}-0001`, title: "Request for 2022 census population tables by district", description: "Researcher requesting district-level population and household tables from the 2022 Population and Housing Census for Manicaland.", category: catData, status: "IN_PROGRESS", priority: "MEDIUM", assigneeId: officer2.id, reporterName: "Tinashe Researcher", reporterPhone: "0771 000 111", reporterEmail: "tinashe@example.org", source: "PUBLIC", location: "Mutare", ageHours: 30 });
+  await prisma.caseEvent.create({ data: { caseId: c1.id, fromStatus: "ASSIGNED", toStatus: "IN_PROGRESS", changedById: officer2.id, changedByName: officer2.name, reason: "Tables being extracted", createdAt: hoursAgo(20) } });
+  await prisma.caseComment.create({ data: { caseId: c1.id, userId: officer2.id, authorName: officer2.name, body: "We are compiling the district tables; expect them within two working days.", isInternal: false, createdAt: hoursAgo(20) } });
+  const c2 = await mkCase({ ref: `ZS-${year}-0002`, title: "Laptop will not connect to the office Wi-Fi", description: "Since Monday morning the Dell Latitude cannot see ZIMSTAT-STAFF. Other devices connect fine.", category: catIct, status: "ASSIGNED", priority: "HIGH", assigneeId: officer1.id, reporterName: "Pamela Officer", reporterEmail: "p.officer@zimstat.co.zw", reporterUserId: officer2.id, source: "STAFF", office: "Head Office, 7th floor", ageHours: 28 });
+  await mkCase({ ref: `ZS-${year}-0003`, title: "Password reset for the HR system", description: "Locked out after three attempts.", category: catSystem, status: "RESOLVED", priority: "HIGH", assigneeId: officer1.id, reporterName: "Blessing Sibanda", reporterEmail: "registry@zimstat.co.zw", reporterUserId: registry.id, source: "STAFF", ageHours: 50, resolvedHoursAgo: 47 });
+  await mkCase({ ref: `ZS-${year}-0004`, title: "Lift on the Kaguvi Building side out of order", description: "The second lift has been stuck on the ground floor since yesterday afternoon.", category: catFacilities, status: "TRIAGED", priority: "MEDIUM", reporterName: "Kudzai Mhlanga", reporterEmail: "ict.head@zimstat.co.zw", reporterUserId: ictHead.id, source: "WALK_IN", location: "Kaguvi Building, Harare", ageHours: 80 });
+  await mkCase({ ref: `ZS-${year}-0005`, title: "Enumerator visit complaint, Kadoma ward 6", description: "Resident reports an enumerator arrived without identification and would not state the survey name.", category: catComplaint, status: "ASSIGNED", priority: "HIGH", assigneeId: supervisor.id, reporterName: "Rutendo Resident", reporterPhone: "0773 222 333", source: "PHONE", location: "Kadoma, Ward 6", ageHours: 6, projectId: mics.id });
+  void c2; void catPublication; void catPayment;
+
   console.log("Seeded ZimStat organisation. Logins (password: Password123!):");
   for (const u of [ict, dg, dirFinance, accountant, cashier, hrHead, registry, auditor, ictHead, surveysHead, supervisor, officer1, officer2]) {
     console.log(`  ${u.email.padEnd(34)} ${u.role.padEnd(8)} ${u.name} — ${u.jobTitle}`);

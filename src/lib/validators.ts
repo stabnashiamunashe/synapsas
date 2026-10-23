@@ -198,6 +198,7 @@ export const departmentSchema = z.object({
   name: z.string().min(1),
   code: z.string().optional().nullable(),
   headUserId: z.string().optional().nullable(),
+  defaultAssigneeId: z.string().optional().nullable(),
 });
 
 export const brandingSchema = z.object({
@@ -215,6 +216,7 @@ export const brandingSchema = z.object({
 });
 
 export const orgSettingsSchema = z.object({
+  cases: z.lazy(() => caseSettingsSchema).optional(),
   timezone: z.string().optional(),
   currency: z.string().max(5).optional(),
   dateFormat: z.string().optional(),
@@ -279,4 +281,77 @@ export const delegationSchema = z.object({
   reason: z.string().optional(),
   startsAt: z.string(),
   endsAt: z.string(),
+});
+
+// ---------- service desk (cases) ----------
+export const casePrioritySchema = z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]);
+export const caseStatusSchema = z.enum(["NEW", "TRIAGED", "ASSIGNED", "IN_PROGRESS", "ON_HOLD", "RESOLVED", "CLOSED", "REOPENED", "REJECTED"]);
+
+export const caseCreateSchema = z.object({
+  title: z.string().min(3).max(255),
+  description: z.string().min(5).max(20000),
+  categoryId: z.string().optional().nullable(),
+  departmentId: z.string().optional().nullable(),
+  priority: casePrioritySchema.optional().nullable(),
+  projectId: z.string().optional().nullable(),
+  reporterName: z.string().min(2).max(255),
+  reporterPhone: z.string().max(50).optional().nullable(),
+  reporterEmail: z.string().email().optional().nullable().or(z.literal("")),
+  source: z.enum(["STAFF", "PUBLIC", "PHONE", "WALK_IN", "EMAIL"]).optional(),
+  locationAddress: z.string().max(500).optional().nullable(),
+  latitude: z.number().min(-90).max(90).optional().nullable(),
+  longitude: z.number().min(-180).max(180).optional().nullable(),
+  office: z.string().max(100).optional().nullable(),
+  customFields: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const caseUpdateSchema = z.object({
+  version: z.number().int().min(1),
+  title: z.string().min(3).max(255).optional(),
+  description: z.string().min(5).max(20000).optional(),
+  priority: casePrioritySchema.optional(),
+  categoryId: z.string().optional().nullable(),
+  departmentId: z.string().optional().nullable(),
+  assigneeId: z.string().optional().nullable(),
+  projectId: z.string().optional().nullable(),
+  locationAddress: z.string().max(500).optional().nullable(),
+  office: z.string().max(100).optional().nullable(),
+  latitude: z.number().min(-90).max(90).optional().nullable(),
+  longitude: z.number().min(-180).max(180).optional().nullable(),
+  slaHours: z.number().int().min(1).max(24 * 90).optional(),
+  customFields: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const caseStatusChangeSchema = z.object({ version: z.number().int().min(1), status: caseStatusSchema, reason: z.string().max(2000).optional().nullable() });
+export const caseCommentSchema = z.object({ body: z.string().min(1).max(10000), isInternal: z.boolean().optional() });
+export const caseCategorySchema = z.object({
+  name: z.string().min(2).max(150),
+  departmentId: z.string().min(1),
+  description: z.string().max(2000).optional().nullable(),
+  defaultPriority: casePrioritySchema.optional(),
+  defaultSlaHours: z.number().int().min(1).max(24 * 90).optional(),
+  icon: z.string().max(10).optional().nullable(),
+  isPublic: z.boolean().optional(),
+  isActive: z.boolean().optional(),
+});
+export const savedViewSchema = z.object({ name: z.string().min(1).max(100), filters: z.record(z.string(), z.unknown()), isDefault: z.boolean().optional() });
+export const caseRatingSchema = z.object({ rating: z.number().int().min(1).max(5), feedback: z.string().max(2000).optional().nullable(), reporterContact: z.string().min(3).max(255) });
+export const publicCaseSchema = caseCreateSchema.pick({ title: true, description: true, categoryId: true, reporterName: true, reporterPhone: true, reporterEmail: true, locationAddress: true, latitude: true, longitude: true, office: true }).extend({
+  website: z.string().max(0).optional(), // honeypot
+});
+export const caseSettingsSchema = z.object({
+  prefix: z.string().regex(/^[A-Z0-9]{1,6}$/).optional(),
+  autoAssign: z.boolean().optional(),
+  requireTriage: z.boolean().optional(),
+  requireTransitionReason: z.boolean().optional(),
+  slaWarningHours: z.number().int().min(1).max(168).optional(),
+  publicPortal: z.boolean().optional(),
+  portalHeading: z.string().max(255).optional(),
+  portalSubtext: z.string().max(1000).optional(),
+  contactEmail: z.string().email().optional().or(z.literal("")),
+  contactPhone: z.string().max(50).optional(),
+  announcement: z.string().max(1000).optional(),
+  announcementActive: z.boolean().optional(),
+  defaultView: z.enum(["board", "table"]).optional(),
+  boardColumns: z.array(caseStatusSchema).min(2).optional(),
 });

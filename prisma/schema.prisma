@@ -12,59 +12,62 @@ datasource db {
 }
 
 model Organization {
-  id           String    @id @default(cuid())
-  name         String
-  slug         String    @unique
-  plan         String    @default("FREE") // FREE | STARTER | BUSINESS | ENTERPRISE (the plan paid for / trialing)
-  planRenewsAt DateTime? // current period end
+  id                     String    @id @default(cuid())
+  name                   String
+  slug                   String    @unique
+  plan                   String    @default("FREE") // FREE | STARTER | BUSINESS | ENTERPRISE (the plan paid for / trialing)
+  planRenewsAt           DateTime? // current period end
   // --- billing / subscription state ---
-  planStatus            String    @default("TRIALING") // TRIALING | ACTIVE | PAST_DUE | CANCELLED | EXPIRED | FREE
-  billingCycle          String    @default("monthly") // monthly | yearly
-  trialEndsAt           DateTime?
-  graceEndsAt           DateTime? // after PAST_DUE, when the workspace becomes read-only
-  cancelAtPeriodEnd     Boolean   @default(false)
-  billingEmail          String?
-  billingProvider       String?   // stripe | paynow | manual
-  providerCustomerId    String?
+  planStatus             String    @default("TRIALING") // TRIALING | ACTIVE | PAST_DUE | CANCELLED | EXPIRED | FREE
+  billingCycle           String    @default("monthly") // monthly | yearly
+  trialEndsAt            DateTime?
+  graceEndsAt            DateTime? // after PAST_DUE, when the workspace becomes read-only
+  cancelAtPeriodEnd      Boolean   @default(false)
+  billingEmail           String?
+  billingProvider        String? // stripe | paynow | manual
+  providerCustomerId     String?
   providerSubscriptionId String?
-  onboardingCompletedAt DateTime?
-  invoices     Invoice[]
-  branding     String    @default("{}") @db.Text // JSON: BrandingSettings
-  settings     String    @default("{}") @db.Text // JSON: OrgSettings
-  customDomain String?   @unique
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  onboardingCompletedAt  DateTime?
+  invoices               Invoice[]
+  branding               String    @default("{}") @db.Text // JSON: BrandingSettings
+  settings               String    @default("{}") @db.Text // JSON: OrgSettings
+  customDomain           String?   @unique
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
-  users         User[]
-  departments   Department[]
-  templates     WorkflowTemplate[]
-  requests      Request[]
-  auditLogs     AuditLog[]
-  notifications Notification[]
-  apiKeys       ApiKey[]
-  webhooks      Webhook[]
-  invitations   Invitation[]
-  delegations   Delegation[]
-  projects      Project[]
+  users          User[]
+  departments    Department[]
+  templates      WorkflowTemplate[]
+  requests       Request[]
+  auditLogs      AuditLog[]
+  notifications  Notification[]
+  apiKeys        ApiKey[]
+  webhooks       Webhook[]
+  invitations    Invitation[]
+  delegations    Delegation[]
+  projects       Project[]
+  caseCategories CaseCategory[]
+  cases          Case[]
+  savedViews     SavedView[]
 }
 
 model User {
-  id           String    @id @default(cuid())
-  orgId        String
-  email        String
-  passwordHash String
-  name         String
-  role         String    @default("MEMBER") // OWNER | ADMIN | MANAGER | MEMBER
-  jobTitle     String?
-  avatarUrl    String?   @db.Text
-  departmentId String?
-  managerId    String?
-  isActive     Boolean   @default(true)
-  lastLoginAt  DateTime?
+  id                  String    @id @default(cuid())
+  orgId               String
+  email               String
+  passwordHash        String
+  name                String
+  role                String    @default("MEMBER") // OWNER | ADMIN | MANAGER | MEMBER
+  jobTitle            String?
+  avatarUrl           String?   @db.Text
+  departmentId        String?
+  managerId           String?
+  isActive            Boolean   @default(true)
+  lastLoginAt         DateTime?
   // --- security ---
   twoFactorEnabled    Boolean   @default(false)
-  twoFactorSecret     String?   // pending or active TOTP secret (base32, encrypted at rest with AUTH_SECRET: "enc:v1:...")
-  twoFactorLastStep   Int?      // last accepted TOTP time-step; a code is never accepted twice (replay guard)
+  twoFactorSecret     String? // pending or active TOTP secret (base32, encrypted at rest with AUTH_SECRET: "enc:v1:...")
+  twoFactorLastStep   Int? // last accepted TOTP time-step; a code is never accepted twice (replay guard)
   emailVerifiedAt     DateTime?
   backupCodes         String    @default("[]") @db.Text // JSON: sha256 hashes of unused backup codes
   sessionVersion      Int       @default(0) // bump to invalidate every session
@@ -74,14 +77,14 @@ model User {
   lockedUntil         DateTime?
   lastLoginIp         String?
   prefs               String    @default("{}") @db.Text // JSON: NotificationPrefs
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  department Department?  @relation("DeptMembers", fields: [departmentId], references: [id], onDelete: SetNull)
+  org            Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  department     Department?     @relation("DeptMembers", fields: [departmentId], references: [id], onDelete: SetNull)
   passwordResets PasswordReset[]
-  manager    User?        @relation("Manager", fields: [managerId], references: [id], onDelete: SetNull)
-  reports    User[]       @relation("Manager")
+  manager        User?           @relation("Manager", fields: [managerId], references: [id], onDelete: SetNull)
+  reports        User[]          @relation("Manager")
 
   requests        Request[]         @relation("Requester")
   ownedProjects   Project[]         @relation("ProjectOwner")
@@ -93,6 +96,13 @@ model User {
   headOf          Department[]      @relation("DeptHead")
   delegationsFrom Delegation[]      @relation("DelegFrom")
   delegationsTo   Delegation[]      @relation("DelegTo")
+  assignedCases   Case[]            @relation("CaseAssignee")
+  reportedCases   Case[]            @relation("CaseReporter")
+  caseComments    CaseComment[]
+  caseEvents      CaseEvent[]
+  caseAttachments CaseAttachment[]
+  savedViews      SavedView[]
+  defaultForDepts Department[]      @relation("DeptDefaultAssignee")
 
   @@unique([orgId, email])
   @@index([orgId])
@@ -101,16 +111,21 @@ model User {
 }
 
 model Department {
-  id         String   @id @default(cuid())
-  orgId      String
-  name       String
-  code       String?
-  headUserId String?
-  createdAt  DateTime @default(now())
+  id                String   @id @default(cuid())
+  orgId             String
+  name              String
+  code              String?
+  headUserId        String?
+  /// Service desk: who receives a case when no agent in the section is available
+  defaultAssigneeId String?
+  createdAt         DateTime @default(now())
 
-  org     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  head    User?        @relation("DeptHead", fields: [headUserId], references: [id], onDelete: SetNull)
-  members User[]       @relation("DeptMembers")
+  org             Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  head            User?          @relation("DeptHead", fields: [headUserId], references: [id], onDelete: SetNull)
+  defaultAssignee User?          @relation("DeptDefaultAssignee", fields: [defaultAssigneeId], references: [id], onDelete: SetNull)
+  members         User[]         @relation("DeptMembers")
+  caseCategories  CaseCategory[]
+  cases           Case[]
 
   @@unique([orgId, name])
   @@index([headUserId])
@@ -316,26 +331,26 @@ model Invitation {
 }
 
 model Invoice {
-  id           String    @id @default(cuid())
-  orgId        String
-  number       String    @unique // INV-2026-000123
-  plan         String
-  cycle        String    @default("monthly")
-  amountCents  Int
-  currency     String    @default("USD")
-  status       String    @default("PENDING") // PENDING | PAID | FAILED | VOID
-  provider     String    // stripe | paynow | manual
-  providerRef  String?   // checkout session / paynow reference / bank ref
-  checkoutUrl  String?   @db.VarChar(2000)
-  pollUrl      String?   @db.VarChar(2000)
-  description  String?   @db.Text
-  periodStart  DateTime
-  periodEnd    DateTime
-  dueAt        DateTime?
-  paidAt       DateTime?
-  meta         String    @default("{}") @db.Text
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  orgId       String
+  number      String    @unique // INV-2026-000123
+  plan        String
+  cycle       String    @default("monthly")
+  amountCents Int
+  currency    String    @default("USD")
+  status      String    @default("PENDING") // PENDING | PAID | FAILED | VOID
+  provider    String // stripe | paynow | manual
+  providerRef String? // checkout session / paynow reference / bank ref
+  checkoutUrl String?   @db.VarChar(2000)
+  pollUrl     String?   @db.VarChar(2000)
+  description String?   @db.Text
+  periodStart DateTime
+  periodEnd   DateTime
+  dueAt       DateTime?
+  paidAt      DateTime?
+  meta        String    @default("{}") @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
@@ -346,7 +361,7 @@ model Invoice {
 model Project {
   id           String    @id @default(cuid())
   orgId        String
-  code         String    // short reference, unique per org, e.g. HQ-FITOUT
+  code         String // short reference, unique per org, e.g. HQ-FITOUT
   name         String
   description  String?   @db.Text
   status       String    @default("ACTIVE") // ACTIVE | ON_HOLD | CLOSED | ARCHIVED
@@ -362,6 +377,7 @@ model Project {
   org      Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   owner    User?        @relation("ProjectOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
   requests Request[]
+  cases    Case[]
 
   @@unique([orgId, code])
   @@index([orgId, status])
@@ -405,7 +421,7 @@ model Delegation {
 model EmailToken {
   id        String    @id @default(cuid())
   userId    String
-  purpose   String    // verify_email
+  purpose   String // verify_email
   tokenHash String    @unique
   expiresAt DateTime
   usedAt    DateTime?
@@ -416,21 +432,170 @@ model EmailToken {
 
 /// Outbox for transactional email: every message is recorded, sent, and retried by the cron if delivery fails.
 model EmailOutbox {
-  id          String    @id @default(cuid())
-  orgId       String?
-  toEmail     String
-  subject     String    @db.VarChar(500)
-  html        String    @db.LongText
-  text        String    @db.LongText
-  category    String    // security | notification | invitation | billing | digest
-  status      String    @default("PENDING") // PENDING | SENT | FAILED
-  attempts    Int       @default(0)
-  lastError   String?   @db.Text
-  providerId  String?
-  sentAt      DateTime?
-  nextAttemptAt DateTime @default(now())
-  createdAt   DateTime  @default(now())
+  id            String    @id @default(cuid())
+  orgId         String?
+  toEmail       String
+  subject       String    @db.VarChar(500)
+  html          String    @db.LongText
+  text          String    @db.LongText
+  category      String // security | notification | invitation | billing | digest
+  status        String    @default("PENDING") // PENDING | SENT | FAILED
+  attempts      Int       @default(0)
+  lastError     String?   @db.Text
+  providerId    String?
+  sentAt        DateTime?
+  nextAttemptAt DateTime  @default(now())
+  createdAt     DateTime  @default(now())
 
   @@index([status, nextAttemptAt])
   @@index([orgId, createdAt])
+}
+
+// ==================== Service desk / case tracking (ported from the local-council issue tracker) ====================
+
+/// Issue category with its SLA and default priority; routes to a section.
+model CaseCategory {
+  id              String   @id @default(cuid())
+  orgId           String
+  departmentId    String
+  name            String
+  description     String?  @db.Text
+  defaultPriority String   @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  defaultSlaHours Int      @default(72)
+  icon            String?
+  isPublic        Boolean  @default(true) // selectable on the public report form
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  department Department   @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  cases      Case[]
+
+  @@unique([orgId, departmentId, name])
+  @@index([orgId])
+}
+
+/// A case / ticket: nine-state lifecycle, SLA, assignment, duplicate linking, optimistic concurrency.
+model Case {
+  id              String    @id @default(cuid())
+  orgId           String
+  referenceNo     String    @unique // e.g. ZS-2026-0001
+  title           String    @db.VarChar(255)
+  description     String    @db.Text
+  status          String    @default("NEW") // NEW TRIAGED ASSIGNED IN_PROGRESS ON_HOLD RESOLVED CLOSED REOPENED REJECTED
+  priority        String    @default("MEDIUM") // LOW MEDIUM HIGH CRITICAL
+  departmentId    String?
+  categoryId      String?
+  assigneeId      String?
+  projectId       String?
+  reporterName    String    @db.VarChar(255)
+  reporterPhone   String?   @db.VarChar(50)
+  reporterEmail   String?   @db.VarChar(255)
+  reporterUserId  String?
+  source          String    @default("STAFF") // STAFF | PUBLIC | PHONE | WALK_IN | EMAIL
+  locationAddress String?   @db.VarChar(500)
+  latitude        Float?
+  longitude       Float?
+  office          String?   @db.VarChar(100)
+  slaHours        Int       @default(72)
+  slaDueAt        DateTime?
+  slaWarnedAt     DateTime?
+  slaBreachedAt   DateTime?
+  resolvedAt      DateTime?
+  closedAt        DateTime?
+  lastActivityAt  DateTime  @default(now())
+  rating          Int?
+  feedback        String?   @db.Text
+  isDuplicate     Boolean   @default(false)
+  duplicateOfId   String?
+  customFields    String    @default("{}") @db.Text
+  version         Int       @default(1)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  org         Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  department  Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  category    CaseCategory?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  assignee    User?            @relation("CaseAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  reporter    User?            @relation("CaseReporter", fields: [reporterUserId], references: [id], onDelete: SetNull)
+  project     Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  duplicateOf Case?            @relation("CaseDuplicates", fields: [duplicateOfId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  duplicates  Case[]           @relation("CaseDuplicates")
+  events      CaseEvent[]
+  comments    CaseComment[]
+  attachments CaseAttachment[]
+
+  @@index([orgId, status])
+  @@index([orgId, departmentId])
+  @@index([assigneeId])
+  @@index([orgId, slaDueAt])
+  @@index([reporterPhone])
+}
+
+/// Status history / activity timeline.
+model CaseEvent {
+  id            String   @id @default(cuid())
+  caseId        String
+  fromStatus    String?
+  toStatus      String
+  changedById   String?
+  changedByName String   @db.VarChar(255)
+  reason        String?  @db.Text
+  createdAt     DateTime @default(now())
+
+  case      Case  @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  changedBy User? @relation(fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([caseId])
+}
+
+/// Internal staff note (isInternal) or public update visible to the reporter.
+model CaseComment {
+  id         String   @id @default(cuid())
+  caseId     String
+  userId     String?
+  authorName String   @db.VarChar(255)
+  body       String   @db.Text
+  isInternal Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  case Case  @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([caseId])
+}
+
+model CaseAttachment {
+  id           String   @id @default(cuid())
+  caseId       String
+  uploadedById String?
+  uploadedBy   String   @default("Reporter") @db.VarChar(255)
+  fileName     String   @db.VarChar(255)
+  mimeType     String
+  size         Int
+  storagePath  String   @db.VarChar(500)
+  isPublic     Boolean  @default(true)
+  stage        String   @default("INTAKE") // INTAKE | IN_PROGRESS | COMPLETION_PROOF
+  createdAt    DateTime @default(now())
+
+  case     Case  @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  uploader User? @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([caseId])
+}
+
+/// Saved filter views for the service desk board.
+model SavedView {
+  id        String   @id @default(cuid())
+  orgId     String
+  userId    String
+  name      String   @db.VarChar(100)
+  filters   String   @db.Text
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

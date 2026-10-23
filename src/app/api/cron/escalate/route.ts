@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { escalateOverdue } from "@/lib/engine";
+import { caseSlaSweep } from "@/lib/cases";
 
 /**
  * SLA escalation job. Call from a scheduler (Vercel Cron, GitHub Actions, cron) with
@@ -13,7 +14,8 @@ async function run(req: Request) {
     return NextResponse.json({ ok: false, error: "Unauthorised" }, { status: 401 });
   }
   const result = await escalateOverdue();
-  return NextResponse.json({ ok: true, data: result });
+  const cases = await caseSlaSweep();
+  return NextResponse.json({ ok: true, data: { ...result, cases } });
 }
 
 export const GET = run;

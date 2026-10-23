@@ -72,3 +72,24 @@ Receipts are mandatory attachments.
 | ADMIN | Director General, Directors (manage people, sections, workflow designs, reports, audit log) |
 | MANAGER | Heads of section, supervisors / team leaders, accountant, internal auditor |
 | MEMBER | Officers, enumerators, finance and registry clerks |
+
+## 5. Service desk (cases), ported from the local-council issue tracker
+
+Alongside form-based approvals, the **Service desk** handles tickets and public reports: ICT support, system access, facilities, data requests from the public, complaints about field work, finance queries.
+
+| Local-council feature | Here |
+| --- | --- |
+| Nine-state case lifecycle (new, triaged, assigned, in progress, on hold, resolved, closed, reopened, rejected) | Same statuses. Officers follow the state machine; administrators may move a card between any columns. Every change is written to the timeline with the actor and an optional reason (can be made mandatory). |
+| Categories with SLA hours and default priority, routed to a department | **Categories & SLAs** in the Service desk menu: each category belongs to a section; public categories appear on the portal. |
+| Auto-assignment to the least-busy active agent, out-of-office backup, default assignee fallback | Least-busy officer in the section (open cases, plus 100 if on an active out-of-office delegation, whose delegate is used instead), then the section's default assignee, then the section head, then an administrator. Optional "section head triages first". |
+| Reassignment when staff are deactivated | Open cases move to the least-busy colleague with a timeline entry and a notification. |
+| SLA warning (<24 h) and breach | Warning window is configurable; the hourly cron raises a warning to the assignee and a breach escalation to the section head, once each; reopening restarts the clock. |
+| Duplicate detection (14 days, same category, address text, <250 m, similar title) | Advisory list while logging a case; "Duplicate of" links and rejects the duplicate and tells the reporter which case is being handled. |
+| Optimistic concurrency (version, 409) | Every edit and status change carries the version; a stale version returns 409 and the board reloads. |
+| Kanban board with drag-and-drop, table view, filter bar, saved views | **Cases** page: board or table, filters (section, category, assignee, priority, status, SLA breached, my cases), saved views with a default. |
+| Slide-over case drawer with inline edits, timeline, internal notes vs public updates, attachments | Same; public updates are emailed to the reporter and shown on the tracking page; files can be marked public or staff-only. |
+| Citizen portal: report, track, rate | `/report` (anonymous, categories, location with GPS, up to 3 photos, honeypot and rate limits) and `/track/<ref>` (status, timeline, public updates, rating once resolved, verified by the reporter's phone or email). |
+| Branding and portal texts, announcement banner | Settings > Service desk & portal: heading, introduction, contacts, announcement, reference prefix, routing rules, board columns. |
+| Analytics summary | KPIs on the board (open, resolution rate, average resolution hours, SLA breached) and `GET /api/cases/stats` (status, priority, source and section breakdowns, 14-day trend). |
+| WhatsApp (Twilio/Infobip) intake and sandbox | Not ported: it needs a paid messaging account. The case engine accepts a `source` of PHONE / WALK_IN / EMAIL so a future channel only needs to call `POST /api/cases`. |
+| Multi-council tenancy, super-admin console, workspaces | Not needed in the single-organisation edition; "workspaces" map to **Projects & surveys**. |

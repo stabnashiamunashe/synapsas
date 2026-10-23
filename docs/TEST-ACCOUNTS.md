@@ -30,9 +30,11 @@ Sign-in page: `https://<your-host>/login` (locally `http://localhost:3000/login`
 | T&S expense claim (TSC) | p.officer, attach receipts | field.supervisor (certify) → any Finance officer (checked / not previously paid) → accountant or director.finance (pass for payment) → internal.audit (examine) |
 | Application for Leave (LV) | p.officer | field.supervisor (recommend) → surveys.head (approve) → registry (record and file) |
 | Annual leave / off days (AL) | l.officer | ict.head (recommend) → ict.head (approve; same person as section head) → registry (record). The balance panel shows 9 of 12 days remaining after the seeded 3-day leave |
+| Service desk | l.officer logs a case under ICT support; it is auto-assigned to the least-busy ICT officer | drag it across the board as ict.head or the assignee; add a public update; resolve; rate it from /track as the reporter |
+| Public portal | open /report without logging in, pick "Statistical data request", give a phone or email | surveys.head or p.officer sees it on the board; the reporter tracks it at /track |
 | Internal memo | anyone | section head → DG (only when "Requires Director General's approval" is ticked) |
 
-Seeded data: one approved TSA (Kadoma, USD 870, ZDHS project), one TSC awaiting Accounts (MICS), one approved 3-day annual leave, one vacation leave awaiting the supervisor.
+Seeded data: five service-desk cases (ZS-…-0001 to 0005: data request, ICT, access, facilities, field complaint); one approved TSA (Kadoma, USD 870, ZDHS project), one TSC awaiting Accounts (MICS), one approved 3-day annual leave, one vacation leave awaiting the supervisor.
 
 ## Notes
 
