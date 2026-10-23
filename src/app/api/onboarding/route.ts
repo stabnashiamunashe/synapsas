@@ -1,5 +1,5 @@
-import { nanoid } from "nanoid";
 import { prisma } from "@/lib/prisma";
+import { createInvitation } from "@/lib/invitations";
 import { ok, parseBody, withAuth } from "@/lib/api";
 import { onboardingSchema } from "@/lib/validators";
 import { parseJson, toJson } from "@/lib/json";
@@ -24,7 +24,6 @@ export const POST = withAuth(async (req, { user }) => {
   const org = await prisma.organization.findUnique({ where: { id: user.orgId } });
   if (!org) return ok(null);
   const settings = { ...parseJson<OrgSettings>(org.settings, {}), ...(body.currency ? { currency: body.currency } : {}), ...(body.timezone ? { timezone: body.timezone } : {}) };
-  const base = process.env.APP_URL || new URL(req.url).origin;
   const limits = limitsFor(effectivePlan(org));
 
   const invites: { email: string; link: string }[] = [];
@@ -34,12 +33,8 @@ export const POST = withAuth(async (req, { user }) => {
     const email = inv.email.toLowerCase();
     const dup = await prisma.user.findUnique({ where: { orgId_email: { orgId: org.id, email } } });
     if (dup) continue;
-    const row = await prisma.invitation.upsert({
-      where: { token: `onb-${org.id}-${email}` },
-      update: { role: inv.role, expiresAt: new Date(Date.now() + 7 * 86400000) },
-      create: { orgId: org.id, email, role: inv.role, token: `onb-${nanoid(24)}`, invitedById: user.id, expiresAt: new Date(Date.now() + 7 * 86400000) },
-    });
-    invites.push({ email, link: `${base}/invite/${row.token}` });
+    const { link } = await createInvitation({ orgId: org.id, email, role: inv.role, departmentId: null, invitedBy: user });
+    invites.push({ email, link });
   }
 
   const created: string[] = [];

@@ -7,7 +7,12 @@ import type { Role, SessionUser } from "./types";
 
 export { ROLE_RANK, hasRole } from "./roles";
 
-const COOKIE = "wf_session";
+// __Host- prefix (production only): the browser refuses the cookie unless it is Secure, Path=/ and has no Domain,
+// which prevents sub-domain cookie injection (ASVS 3.4.x).
+const isProd = process.env.NODE_ENV === "production";
+export const SESSION_COOKIE = isProd ? "__Host-wf_session" : "wf_session";
+const JWT_ISSUER = "synapsas";
+const JWT_AUDIENCE = "synapsas-web";
 const secret = () => new TextEncoder().encode(process.env.AUTH_SECRET || "dev-secret-change-me");
 
 export async function hashPassword(pw: string) {
@@ -24,7 +29,9 @@ export interface SessionClaims extends SessionUser {
 
 export async function signSession(user: SessionClaims, hours = 8) {
   return new SignJWT({ ...user })
-    .setProtectedHeader({ alg: "HS256" })
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setIssuer(JWT_ISSUER)
+    .setAudience(JWT_AUDIENCE)
     .setIssuedAt()
     .setExpirationTime(`${hours}h`)
     .sign(secret());
@@ -33,10 +40,10 @@ export async function signSession(user: SessionClaims, hours = 8) {
 export async function setSessionCookie(user: SessionClaims, hours = 8) {
   const token = await signSession(user, hours);
   const store = await cookies();
-  store.set(COOKIE, token, {
+  store.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: isProd,
     path: "/",
     maxAge: hours * 3600,
   });
@@ -44,7 +51,7 @@ export async function setSessionCookie(user: SessionClaims, hours = 8) {
 
 export async function clearSessionCookie() {
   const store = await cookies();
-  store.set(COOKIE, "", { path: "/", maxAge: 0 });
+  store.set(SESSION_COOKIE, "", { httpOnly: true, sameSite: "lax", secure: isProd, path: "/", maxAge: 0 });
 }
 
 /** Issue a session for a user row, using the org's configured session length. */
@@ -66,14 +73,16 @@ export async function issueSessionFor(user: { id: string; orgId: string; role: s
 /** Short-lived token that proves the password step passed and a 2FA code is still needed. */
 export async function signTwoFactorChallenge(userId: string) {
   return new SignJWT({ uid: userId, purpose: "2fa" })
-    .setProtectedHeader({ alg: "HS256" })
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setIssuer(JWT_ISSUER)
+    .setAudience(JWT_AUDIENCE)
     .setIssuedAt()
     .setExpirationTime("5m")
     .sign(secret());
 }
 export async function readTwoFactorChallenge(token: string): Promise<string | null> {
   try {
-    const { payload } = await jwtVerify(token, secret());
+    const { payload } = await jwtVerify(token, secret(), { algorithms: ["HS256"], issuer: JWT_ISSUER, audience: JWT_AUDIENCE });
     return payload.purpose === "2fa" ? (payload.uid as string) : null;
   } catch {
     return null;
@@ -83,11 +92,11 @@ export async function readTwoFactorChallenge(token: string): Promise<string | nu
 /** Returns the cookie session (claims only, no DB). */
 export async function getSession(): Promise<SessionClaims | null> {
   const store = await cookies();
-  const token = store.get(COOKIE)?.value;
+  const token = store.get(SESSION_COOKIE)?.value;
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, secret());
-    if (!payload.id) return null;
+    const { payload } = await jwtVerify(token, secret(), { algorithms: ["HS256"], issuer: JWT_ISSUER, audience: JWT_AUDIENCE });
+    if (!payload.id || payload.purpose) return null;
     return {
       id: payload.id as string,
       orgId: payload.orgId as string,
@@ -116,20 +125,30 @@ export async function getVerifiedSession(): Promise<SessionUser | null> {
   return { id: u.id, orgId: u.orgId, role: u.role as Role, email: u.email, name: u.name };
 }
 
+export type ApiScope = "read" | "write";
+
 /** Session resolved either from the verified cookie or from an `Authorization: Bearer <api key>` header. */
-export async function getSessionOrApiKey(): Promise<(SessionUser & { viaApiKey?: boolean }) | null> {
+export async function getSessionOrApiKey(): Promise<(SessionUser & { viaApiKey?: boolean; scopes?: ApiScope[]; apiKeyId?: string }) | null> {
   const s = await getVerifiedSession();
   if (s) return s;
   const h = await headers();
   const auth = h.get("authorization") || "";
   if (!auth.toLowerCase().startsWith("bearer ")) return null;
   const raw = auth.slice(7).trim();
+  if (!/^wf_[A-Za-z0-9_-]{6}_[A-Za-z0-9_-]{20,64}$/.test(raw)) return null;
   const key = await prisma.apiKey.findUnique({ where: { keyHash: hashApiKey(raw) } });
   if (!key || key.revokedAt) return null;
   await prisma.apiKey.update({ where: { id: key.id }, data: { lastUsedAt: new Date() } });
-  const owner = await prisma.user.findFirst({ where: { orgId: key.orgId, role: "OWNER" }, orderBy: { createdAt: "asc" } });
+  const owner = await prisma.user.findFirst({ where: { orgId: key.orgId, role: "OWNER", isActive: true }, orderBy: { createdAt: "asc" } });
   if (!owner) return null;
-  return { id: owner.id, orgId: key.orgId, role: "ADMIN", email: `apikey:${key.prefix}`, name: `API key: ${key.name}`, viaApiKey: true };
+  let scopes: ApiScope[] = ["read", "write"];
+  try {
+    const parsed = JSON.parse(key.scopes);
+    if (Array.isArray(parsed)) scopes = parsed.filter((x): x is ApiScope => x === "read" || x === "write");
+  } catch {
+    /* default scopes */
+  }
+  return { id: owner.id, orgId: key.orgId, role: "ADMIN", email: `apikey:${key.prefix}`, name: `API key: ${key.name}`, viaApiKey: true, scopes, apiKeyId: key.id };
 }
 
 export function hashApiKey(raw: string) {

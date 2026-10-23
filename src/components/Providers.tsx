@@ -1,6 +1,7 @@
 "use client";
 
 import { App as AntApp, ConfigProvider, theme as antTheme } from "antd";
+import { useNonce } from "./AntdRegistry";
 import { useEffect } from "react";
 import type { BrandingSettings } from "@/lib/types";
 
@@ -42,6 +43,7 @@ export function tint(hex: string, amount = 0.9) {
 export function BrandProvider({ branding, children }: { branding?: BrandingSettings | null; children: React.ReactNode }) {
   const b = { ...DEFAULT_BRANDING, ...(branding || {}) };
   const radius = Math.min(Math.max(b.borderRadius ?? 12, 0), 24);
+  const nonce = useNonce();
   useEffect(() => {
     document.documentElement.style.setProperty("--brand-color", b.primaryColor);
     document.documentElement.style.setProperty("--brand-tint", tint(b.primaryColor, 0.9));
@@ -60,6 +62,7 @@ export function BrandProvider({ branding, children }: { branding?: BrandingSetti
 
   return (
     <ConfigProvider
+      csp={nonce ? { nonce } : undefined}
       theme={{
         algorithm: antTheme.defaultAlgorithm,
         token: {

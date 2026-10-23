@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { AntdRegistry } from "@ant-design/nextjs-registry";
+import { headers } from "next/headers";
+import { AntdRegistry } from "@/components/AntdRegistry";
 import "@ant-design/v5-patch-for-react-19";
 import "./globals.css";
 
@@ -15,11 +16,13 @@ export const metadata: Metadata = {
 
 export const viewport = { width: "device-width", initialScale: 1, themeColor: "#003B32" };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Per-request CSP nonce set by src/proxy.ts; applied to Ant Design's injected styles.
+  const nonce = (await headers()).get("x-nonce") || undefined;
   return (
     <html lang="en" className={inter.variable}>
       <body>
-        <AntdRegistry>{children}</AntdRegistry>
+        <AntdRegistry nonce={nonce}>{children}</AntdRegistry>
       </body>
     </html>
   );

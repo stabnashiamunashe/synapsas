@@ -7,6 +7,8 @@ import { effectivePlan } from "@/lib/billing";
 import { audit } from "@/lib/notify";
 import { clientInfo, randomToken } from "@/lib/security";
 import { userSelect } from "@/lib/userSelect";
+import { mailConfigured } from "@/lib/mailer";
+import { sendTemporaryPasswordEmail } from "@/lib/emails";
 
 export const GET = withAuth(async (req, { user }) => {
   const q = getQuery(req);
@@ -49,7 +51,11 @@ export const POST = withAuth(async (req, { user }) => {
     },
     select: userSelect,
   });
-  await audit(user.orgId, user.id, "user.created", "User", created.id, { email, role: body.role }, clientInfo(req));
-  // Returned once so the admin can hand it over; it is never stored in plain text.
-  return ok({ ...created, temporaryPassword: body.password ? undefined : tempPassword }, { status: 201 });
+  await audit(user.orgId, user.id, "user.created", "User", created.id, { email, role: body.role, emailed: mailConfigured() }, clientInfo(req));
+  // Delivered by email when SMTP is configured; otherwise returned once so the admin can hand it over. Never stored in plain text.
+  if (mailConfigured()) {
+    await sendTemporaryPasswordEmail({ email, name: body.name, orgId: user.orgId }, tempPassword, org!.slug);
+    return ok({ ...created, emailed: true }, { status: 201 });
+  }
+  return ok({ ...created, temporaryPassword: body.password ? undefined : tempPassword, emailed: false }, { status: 201 });
 }, "ADMIN");

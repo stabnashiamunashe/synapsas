@@ -1,13 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { ApiError, ok, parseBody, withPublic } from "@/lib/api";
 import { twoFactorVerifySchema } from "@/lib/validators";
-import { issueSessionFor, readTwoFactorChallenge } from "@/lib/auth";
+import { readTwoFactorChallenge } from "@/lib/auth";
 import { verifyTotp } from "@/lib/totp";
 import { clientInfo, hashBackupCode, rateLimit } from "@/lib/security";
 import { audit } from "@/lib/notify";
 import { parseJson, toJson } from "@/lib/json";
+import { sendBackupCodeUsedAlert } from "@/lib/emails";
+import { completeLogin } from "../../login/route";
 
-/** Second step of sign-in: authenticator code or a one-time backup code. */
+/** Second step of sign-in: authenticator code (replay-protected) or a one-time backup code. */
 export const POST = withPublic(async (req) => {
   const { challenge, code } = await parseBody(req, twoFactorVerifySchema);
   const { ip, userAgent } = clientInfo(req);
@@ -20,21 +22,26 @@ export const POST = withPublic(async (req) => {
   if (!u || !u.isActive || !u.twoFactorEnabled || !u.twoFactorSecret) throw new ApiError(401, "Two-factor not available");
 
   let via: "totp" | "backup" | null = null;
-  if (verifyTotp(u.twoFactorSecret, code)) via = "totp";
-  else {
+  let remaining = 0;
+  const totp = verifyTotp(u.twoFactorSecret, code, u.twoFactorLastStep);
+  if (totp.ok) {
+    via = "totp";
+    await prisma.user.update({ where: { id: u.id }, data: { twoFactorLastStep: totp.step } });
+  } else {
     const hashes = parseJson<string[]>(u.backupCodes, []);
     const h = hashBackupCode(code);
     if (hashes.includes(h)) {
       via = "backup";
-      await prisma.user.update({ where: { id: u.id }, data: { backupCodes: toJson(hashes.filter((x) => x !== h)) } });
+      const left = hashes.filter((x) => x !== h);
+      remaining = left.length;
+      await prisma.user.update({ where: { id: u.id }, data: { backupCodes: toJson(left) } });
     }
   }
   if (!via) {
     await audit(u.orgId, u.id, "auth.2fa_failed", "User", u.id, {}, { ip, userAgent });
     throw new ApiError(401, "That code is not valid");
   }
-  await prisma.user.update({ where: { id: u.id }, data: { lastLoginAt: new Date(), lastLoginIp: ip, failedLogins: 0, lockedUntil: null } });
-  await audit(u.orgId, u.id, "auth.login", "User", u.id, { via }, { ip, userAgent });
-  await issueSessionFor(u);
-  return ok({ userId: u.id, orgSlug: u.org.slug, forcePasswordChange: u.forcePasswordChange, usedBackupCode: via === "backup" });
+  if (via === "backup") void sendBackupCodeUsedAlert(u, { ip, userAgent }, remaining);
+  await completeLogin(u, { ip, userAgent }, { via });
+  return ok({ userId: u.id, orgSlug: u.org.slug, forcePasswordChange: u.forcePasswordChange, usedBackupCode: via === "backup", backupCodesLeft: remaining });
 });

@@ -11,7 +11,7 @@ interface U {
   department?: { name: string } | null; manager?: { name: string } | null; lastLoginAt?: string | null; lastLoginIp?: string | null;
   twoFactorEnabled: boolean; forcePasswordChange: boolean; lockedUntil?: string | null;
 }
-interface Inv { id: string; email: string; role: string; link: string; expiresAt: string; createdAt: string }
+interface Inv { id: string; email: string; role: string; expiresAt: string; createdAt: string }
 
 const ROLE_COLORS: Record<string, string> = { OWNER: "gold", ADMIN: "purple", MANAGER: "blue", MEMBER: "default" };
 
@@ -23,6 +23,7 @@ export default function UsersPage() {
   const { data: departments } = useApi<{ id: string; name: string }[]>("/api/departments");
   const [editing, setEditing] = useState<U | null | "new" | "invite">(null);
   const [tempPassword, setTempPassword] = useState<{ email: string; password: string } | null>(null);
+  const [inviteLink, setInviteLink] = useState<{ email: string; link: string; emailed: boolean } | null>(null);
   const [form] = Form.useForm();
   const limits = me?.org.limits;
   const activeCount = users?.filter((u) => u.isActive).length || 0;
@@ -37,14 +38,13 @@ export default function UsersPage() {
     const values = await form.validateFields();
     try {
       if (editing === "invite") {
-        const inv = await api<Inv>("/api/users/invite", { method: "POST", json: values });
-        message.success("Invitation created. Copy the link and send it.");
-        await navigator.clipboard?.writeText(inv.link).catch(() => undefined);
+        const inv = await api<Inv & { link: string; emailed: boolean }>("/api/users/invite", { method: "POST", json: values });
+        setInviteLink({ email: inv.email, link: inv.link, emailed: inv.emailed });
         mutateInv();
       } else if (editing === "new") {
-        const created = await api<U & { temporaryPassword?: string }>("/api/users", { method: "POST", json: values });
+        const created = await api<U & { temporaryPassword?: string; emailed?: boolean }>("/api/users", { method: "POST", json: values });
         if (created.temporaryPassword) setTempPassword({ email: created.email, password: created.temporaryPassword });
-        message.success("User created");
+        message.success(created.emailed ? "User created. Sign-in details were emailed." : "User created");
       } else if (editing) {
         await api(`/api/users/${editing.id}`, { method: "PATCH", json: values });
         message.success(values.password ? "Saved. The user must change the temporary password at next sign-in." : "Saved");
@@ -100,8 +100,8 @@ export default function UsersPage() {
                 { title: "Email", dataIndex: "email" },
                 { title: "Role", dataIndex: "role", width: 110, render: (r) => <Tag color={ROLE_COLORS[r]}>{r}</Tag> },
                 { title: "Expires", dataIndex: "expiresAt", width: 130, render: (d) => formatDate(d) },
-                { title: "Link", render: (_, i) => <Space><Typography.Text className="mono" ellipsis style={{ maxWidth: 320 }}>{i.link}</Typography.Text><Button size="small" icon={<CopyOutlined />} onClick={() => { navigator.clipboard.writeText(i.link); message.success("Copied"); }} /></Space> },
-                { title: "", width: 60, render: (_, i) => <Popconfirm title="Revoke invitation?" onConfirm={async () => { await api(`/api/invitations/${i.id}`, { method: "DELETE" }); mutateInv(); }}><Button size="small" type="text" danger icon={<DeleteOutlined />} /></Popconfirm> },
+                { title: "Sent", dataIndex: "createdAt", width: 130, render: (d) => formatDate(d) },
+                { title: "", width: 150, render: (_, i) => <Space><Button size="small" icon={<MailOutlined />} onClick={async () => { const r = await api<{ link: string; emailed: boolean }>(`/api/invitations/${i.id}`, { method: "POST" }); setInviteLink({ email: i.email, link: r.link, emailed: r.emailed }); mutateInv(); }}>Resend</Button><Popconfirm title="Revoke invitation?" onConfirm={async () => { await api(`/api/invitations/${i.id}`, { method: "DELETE" }); mutateInv(); }}><Button size="small" type="text" danger icon={<DeleteOutlined />} /></Popconfirm></Space> },
               ]} />
           ),
         },
@@ -125,6 +125,13 @@ export default function UsersPage() {
             <Form.Item name="password" label={editing === "new" ? "Temporary password (leave blank to generate one)" : "Reset password (temporary, leave blank to keep)"} extra={PASSWORD_POLICY.description} rules={[{ min: PASSWORD_POLICY.minLength, message: `At least ${PASSWORD_POLICY.minLength} characters` }]}><Input.Password autoComplete="new-password" /></Form.Item>
           )}
         </Form>
+      </Modal>
+
+      <Modal open={!!inviteLink} title="Invitation link" onOk={() => setInviteLink(null)} onCancel={() => setInviteLink(null)} cancelButtonProps={{ style: { display: "none" } }} okText="Done">
+        <Alert type={inviteLink?.emailed ? "success" : "warning"} showIcon style={{ marginBottom: 12 }}
+          title={inviteLink?.emailed ? `An invitation email was sent to ${inviteLink?.email}.` : "Email is not configured: copy this link and send it to the person yourself."}
+          description="The link works once and expires in 7 days. It is shown here only now; use Resend to issue a new one." />
+        <Space><Typography.Text className="mono" ellipsis style={{ maxWidth: 380 }}>{inviteLink?.link}</Typography.Text><Button size="small" icon={<CopyOutlined />} onClick={() => { navigator.clipboard.writeText(inviteLink?.link || ""); message.success("Copied"); }} /></Space>
       </Modal>
 
       <Modal open={!!tempPassword} title="Temporary password" onOk={() => setTempPassword(null)} onCancel={() => setTempPassword(null)} cancelButtonProps={{ style: { display: "none" } }} okText="Done">

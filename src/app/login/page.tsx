@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { AuthShell } from "@/components/AuthShell";
-import { api } from "@/lib/client";
+import { api, ClientError } from "@/lib/client";
+import { safeRedirectPath } from "@/lib/security";
 
 interface LoginResult { twoFactorRequired?: boolean; challenge?: string; forcePasswordChange?: boolean }
 
@@ -18,10 +19,18 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [challenge, setChallenge] = useState<string | null>(null);
   const [useBackup, setUseBackup] = useState(false);
+  const [unverified, setUnverified] = useState<string | null>(null);
+  const [resent, setResent] = useState(false);
 
   const finish = () => {
-    router.replace(next.startsWith("/") ? next : "/app");
+    router.replace(safeRedirectPath(next));
     router.refresh();
+  };
+
+  const resend = async () => {
+    if (!unverified) return;
+    await api("/api/auth/verify-email", { method: "PUT", json: { email: unverified, slug: slug || undefined } }).catch(() => undefined);
+    setResent(true);
   };
 
   const onPassword = async (values: { email: string; password: string }) => {
@@ -32,7 +41,10 @@ function LoginForm() {
       if (res.twoFactorRequired && res.challenge) setChallenge(res.challenge);
       else finish();
     } catch (e) {
-      setError((e as Error).message);
+      const err = e as ClientError;
+      const code = (err.details as unknown as { code?: string } | undefined)?.code;
+      if (err.status === 403 && code === "EMAIL_UNVERIFIED") { setUnverified(values.email); setResent(false); }
+      else setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -72,6 +84,10 @@ function LoginForm() {
     <AuthShell slug={slug} title="Sign in" subtitle="Welcome back. Enter your details to continue.">
       {params.get("reset") && <Alert type="success" showIcon title="Password updated. Sign in with your new password." style={{ marginBottom: 16 }} />}
       {error && <Alert type="error" title={error} showIcon style={{ marginBottom: 16 }} />}
+      {unverified && (
+        <Alert type="warning" showIcon style={{ marginBottom: 16 }} title="Confirm your email address first"
+          description={resent ? "A new confirmation link has been sent if the address is registered." : <span>We sent a confirmation link to <b>{unverified}</b>. Check your inbox, then sign in. <a onClick={resend}>Send it again</a></span>} />
+      )}
       <Form layout="vertical" onFinish={onPassword} initialValues={{ email: "", password: "" }}>
         <Form.Item name="email" label="Email" rules={[{ required: true, type: "email" }]}>
           <Input size="large" placeholder="you@company.com" autoComplete="email" />

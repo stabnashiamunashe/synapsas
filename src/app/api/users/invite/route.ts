@@ -1,10 +1,10 @@
-import { nanoid } from "nanoid";
 import { prisma } from "@/lib/prisma";
 import { badRequest, ok, parseBody, withAuth } from "@/lib/api";
 import { inviteSchema } from "@/lib/validators";
 import { limitsFor, withinLimit } from "@/lib/plans";
 import { effectivePlan } from "@/lib/billing";
 import { audit } from "@/lib/notify";
+import { createInvitation } from "@/lib/invitations";
 
 export const POST = withAuth(async (req, { user }) => {
   const body = await parseBody(req, inviteSchema);
@@ -14,19 +14,8 @@ export const POST = withAuth(async (req, { user }) => {
   const email = body.email.toLowerCase();
   const exists = await prisma.user.findUnique({ where: { orgId_email: { orgId: user.orgId, email } } });
   if (exists) throw badRequest("That person is already a member");
-  const inv = await prisma.invitation.create({
-    data: {
-      orgId: user.orgId,
-      email,
-      role: body.role,
-      departmentId: body.departmentId || null,
-      token: nanoid(32),
-      invitedById: user.id,
-      expiresAt: new Date(Date.now() + 7 * 86400000),
-    },
-  });
-  await audit(user.orgId, user.id, "user.invited", "Invitation", inv.id, { email, role: body.role });
-  const base = process.env.APP_URL || "http://localhost:3000";
-  // Email provider hook: send `${base}/invite/${inv.token}` to the invitee.
-  return ok({ ...inv, link: `${base}/invite/${inv.token}` }, { status: 201 });
+  const { invitation, link, emailed } = await createInvitation({ orgId: user.orgId, email, role: body.role, departmentId: body.departmentId || null, invitedBy: user });
+  await audit(user.orgId, user.id, "user.invited", "Invitation", invitation.id, { email, role: body.role, emailed });
+  // The raw link is returned exactly once (for admins who hand it over manually); only its hash is stored.
+  return ok({ ...invitation, tokenHash: undefined, link, emailed }, { status: 201 });
 }, "ADMIN");

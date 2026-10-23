@@ -113,6 +113,12 @@ bash scripts/deploy.sh
 
 It pulls `master`, runs `npm ci`, pushes the Prisma schema to MySQL, builds, and restarts the `synapsas` pm2 process on port 3000 (`PORT=8080 bash scripts/deploy.sh` to change it). Put nginx or Caddy in front for HTTPS and point `APP_URL` at the public address.
 
+## Email and security
+
+Transactional email (invitations, password resets, email confirmation, security alerts, approval notifications and digests) is sent over SMTP: set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` and `MAIL_FROM` in `.env`. Messages are queued in the `EmailOutbox` table and retried by `GET /api/cron/email` (schedule it every 5 minutes with `Authorization: Bearer $CRON_SECRET`). Without SMTP the app still works; emails are logged, and email verification at sign-up is skipped.
+
+Security controls are mapped to OWASP ASVS Level 2 in [SECURITY.md](SECURITY.md).
+
 ## What is included
 
 - **Multi-tenant workspaces** with OWNER / ADMIN / MANAGER / MEMBER roles, departments, line managers, invitations.

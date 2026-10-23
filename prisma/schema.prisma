@@ -63,7 +63,9 @@ model User {
   lastLoginAt  DateTime?
   // --- security ---
   twoFactorEnabled    Boolean   @default(false)
-  twoFactorSecret     String?   // pending or active TOTP secret (base32)
+  twoFactorSecret     String?   // pending or active TOTP secret (base32, encrypted at rest with AUTH_SECRET: "enc:v1:...")
+  twoFactorLastStep   Int?      // last accepted TOTP time-step; a code is never accepted twice (replay guard)
+  emailVerifiedAt     DateTime?
   backupCodes         String    @default("[]") @db.Text // JSON: sha256 hashes of unused backup codes
   sessionVersion      Int       @default(0) // bump to invalidate every session
   forcePasswordChange Boolean   @default(false)
@@ -302,7 +304,7 @@ model Invitation {
   email        String
   role         String    @default("MEMBER")
   departmentId String?
-  token        String    @unique
+  tokenHash    String    @unique // sha256 of the one-time invite token (raw token only ever lives in the email/link)
   invitedById  String?
   expiresAt    DateTime
   acceptedAt   DateTime?
@@ -397,4 +399,38 @@ model Delegation {
   @@index([orgId])
   @@index([fromUserId])
   @@index([toUserId])
+}
+
+/// One-time tokens for email verification and similar flows (hashed at rest, single use).
+model EmailToken {
+  id        String    @id @default(cuid())
+  userId    String
+  purpose   String    // verify_email
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, purpose])
+}
+
+/// Outbox for transactional email: every message is recorded, sent, and retried by the cron if delivery fails.
+model EmailOutbox {
+  id          String    @id @default(cuid())
+  orgId       String?
+  toEmail     String
+  subject     String    @db.VarChar(500)
+  html        String    @db.LongText
+  text        String    @db.LongText
+  category    String    // security | notification | invitation | billing | digest
+  status      String    @default("PENDING") // PENDING | SENT | FAILED
+  attempts    Int       @default(0)
+  lastError   String?   @db.Text
+  providerId  String?
+  sentAt      DateTime?
+  nextAttemptAt DateTime @default(now())
+  createdAt   DateTime  @default(now())
+
+  @@index([status, nextAttemptAt])
+  @@index([orgId, createdAt])
 }

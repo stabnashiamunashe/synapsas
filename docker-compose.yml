@@ -16,6 +16,8 @@ services:
       MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD in .env}
     volumes:
       - db_data:/var/lib/mysql
+    security_opt:
+      - no-new-privileges:true
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 10s
@@ -32,9 +34,19 @@ services:
       PORT: "3000"
       UPLOAD_DIR: /app/uploads
     ports:
-      - "3443:3000"          # direct access: http://<vm-ip>:3443
+      - "127.0.0.1:3443:3000" # only nginx on the host reaches the app; the domain fronts it over HTTPS
     volumes:
       - uploads:/app/uploads
+    tmpfs:
+      - /tmp
+      - /app/.next/cache
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 1g
+    pids_limit: 512
     depends_on:
       db:
         condition: service_healthy

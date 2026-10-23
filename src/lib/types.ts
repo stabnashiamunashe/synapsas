@@ -201,6 +201,11 @@ export interface NotificationPrefs {
   approvalsInApp?: boolean;
   commentsInApp?: boolean;
   statusInApp?: boolean;
+  /** immediate email per event (default on); security alerts are always sent */
+  approvalsEmail?: boolean;
+  commentsEmail?: boolean;
+  statusEmail?: boolean;
+  /** when set, per-event emails are replaced by a periodic summary */
   emailDigest?: "none" | "daily" | "weekly";
 }
 

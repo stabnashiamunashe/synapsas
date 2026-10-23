@@ -152,8 +152,12 @@ function Profile() {
                 <div style={{ display: "flex", justifyContent: "space-between" }}><span>Approvals waiting on me</span><Switch checked={prefs.approvalsInApp !== false} onChange={(v) => savePrefs({ approvalsInApp: v })} /></div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}><span>Comments on my requests</span><Switch checked={prefs.commentsInApp !== false} onChange={(v) => savePrefs({ commentsInApp: v })} /></div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}><span>Status changes (approved, rejected, returned)</span><Switch checked={prefs.statusInApp !== false} onChange={(v) => savePrefs({ statusInApp: v })} /></div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><span>Email digest</span><Select style={{ width: 160 }} value={prefs.emailDigest || "none"} onChange={(v) => savePrefs({ emailDigest: v })} options={[{ value: "none", label: "Off" }, { value: "daily", label: "Daily" }, { value: "weekly", label: "Weekly" }]} /></div>
-                <Typography.Text type="secondary" style={{ fontSize: 12 }}>Email delivery activates once an email provider is configured for the workspace.</Typography.Text>
+                <Typography.Text strong style={{ marginTop: 8 }}>Email</Typography.Text>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span>Email me approvals waiting on me</span><Switch checked={prefs.approvalsEmail !== false} onChange={(v) => savePrefs({ approvalsEmail: v })} /></div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span>Email me comments on my requests</span><Switch checked={prefs.commentsEmail !== false} onChange={(v) => savePrefs({ commentsEmail: v })} /></div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span>Email me status changes</span><Switch checked={prefs.statusEmail !== false} onChange={(v) => savePrefs({ statusEmail: v })} /></div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><span>Email digest (replaces per-event emails)</span><Select style={{ width: 160 }} value={prefs.emailDigest || "none"} onChange={(v) => savePrefs({ emailDigest: v })} options={[{ value: "none", label: "Off" }, { value: "daily", label: "Daily" }, { value: "weekly", label: "Weekly" }]} /></div>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>Security alerts (new sign-ins, password and two-factor changes) are always emailed and cannot be switched off.</Typography.Text>
               </Space>
             </Card>
           ),
