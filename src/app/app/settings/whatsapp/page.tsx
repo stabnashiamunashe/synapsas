@@ -57,7 +57,7 @@ export default function WhatsAppSettingsPage() {
     );
     if (r.type === "list") return (
       <div>{r.header && <b>{r.header}<br /></b>}<div style={{ whiteSpace: "pre-wrap" }}>{r.body}</div>
-        <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>{r.sections.flatMap((s) => s.rows).map((row) => <Button key={row.id} size="small" disabled={busy} style={{ textAlign: "left", height: "auto", padding: "4px 10px" }} onClick={() => send({ kind: "list", id: row.id, title: row.title }, row.title)}><b>{row.title}</b>{row.description && <span className="muted"> · {row.description}</span>}</Button>)}</div>
+        <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>{r.sections.flatMap((s) => s.rows).map((row) => <Button key={row.id} size="small" disabled={busy} style={{ textAlign: "left", height: "auto", padding: "4px 10px", width: "100%", whiteSpace: "normal", display: "block" }} onClick={() => send({ kind: "list", id: row.id, title: row.title }, row.title)}><b>{row.title}</b>{row.description && <div className="muted" style={{ fontSize: 11, lineHeight: 1.3 }}>{row.description}</div>}</Button>)}</div>
       </div>
     );
     if (r.type === "location_request") return <div>{r.body}<div style={{ marginTop: 8 }}><Button size="small" disabled={busy} onClick={() => send({ kind: "location", latitude: -17.8292, longitude: 31.0522, name: "Kaguvi Building", address: "Harare" }, "📍 Shared location (Harare)")}>Send location</Button></div></div>;
@@ -70,12 +70,12 @@ export default function WhatsAppSettingsPage() {
         <Col xs={24} lg={12}>
           <Card title={<span><WhatsAppOutlined style={{ color: "#25D366" }} /> Connection</span>} extra={st ? (st.configured ? <Tag color="green">Configured</Tag> : <Tag>Not configured</Tag>) : null}>
             {st && !st.configured && <Alert type="info" showIcon style={{ marginBottom: 12 }} title="WhatsApp is optional" description="The rest of the system runs normally without it. Set the four environment variables below on the server to switch intake on; outbound messages are skipped (and logged) until then." />}
-            <Descriptions size="small" column={1} items={[
+            <Descriptions size="small" column={1} layout="vertical" styles={{ content: { wordBreak: "break-word" } }} items={[
               { key: "pn", label: "Phone number ID", children: st?.phoneNumberId || <span className="muted">WHATSAPP_PHONE_NUMBER_ID not set</span> },
-              { key: "tok", label: "Access token", children: st?.tokenSet ? <Tag color="green">set</Tag> : <Tag>WHATSAPP_ACCESS_TOKEN missing</Tag> },
-              { key: "sec", label: "App secret (webhook signature)", children: st?.appSecretSet ? <Tag color="green">set</Tag> : <Tag color="orange">WHATSAPP_APP_SECRET missing</Tag> },
-              { key: "ver", label: "Verify token", children: st?.verifyTokenSet ? <Tag color="green">set</Tag> : <Tag color="orange">WHATSAPP_VERIFY_TOKEN missing</Tag> },
-              { key: "url", label: "Webhook URL (paste into Meta)", children: <Typography.Text code copyable>{st?.webhookUrl}</Typography.Text> },
+              { key: "tok", label: "Access token", children: st?.tokenSet ? <Tag color="green">set</Tag> : <Tag style={{ whiteSpace: "normal" }}>WHATSAPP_ACCESS_TOKEN missing</Tag> },
+              { key: "sec", label: "App secret (webhook signature)", children: st?.appSecretSet ? <Tag color="green">set</Tag> : <Tag color="orange" style={{ whiteSpace: "normal" }}>WHATSAPP_APP_SECRET missing</Tag> },
+              { key: "ver", label: "Verify token", children: st?.verifyTokenSet ? <Tag color="green">set</Tag> : <Tag color="orange" style={{ whiteSpace: "normal" }}>WHATSAPP_VERIFY_TOKEN missing</Tag> },
+              { key: "url", label: "Webhook URL (paste into Meta)", children: <Typography.Text copyable className="mono" style={{ wordBreak: "break-all" }}>{st?.webhookUrl}</Typography.Text> },
               { key: "api", label: "Graph API version", children: st?.apiVersion },
               { key: "t1", label: "Template: case received", children: st?.templates.caseCreated || <span className="muted">WHATSAPP_TEMPLATE_CASE_CREATED not set</span> },
               { key: "t2", label: "Template: case update", children: st?.templates.caseUpdate || <span className="muted">WHATSAPP_TEMPLATE_CASE_UPDATE not set</span> },
@@ -101,11 +101,11 @@ export default function WhatsAppSettingsPage() {
         <Col xs={24} lg={12}>
           <Card title="Sandbox (no Meta account needed)" extra={<Button size="small" onClick={() => setChat([])}>Clear</Button>}>
             <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>This runs the real conversation engine for the number {simPhone}. Tap the buttons exactly as a WhatsApp user would; a case is created in the service desk at the end.</Typography.Paragraph>
-            <div style={{ background: "#e5ddd5", borderRadius: 8, padding: 12, height: 420, overflowY: "auto" }}>
+            <div style={{ background: "#e5ddd5", borderRadius: 8, padding: 12, height: 420, overflowY: "auto", overflowX: "hidden" }}>
               {chat.length === 0 && <div className="muted" style={{ textAlign: "center", marginTop: 160 }}>Say “Hi” to start.</div>}
               {chat.map((b, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: b.from === "user" ? "flex-end" : "flex-start", marginBottom: 8 }}>
-                  <div style={{ maxWidth: "85%", background: b.from === "user" ? "#dcf8c6" : "#fff", borderRadius: 8, padding: "8px 10px", fontSize: 13, boxShadow: "0 1px 1px rgba(0,0,0,.08)" }}>{b.from === "user" ? b.text : b.reply && renderReply(b.reply)}</div>
+                  <div style={{ maxWidth: "85%", minWidth: 0, overflowWrap: "anywhere", background: b.from === "user" ? "#dcf8c6" : "#fff", borderRadius: 8, padding: "8px 10px", fontSize: 13, boxShadow: "0 1px 1px rgba(0,0,0,.08)" }}>{b.from === "user" ? b.text : b.reply && renderReply(b.reply)}</div>
                 </div>
               ))}
               <div ref={endRef} />

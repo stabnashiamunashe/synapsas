@@ -50,3 +50,6 @@ docs/manual/manual.html
 !.env.example
 
 !.env.docker.example
+
+# generated html next to pdfs
+docs/**/*.html

@@ -69,7 +69,7 @@ export function CaseDrawer({ id, onClose, onChanged, requireReason }: { id: stri
   return (
     <Drawer open={!!id} onClose={onClose} size={720} styles={{ body: { padding: 0 } }} title={c ? <Space wrap><span className="mono muted">{c.referenceNo}</span><StatusPill status={c.status} /><SlaBadge c={c} /></Space> : "Loading…"}>
       {!c ? <div style={{ padding: 24 }}>{isLoading ? "Loading…" : <Empty />}</div> : (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr", height: "100%" }}>
+        <div>
           <div style={{ padding: "16px 24px", borderBottom: "1px solid #eef0f3" }}>
             <Typography.Title level={4} style={{ margin: 0 }} editable={{ onChange: (v) => v && v !== c.title && patch({ title: v }) }}>{c.title}</Typography.Title>
             <Typography.Paragraph type="secondary" style={{ margin: "6px 0 10px" }} editable={{ onChange: (v) => v && v !== c.description && patch({ description: v }) }}>{c.description}</Typography.Paragraph>
