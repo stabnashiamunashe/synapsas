@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Multi-stage build for the ZimStat Approvals Next.js app (standalone output + Prisma/MySQL).
 
-FROM node:20-bookworm-slim AS deps
+FROM node:25-bookworm-slim AS deps
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -19,7 +19,7 @@ FROM deps AS cli
 WORKDIR /opt/prisma
 RUN npm init -y >/dev/null && npm i --no-audit --no-fund --omit=dev "prisma@$(node -p "require('/app/node_modules/prisma/package.json').version")"
 
-FROM node:20-bookworm-slim AS runner
+FROM node:25-bookworm-slim AS runner
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ENV NODE_ENV=production \
