@@ -49,7 +49,7 @@ Templates escape all dynamic content, use table layout for Outlook, and never in
 ## Residual risks and operator duties
 
 - **Rate limiting is per process.** Behind one container this is fine. For multiple replicas put the limiter in Redis (`rateLimit()` in `src/lib/security.ts` is the single integration point) and rely on the nginx `limit_req` zones in `deploy/nginx`.
-- **Style CSP.** Scripts are nonce-only. Styles use `style-src-elem 'nonce-…'` for `<style>` tags, but React inline `style` attributes require `style-src-attr 'unsafe-inline'`; this cannot execute script and is the accepted trade-off for Ant Design.
+- **Style CSP.** Scripts are nonce-only with `strict-dynamic`. Styles remain `'unsafe-inline'` because Ant Design's CSS-in-JS injects `<style>` elements at runtime; inline styles cannot execute script, so this is the accepted trade-off.
 - **Secret rotation.** Rotating `AUTH_SECRET` signs everyone out and invalidates TOTP secrets (they are encrypted with a key derived from it); users must re-enrol 2FA. Rotate `CRON_SECRET`, `PLATFORM_ADMIN_KEY` and SMTP credentials at least yearly.
 - **Backups.** Back up the `db_data` and `uploads` volumes; attachments are stored on disk, not in the database.
 - **Known dev-only advisories.** `npm audit` reports `braces` (via eslint tooling) and `deepmerge-ts` (via the Prisma CLI). Neither is shipped in the runtime image; both are fixed by the next major of their parents.

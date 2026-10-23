@@ -3,8 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 /**
  * Per-request Content-Security-Policy with a nonce (OWASP: strict CSP, no 'unsafe-inline' for scripts).
  * Next.js applies the nonce to every script it emits when the CSP header is present on the request.
- * Ant Design's CSS-in-JS gets the same nonce through ConfigProvider `csp` (see Providers.tsx); inline
- * style *attributes* (React `style={{}}`) are allowed via style-src-attr, which cannot execute script.
+ * Styles remain 'unsafe-inline' because Ant Design's CSS-in-JS injects style elements at runtime.
  */
 export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
@@ -12,9 +11,9 @@ export function proxy(request: NextRequest) {
   const csp = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
-    `style-src 'self' 'unsafe-inline'`, // fallback for browsers without style-src-elem/attr support
-    `style-src-elem 'self' 'nonce-${nonce}'${isDev ? " 'unsafe-inline'" : ""}`,
-    "style-src-attr 'unsafe-inline'",
+    // Ant Design's CSS-in-JS inserts <style> elements at runtime without a nonce, so styles stay 'unsafe-inline'
+    // (styles cannot execute script; scripts above are nonce-only, which is what defeats XSS).
+    "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
     `connect-src 'self'${isDev ? " ws: wss:" : ""}`,

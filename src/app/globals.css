@@ -1,4 +1,8 @@
 :root {
+  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+:root {
   --brand-color: #003b32;
   --brand-tint: #e6ebea;
   --brand-radius: 12px;
