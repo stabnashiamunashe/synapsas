@@ -41,8 +41,8 @@ Passwords need at least 12 characters with upper and lower case letters and a nu
 
 ![The dashboard](images/04-dashboard.png)
 
-- **Home** shows what is waiting on you, your open requests, recent activity and quick actions.
-- The **sidebar** is grouped: Work (Home, Inbox, Requests, Reports, Activity), **Service desk** (Cases, Log a case, Categories & SLAs), Workflows (Projects & surveys, Workflow designs, New request, Out of office) and Organisation (People, Sections & divisions, Audit log, Settings). What you see depends on your role.
+- **Home** shows what is waiting on you, your open requests, recent activity and quick actions, plus notices you still have to acknowledge and any outstanding advance on your account.
+- The **sidebar** is grouped: Work (Home, Inbox, Requests, Reports, Activity, Notice board, Leave calendar), **Service desk** (Cases, Log a case, Categories & SLAs), Workflows (Projects & surveys, Workflow designs, New request, Out of office), **Resources** (Advances ledger, Asset register, Fleet & trips) and Organisation (People, Sections & divisions, Audit log, Settings). What you see depends on your role.
 - The red badge next to **Inbox** is the number of approvals waiting on you.
 - **Search** (or Ctrl K) finds a request by reference, title or requester. The **bell** shows unread notifications. The **avatar menu** opens your profile, security settings and sign out.
 
@@ -258,12 +258,59 @@ Going on leave? Set an **out-of-office** delegate with start and end dates. Appr
 
 The **audit log** is an unalterable record of everything: sign-ins, password and two-factor changes, every request and case action, changes to workflows, people, sections, settings and API keys, each with who, when, IP address and browser. Filter and export it for auditors.
 
-## 13. Settings (administrators)
+## 13. Resource modules
+
+Five modules sit beside the workflows and the service desk under **Resources** and **Work** in the sidebar. They use the same people, sections and projects, and most of their records are created automatically by approvals.
+
+### Advances ledger
+
+![Advances ledger](images/60-advances.png)
+
+Every officer has an advance account, exactly as the Finance Section keeps it on paper. When a **T&S Advance Application** reaches final approval the system opens an advance for the approved amount, dated from the disbursement, and sets the clearance date to ten days after the travel period ends. When a **T&S Expense Claim** that lists the advance under *Advances received* is approved, the claim settles the advance automatically; a claim that lists no references settles the officer's oldest open advances with the claim total.
+
+- Officers see their own account; section heads see their section; the Finance Section and administrators see everyone.
+- The balance strip on every T&S form shows what the Finance Section must certify: outstanding amount, number of advances and overdue ones.
+- Finance records **cash refunds**, **salary recoveries** and **write-offs** from the ledger with a note or receipt number. Each movement is in the audit log.
+- Overdue advances are flagged in red with the days late. The scheduler reminds the officer and the Head of Finance every three days, and the dashboard warns the officer whenever an advance is outstanding.
+
+### Leave calendar and register
+
+![Leave calendar](images/61-leave-calendar.png)
+
+The calendar shows who is away in each month from approved leave applications (pending ones appear faded with a question mark) together with the gazetted public holidays, which administrators keep under Settings, Organisation. Officers see their section; managers can pick any section and export the **leave register** for the year as CSV: entitlement, annual leave taken, pending, remaining, sick and other leave per officer.
+
+### Notice board
+
+![Notice board](images/62-notices.png)
+
+Circulars, policies, announcements and memos from the Directorate and sections. Administrators compose a notice, choose the audience by section and role, pin it, give it an expiry date and, for anything that must be read, mark it **requires acknowledgement**. Everyone in the audience is notified; items awaiting their acknowledgement are shown on their home page until they press **I have read and understood**.
+
+![Notice detail](images/63-notice-detail.png)
+
+Administrators see the acknowledgement progress on each notice with the names still outstanding. Acknowledgements are recorded with the time and kept in the audit log.
+
+### Asset register
+
+![Asset register](images/64-assets.png)
+
+Laptops, tablets, GPS units, printers and other equipment, each with a tag, serial number, section, location, purchase date, cost and warranty. Managers **issue** an item to an officer (who is notified), take it **back to store**, send it for **repair**, and mark it **lost** or **disposed**; every movement is kept in the item's history.
+
+![Asset detail](images/65-asset-detail.png)
+
+Officers see what is issued to them under *Issued to me*. A service desk case can be linked to the faulty item from the case panel's Details tab, so the register shows every fault logged against an item. Export the register as CSV for stock-takes.
+
+### Fleet and trips
+
+![Fleet and trips](images/66-fleet.png)
+
+Officers book transport with the **Vehicle request** workflow (destination, dates, passengers, purpose). Once the Head of Section and Administration approve it, a trip appears on the Fleet page as *Needs vehicle* and the transport office is notified. The office **assigns** a vehicle and driver: vehicles already booked for the same dates, in maintenance or retired are not offered, and a driver cannot be on two trips at once. The driver or office **starts** the trip with the odometer reading and **completes** it with the closing reading and fuel drawn, which updates the vehicle's mileage. Each vehicle shows its status, odometer and next trip, and the office can book a trip directly for standing arrangements.
+
+## 14. Settings (administrators)
 
 ![Branding](images/40-settings-branding.png)
 
 - **Branding**: product name, logo, colour and footer.
-- **Organisation & security**: name, currency, timezone, password and session rules, lockout threshold, two-factor requirement for administrators, and the **annual leave entitlement** (12 days by default) used for leave balances.
+- **Organisation & security**: name, currency, timezone, password and session rules, lockout threshold, two-factor requirement for administrators, the **annual leave entitlement** (12 days by default) used for leave balances, and the **public holidays** shown on the leave calendar.
 
 ![Organisation settings](images/41-settings-organisation.png)
 
@@ -276,13 +323,13 @@ The **audit log** is an unalterable record of everything: sign-ins, password and
 
 ![API and webhooks](images/44-settings-api.png)
 
-## 14. Your account
+## 15. Your account
 
 Open your profile from the avatar menu. Update your name, job title, phone and avatar. Under **Security** change your password, enable two-factor authentication with an authenticator app (you receive ten single-use backup codes), and sign out of all other devices. Under **Notifications** choose which events reach you in the app and by email.
 
 ![Security settings](images/45-profile-security.png)
 
-## 15. Troubleshooting
+## 16. Troubleshooting
 
 **I cannot sign in.** After five wrong attempts the account locks for 15 minutes; an administrator can unlock it from People. Use Forgot password? if needed.
 

@@ -13,6 +13,13 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 const j = (v: unknown) => JSON.stringify(v);
 
+const HOLIDAY_YEAR = new Date().getFullYear();
+const HOLIDAYS = [
+  [`${HOLIDAY_YEAR}-01-01`, "New Year's Day"], [`${HOLIDAY_YEAR}-02-21`, "Robert Gabriel Mugabe National Youth Day"], [`${HOLIDAY_YEAR}-04-18`, "Independence Day"],
+  [`${HOLIDAY_YEAR}-05-01`, "Workers' Day"], [`${HOLIDAY_YEAR}-05-25`, "Africa Day"], [`${HOLIDAY_YEAR}-08-11`, "Heroes' Day"], [`${HOLIDAY_YEAR}-08-12`, "Defence Forces Day"],
+  [`${HOLIDAY_YEAR}-12-22`, "Unity Day"], [`${HOLIDAY_YEAR}-12-25`, "Christmas Day"], [`${HOLIDAY_YEAR}-12-26`, "Boxing Day"],
+].map(([date, name]) => ({ date, name }));
+
 async function main() {
   const existing = await prisma.organization.findUnique({ where: { slug: "zimstat" } });
   if (existing) {
@@ -34,7 +41,7 @@ async function main() {
         logoUrl: "/brand/zimstat-logo.png", loginTagline: "Travelling & subsistence, leave and internal approvals",
         footerText: "© Zimbabwe National Statistics Agency · 20th Floor, Kaguvi Building, Harare", hideVendorBranding: true, supportEmail: "ict@zimstat.co.zw",
       }),
-      settings: j({ currency: "USD", timezone: "Africa/Harare", requireCommentOnReject: true, allowSelfApproval: false, emailNotifications: true, annualLeaveDays: 12, sessionHours: 8, lockoutThreshold: 5 }),
+      settings: j({ currency: "USD", timezone: "Africa/Harare", requireCommentOnReject: true, allowSelfApproval: false, emailNotifications: true, annualLeaveDays: 12, sessionHours: 8, lockoutThreshold: 5, publicHolidays: HOLIDAYS }),
     },
   });
 
@@ -122,7 +129,7 @@ async function main() {
         { id: "l3", order: 3, name: "Advance approval — Director General / Head of Division", description: "On the basis of the certification above the advance is approved / not approved.", approverType: "USER", approverUserIds: [dg.id, dirFinance.id], mode: "ANY", slaHours: 72, allowDelegate: true, allowReturn: true, requireComment: false },
         { id: "l4", order: 4, name: "Disbursement by Finance", description: "Pay out the advance and record it against the officer's advance account.", approverType: "DEPARTMENT", departmentId: finance.id, minRole: "MEMBER", mode: "ANY", slaHours: 72, allowDelegate: false, allowReturn: false },
       ]),
-      settings: j({ titleTemplate: "T&S advance: {{destination}}", allowAttachments: true, allowRequesterCancel: true, costField: "breakdownTotal", requireProject: true, dueInDays: 7 }),
+      settings: j({ titleTemplate: "T&S advance: {{destination}}", allowAttachments: true, allowRequesterCancel: true, costField: "breakdownTotal", requireProject: true, dueInDays: 7, advances: "open" }),
     },
   });
 
@@ -182,7 +189,7 @@ async function main() {
         { id: "c3", order: 3, name: "Passed for payment — Accountant / Deputy Director", approverType: "USER", approverUserIds: [accountant.id, dirFinance.id], mode: "ANY", slaHours: 72, allowDelegate: true, allowReturn: true, requireComment: true },
         { id: "c4", order: 4, name: "Examined — Internal Audit", description: "Post-payment examination. Comment on any exceptions.", approverType: "DEPARTMENT", departmentId: audit.id, minRole: "MEMBER", mode: "ANY", slaHours: 168, allowDelegate: false, allowReturn: true, returnTo: 2 },
       ]),
-      settings: j({ titleTemplate: "T&S claim: {{period}}", allowAttachments: true, requireAttachment: true, allowRequesterCancel: true, costField: "itineraryTotal", requireProject: true, dueInDays: 14 }),
+      settings: j({ titleTemplate: "T&S claim: {{period}}", allowAttachments: true, requireAttachment: true, allowRequesterCancel: true, costField: "itineraryTotal", requireProject: true, dueInDays: 14, advances: "clear" }),
     },
   });
 
@@ -250,6 +257,27 @@ async function main() {
         { id: "m2", order: 2, name: "Director General", approverType: "USER", approverUserIds: [dg.id], mode: "ANY", slaHours: 72, allowDelegate: true, allowReturn: true, condition: { field: "forDirectorate", op: "eq", value: true } },
       ]),
       settings: j({ titleTemplate: "Memo: {{subject}}", allowAttachments: true, costField: "none" }),
+    },
+  });
+
+  // 6. Vehicle request (fleet): approved requests become trip bookings for the transport office
+  const vehicleReq = await prisma.workflowTemplate.create({
+    data: {
+      orgId: org.id, name: "Vehicle request", category: "OTHER", prefix: "VR", icon: "🚙", color: "#0e7490", createdById: ict.id,
+      description: "Request an Agency vehicle for official travel. Approved by the Head of Section, then the transport office assigns a vehicle and driver on the Fleet page.",
+      fields: j([
+        { key: "destination", label: "Destination", type: "text", required: true, width: "half" },
+        { key: "dates", label: "Travel dates (from – to)", type: "daterange", required: true, width: "half" },
+        { key: "purpose", label: "Purpose of travel", type: "textarea", required: true, width: "full" },
+        { key: "passengers", label: "Number of passengers (incl. driver)", type: "number", required: true, min: 1, max: 60, width: "half" },
+        { key: "needsDriver", label: "Driver required", type: "checkbox", width: "half" },
+        { key: "equipment", label: "Equipment / load to carry", type: "text", width: "full" },
+      ]),
+      levels: j([
+        { id: "v1", order: 1, name: "Approved — Head of Section", approverType: "DEPARTMENT_HEAD", mode: "ANY", slaHours: 24, allowDelegate: true, allowReturn: true, skipIfRequester: true, fallbackUserId: dg.id },
+        { id: "v2", order: 2, name: "Vehicle availability confirmed — Administration (transport)", description: "Confirm a vehicle can be made available; the booking is created automatically on approval.", approverType: "DEPARTMENT", departmentId: hr.id, minRole: "MEMBER", mode: "ANY", slaHours: 24, allowDelegate: false, allowReturn: true },
+      ]),
+      settings: j({ titleTemplate: "Vehicle: {{destination}}", allowAttachments: true, allowRequesterCancel: true, costField: "none", requireProject: false, createsTrip: true }),
     },
   });
 
@@ -372,7 +400,61 @@ async function main() {
   await mkCase({ ref: `ZS-${year}-0003`, title: "Password reset for the HR system", description: "Locked out after three attempts.", category: catSystem, status: "RESOLVED", priority: "HIGH", assigneeId: officer1.id, reporterName: "Blessing Sibanda", reporterEmail: "registry@zimstat.co.zw", reporterUserId: registry.id, source: "STAFF", ageHours: 50, resolvedHoursAgo: 47 });
   await mkCase({ ref: `ZS-${year}-0004`, title: "Lift on the Kaguvi Building side out of order", description: "The second lift has been stuck on the ground floor since yesterday afternoon.", category: catFacilities, status: "TRIAGED", priority: "MEDIUM", reporterName: "Kudzai Mhlanga", reporterEmail: "ict.head@zimstat.co.zw", reporterUserId: ictHead.id, source: "WALK_IN", location: "Kaguvi Building, Harare", ageHours: 80 });
   await mkCase({ ref: `ZS-${year}-0005`, title: "Enumerator visit complaint, Kadoma ward 6", description: "Resident reports an enumerator arrived without identification and would not state the survey name.", category: catComplaint, status: "ASSIGNED", priority: "HIGH", assigneeId: supervisor.id, reporterName: "Rutendo Resident", reporterPhone: "0773 222 333", source: "PHONE", location: "Kadoma, Ward 6", ageHours: 6, projectId: mics.id });
-  void c2; void catPublication; void catPayment;
+  void catPublication; void catPayment;
+
+  // --- Advances ledger: the approved TSA opened an advance that is now overdue (travel ended months ago, no claim yet) ---
+  const adv1 = await prisma.advance.create({
+    data: { orgId: org.id, userId: officer1.id, requestId: r1.id, referenceNo: `TSA-${year}-0001`, amount: 870, clearedAmount: 0, currency: "USD", status: "OPEN", disbursedAt: hoursAgo(120), travelEndsAt: new Date("2025-03-27"), dueAt: new Date("2025-04-06"), notes: "Paid by EFT, ref ADV-0391." },
+  });
+  await prisma.notification.create({ data: { orgId: org.id, userId: officer1.id, title: `Advance TSA-${year}-0001 is overdue`, body: "USD 870.00 outstanding. Submit the T&S Expense Claim with receipts, or the amount is recovered from salary.", link: "/app/advances", type: "WARNING" } });
+  void adv1;
+
+  // --- Notice board ---
+  const notice = (data: { title: string; body: string; kind: string; requiresAck?: boolean; pinned?: boolean; departmentIds?: string[]; hoursOld: number }) =>
+    prisma.notice.create({ data: { orgId: org.id, title: data.title, body: data.body, kind: data.kind, requiresAck: !!data.requiresAck, pinned: !!data.pinned, departmentIds: j(data.departmentIds || []), roles: j([]), publishedAt: hoursAgo(data.hoursOld), createdAt: hoursAgo(data.hoursOld), createdById: data.kind === "POLICY" ? dirFinance.id : dg.id } });
+  const n1 = await notice({ kind: "CIRCULAR", pinned: true, requiresAck: true, hoursOld: 72, title: `Circular 3/${year}: Clearance of T&S advances within 10 days`, body: "All officers are reminded that Travelling and Subsistence advances must be cleared within ten (10) working days of return from duty, by submitting the T&S Expense Claim form with original receipts to the Finance Section.\n\nWith effect from 1 November, outstanding advances older than 30 days will be recovered from salary in terms of Treasury Instruction 1206, and no further advance will be approved for an officer with an uncleared account.\n\nHeads of Section are requested to ensure compliance within their sections.\n\nDirector General" });
+  await notice({ kind: "POLICY", requiresAck: true, hoursOld: 240, title: "ICT Acceptable Use and Equipment Policy (rev. 2)", body: "1. Agency laptops, tablets and GPS devices are issued to named officers and recorded in the asset register. The officer is responsible for the equipment until it is returned to the ICT store.\n2. Loss or damage must be reported through the service desk within 24 hours.\n3. Personal software and unlicensed media may not be installed on Agency devices.\n4. Survey data must be synchronised to the Agency server daily and never stored on personal devices.\n\nPlease acknowledge that you have read and understood this policy." });
+  await notice({ kind: "ANNOUNCEMENT", hoursOld: 20, title: "MICS field teams: vehicle allocation for Mashonaland West deployment", body: "Field teams deploying on Monday will collect allocated vehicles from the Head Office car park from 07:00. Team leaders must sign the trip log and record the odometer reading before departure. Fuel cards are issued by the Administration office.", departmentIds: [surveys.id] });
+  await notice({ kind: "MEMO", hoursOld: 6, title: "Half-day closure: Friday staff wellness programme", body: "Head Office will close at 12:30 on Friday for the staff wellness programme at the sports club. Essential services (service desk, cashier) remain on duty until 14:00." });
+  await prisma.noticeAck.createMany({ data: [{ noticeId: n1.id, userId: ictHead.id, ackAt: hoursAgo(60) }, { noticeId: n1.id, userId: officer2.id, ackAt: hoursAgo(40) }, { noticeId: n1.id, userId: cashier.id, ackAt: hoursAgo(70) }] });
+
+  // --- Asset register ---
+  const asset = async (data: { tag: string; category: string; make: string; model: string; serial: string; status?: string; assignedToId?: string; departmentId: string; location?: string; purchaseDate: string; purchaseCost: number; warrantyUntil?: string; notes?: string }) =>
+    prisma.asset.create({ data: { orgId: org.id, tag: data.tag, category: data.category, make: data.make, model: data.model, serial: data.serial, status: data.status || (data.assignedToId ? "ISSUED" : "IN_STORE"), assignedToId: data.assignedToId || null, departmentId: data.departmentId, location: data.location, purchaseDate: new Date(data.purchaseDate), purchaseCost: data.purchaseCost, warrantyUntil: data.warrantyUntil ? new Date(data.warrantyUntil) : null, notes: data.notes,
+      events: { create: [{ kind: "CREATED", actorId: ict.id, note: "Added to the register", createdAt: hoursAgo(2000) }, ...(data.assignedToId ? [{ kind: "ISSUED", actorId: ict.id, toUserId: data.assignedToId, note: "Issued with charger and bag", createdAt: hoursAgo(1900) }] : []), ...(data.status === "IN_REPAIR" ? [{ kind: "REPAIR", actorId: officer1.id, note: "Wi-Fi adapter fault; sent to supplier under warranty", createdAt: hoursAgo(26) }] : [])] } } });
+  const a1 = await asset({ tag: "ZS/ICT/0041", category: "Laptop", make: "Dell", model: "Latitude 5540", serial: "7KQ2P93", assignedToId: officer2.id, departmentId: surveys.id, location: "Head Office, 7th floor", purchaseDate: "2024-08-12", purchaseCost: 1450, warrantyUntil: `${year + 1}-08-12`, status: "IN_REPAIR" });
+  await asset({ tag: "ZS/ICT/0042", category: "Laptop", make: "HP", model: "ProBook 450 G9", serial: "5CD3281XYZ", assignedToId: officer1.id, departmentId: ictSec.id, location: "Head Office, 5th floor", purchaseDate: "2024-08-12", purchaseCost: 1320, warrantyUntil: `${year + 1}-08-12` });
+  await asset({ tag: "ZS/ICT/0043", category: "Laptop", make: "HP", model: "ProBook 450 G9", serial: "5CD3281ABC", departmentId: ictSec.id, location: "ICT store", purchaseDate: "2024-08-12", purchaseCost: 1320, warrantyUntil: `${year + 1}-08-12`, notes: "Spare for field deployments." });
+  for (let i = 1; i <= 4; i++) await asset({ tag: `ZS/PCS/GPS-${String(i).padStart(2, "0")}`, category: "GPS / PDA", make: "Garmin", model: "eTrex 32x", serial: `GRM32X-${1000 + i}`, assignedToId: i <= 2 ? supervisor.id : undefined, departmentId: surveys.id, location: i <= 2 ? "Field (MICS)" : "Surveys store", purchaseDate: "2023-03-01", purchaseCost: 310 });
+  await asset({ tag: "ZS/ICT/PRN-07", category: "Printer", make: "Kyocera", model: "ECOSYS M3655idn", serial: "VKY7342201", departmentId: finance.id, location: "Finance Section, Room 214", purchaseDate: "2022-11-20", purchaseCost: 980, status: "IN_STORE" });
+  await asset({ tag: "ZS/ICT/TAB-115", category: "Tablet", make: "Samsung", model: "Galaxy Tab A9", serial: "R52W40ABCDE", assignedToId: officer2.id, departmentId: surveys.id, location: "Field (MICS)", purchaseDate: `${year}-01-15`, purchaseCost: 240, warrantyUntil: `${year + 1}-01-15` });
+  await prisma.case.update({ where: { id: c2.id }, data: { assetId: a1.id } });
+
+  // --- Fleet ---
+  const vehicle = (registration: string, make: string, model: string, type: string, odometer: number, status = "AVAILABLE", departmentId?: string, notes?: string) =>
+    prisma.vehicle.create({ data: { orgId: org.id, registration, make, model, type, odometer, status, departmentId: departmentId || null, notes } });
+  const v1 = await vehicle("GZ 4471", "Toyota", "Hilux 2.8 GD-6", "Double cab", 84210, "AVAILABLE", surveys.id);
+  const v2 = await vehicle("GZ 4472", "Toyota", "Hilux 2.8 GD-6", "Double cab", 91530, "AVAILABLE", surveys.id);
+  const v3 = await vehicle("GZ 3310", "Toyota", "Land Cruiser 79", "SUV / 4x4", 143880, "MAINTENANCE", undefined, "Clutch replacement at CMED, due back Thursday.");
+  const v4 = await vehicle("GZ 2208", "Nissan", "NP300 Hardbody", "Single cab", 167400, "AVAILABLE", hr.id, "Head Office runner.");
+  void v3; void v4;
+  const d = (days: number, hour = 7) => { const x = new Date(); x.setDate(x.getDate() + days); x.setHours(hour, 0, 0, 0); return x; };
+  // approved vehicle request → trip waiting for assignment
+  const r5 = await prisma.request.create({
+    data: {
+      orgId: org.id, templateId: vehicleReq.id, referenceNo: `VR-${year}-0001`, title: "Vehicle: Chinhoyi and Karoi (MICS supervision)", requesterId: officer2.id, status: "APPROVED", priority: "NORMAL",
+      projectId: mics.id, currentLevel: 2, activeLevels: j([1, 2]), templateSnapshot: await snap(vehicleReq), submittedAt: hoursAgo(30), completedAt: hoursAgo(4), createdAt: hoursAgo(31),
+      data: j({ destination: "Chinhoyi and Karoi", dates: [d(3).toISOString().slice(0, 10), d(6).toISOString().slice(0, 10)], purpose: "MICS field supervision, Mashonaland West clusters 14–19.", passengers: 4, needsDriver: true, equipment: "4 tablets, 2 GPS units, camping kit", priority: "NORMAL" }),
+    },
+  });
+  await prisma.requestApproval.create({ data: { requestId: r5.id, levelOrder: 1, levelName: "Approved — Head of Section", approverId: surveysHead.id, status: "APPROVED", comment: "Approved.", actedAt: hoursAgo(20), createdAt: hoursAgo(30) } });
+  await prisma.requestApproval.create({ data: { requestId: r5.id, levelOrder: 2, levelName: "Vehicle availability confirmed — Administration (transport)", approverId: registry.id, status: "APPROVED", comment: "Hilux available.", actedAt: hoursAgo(4), createdAt: hoursAgo(20) } });
+  await prisma.vehicleTrip.create({ data: { orgId: org.id, requestId: r5.id, requesterId: officer2.id, projectId: mics.id, purpose: "MICS field supervision, Mashonaland West clusters 14–19.", destination: "Chinhoyi and Karoi", passengers: 4, startsAt: d(3), endsAt: d(6, 18), status: "PLANNED" } });
+  await prisma.notification.create({ data: { orgId: org.id, userId: hrHead.id, title: `Vehicle needed: VR-${year}-0001`, body: "Chinhoyi and Karoi, 4 passengers. Assign a vehicle and driver.", link: "/app/fleet", type: "APPROVAL" } });
+  // assigned trip tomorrow and a completed trip last week
+  await prisma.vehicleTrip.create({ data: { orgId: org.id, requesterId: officer1.id, driverUserId: registry.id, vehicleId: v1.id, projectId: zdhs.id, purpose: "ZDHS dissemination workshop set-up", destination: "Kadoma", passengers: 3, startsAt: d(1), endsAt: d(1, 18), status: "ASSIGNED" } });
+  await prisma.vehicleTrip.create({ data: { orgId: org.id, requesterId: supervisor.id, driverUserId: supervisor.id, vehicleId: v2.id, projectId: mics.id, purpose: "MICS cluster 11 enumeration", destination: "Chegutu", passengers: 4, startsAt: d(-6), endsAt: d(-4, 17), status: "COMPLETED", odometerStart: 91010, odometerEnd: 91530, fuelLitres: 58.5, notes: "Rear left tyre slow puncture; repaired in Chegutu." } });
+  await prisma.workflowTemplate.update({ where: { id: vehicleReq.id }, data: { counter: 1 } });
 
   console.log("Seeded ZimStat organisation. Logins (password: Password123!):");
   for (const u of [ict, dg, dirFinance, accountant, cashier, hrHead, registry, auditor, ictHead, surveysHead, supervisor, officer1, officer2]) {

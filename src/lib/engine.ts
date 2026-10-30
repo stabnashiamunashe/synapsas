@@ -1,5 +1,7 @@
 // Workflow engine: level resolution, submission, approve/reject/return/delegate, escalation.
 import { prisma } from "./prisma";
+import { onRequestApproved } from "./advances";
+import { onTripRequestApproved } from "./fleet";
 import { parseJson, toJson } from "./json";
 import { evaluateCondition, normaliseFormData, renderTemplate } from "./formula";
 import { extractCost } from "./cost";
@@ -187,6 +189,9 @@ async function advance(requestId: string, orgId: string, afterLevel: number) {
       type: "SUCCESS",
     });
     await dispatchWebhooks(orgId, "request.approved", publicRequest(r));
+    // module hooks (never block the approval)
+    await onRequestApproved(r.id).catch((e) => console.error("[advances] hook failed", e));
+    await onTripRequestApproved(r.id).catch((e) => console.error("[fleet] hook failed", e));
     return;
   }
   await dispatchWebhooks(orgId, "request.level_advanced", { ...publicRequest(r), level: next });

@@ -5,6 +5,7 @@ import {
   ApartmentOutlined, AuditOutlined, BarChartOutlined, DashboardOutlined, FileTextOutlined, InboxOutlined, LogoutOutlined,
   MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined, PlusOutlined, SafetyCertificateOutlined, SearchOutlined, SettingOutlined,
   TeamOutlined, UserOutlined, BranchesOutlined, ClockCircleOutlined, CalendarOutlined, FolderOpenOutlined, CustomerServiceOutlined, TagsOutlined,
+  NotificationOutlined, ScheduleOutlined, WalletOutlined, LaptopOutlined, CarOutlined,
 } from "@ant-design/icons";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -70,6 +71,8 @@ function Shell({ branding, orgName, session, children }: {
         { key: "/app/requests", icon: <FileTextOutlined />, label: "Requests" },
         { key: "/app/reports", icon: <BarChartOutlined />, label: "Reports", show: isManager },
         { key: "/app/notifications", icon: <ClockCircleOutlined />, label: "Activity" },
+        { key: "/app/notices", icon: <NotificationOutlined />, label: "Notice board" },
+        { key: "/app/leave", icon: <ScheduleOutlined />, label: "Leave calendar" },
       ],
     },
     {
@@ -87,6 +90,14 @@ function Shell({ branding, orgName, session, children }: {
         { key: "/app/templates", icon: <BranchesOutlined />, label: "Workflow designs", show: isAdmin },
         { key: "/app/requests/new", icon: <PlusOutlined />, label: "New request" },
         { key: "/app/settings/delegations", icon: <CalendarOutlined />, label: "Out of office" },
+      ],
+    },
+    {
+      label: "Resources",
+      items: [
+        { key: "/app/advances", icon: <WalletOutlined />, label: "Advances ledger" },
+        { key: "/app/assets", icon: <LaptopOutlined />, label: "Asset register" },
+        { key: "/app/fleet", icon: <CarOutlined />, label: "Fleet & trips" },
       ],
     },
     {

@@ -120,6 +120,8 @@ export const templateSettingsSchema = z.object({
   dueInDays: z.number().optional().nullable(),
   autoApproveIfNoLevels: z.boolean().optional(),
   costField: z.string().max(80).optional().nullable(),
+  advances: z.enum(["open", "clear"]).optional().nullable(),
+  createsTrip: z.boolean().optional(),
   requireProject: z.boolean().optional(),
 });
 
@@ -231,6 +233,7 @@ export const orgSettingsSchema = z.object({
   sessionHours: z.number().min(1).max(168).optional(),
   lockoutThreshold: z.number().min(3).max(20).optional(),
   annualLeaveDays: z.number().min(0).max(60).optional(),
+  publicHolidays: z.array(z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), name: z.string().min(1).max(80) })).max(60).optional(),
 });
 
 export const orgUpdateSchema = z.object({
@@ -320,6 +323,7 @@ export const caseUpdateSchema = z.object({
   longitude: z.number().min(-180).max(180).optional().nullable(),
   slaHours: z.number().int().min(1).max(24 * 90).optional(),
   customFields: z.record(z.string(), z.unknown()).optional(),
+  assetId: z.string().optional().nullable(),
 });
 
 export const caseStatusChangeSchema = z.object({ version: z.number().int().min(1), status: caseStatusSchema, reason: z.string().max(2000).optional().nullable() });

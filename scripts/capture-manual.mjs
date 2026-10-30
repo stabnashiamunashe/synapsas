@@ -94,6 +94,16 @@ const api = async (c, p) => (await c.request.get(`${BASE}${p}`, { headers: { ori
   await byText(p, "button", "Report an issue").click(); await p.waitForTimeout(1500);
   await shot(p, "43-settings-whatsapp", { full: true });
   await p.goto(`${BASE}/app/settings/api`); await shot(p, "44-settings-api");
+  // resource modules
+  await p.goto(`${BASE}/app/advances`); await shot(p, "60-advances");
+  await p.goto(`${BASE}/app/leave`); await shot(p, "61-leave-calendar", { full: true });
+  await p.goto(`${BASE}/app/notices`); await shot(p, "62-notices");
+  await p.locator(".ant-card-hoverable").first().click().catch(() => {}); await p.waitForTimeout(800); await shot(p, "63-notice-detail");
+  await p.keyboard.press("Escape"); await p.waitForTimeout(300);
+  await p.goto(`${BASE}/app/assets`); await shot(p, "64-assets");
+  await p.locator(".ant-table-row").first().click().catch(() => {}); await p.waitForTimeout(800); await shot(p, "65-asset-detail");
+  await p.keyboard.press("Escape"); await p.waitForTimeout(300);
+  await p.goto(`${BASE}/app/fleet`); await shot(p, "66-fleet");
   await p.goto(`${BASE}/app/profile?tab=security`); await shot(p, "45-profile-security");
   await c.close();
 }

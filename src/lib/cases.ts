@@ -188,7 +188,7 @@ export async function changeCaseStatus(orgId: string, caseId: string, to: CaseSt
 }
 
 /** Edit fields (not status). Reassignment is recorded in the timeline and notified. */
-export async function updateCase(orgId: string, caseId: string, patch: Partial<Pick<CreateCaseInput, "title" | "description" | "priority" | "categoryId" | "departmentId" | "projectId" | "locationAddress" | "office" | "latitude" | "longitude" | "customFields">> & { assigneeId?: string | null; slaHours?: number }, version: number, actor: SessionUser, ctx?: { ip?: string; userAgent?: string }) {
+export async function updateCase(orgId: string, caseId: string, patch: Partial<Pick<CreateCaseInput, "title" | "description" | "priority" | "categoryId" | "departmentId" | "projectId" | "locationAddress" | "office" | "latitude" | "longitude" | "customFields">> & { assigneeId?: string | null; slaHours?: number; assetId?: string | null }, version: number, actor: SessionUser, ctx?: { ip?: string; userAgent?: string }) {
   const c = await prisma.case.findFirst({ where: { id: caseId, orgId } });
   if (!c) throw new ApiError(404, "Case not found");
   if (c.version !== version) throw new ApiError(409, "This case was updated by someone else. Refresh and try again.");
@@ -218,6 +218,7 @@ export async function updateCase(orgId: string, caseId: string, patch: Partial<P
       latitude: patch.latitude === undefined ? undefined : patch.latitude, longitude: patch.longitude === undefined ? undefined : patch.longitude,
       slaHours, slaDueAt: patch.slaHours !== undefined ? new Date(c.createdAt.getTime() + slaHours * 3600_000) : undefined,
       customFields: patch.customFields ? JSON.stringify(patch.customFields) : undefined,
+      assetId: patch.assetId === undefined ? undefined : patch.assetId,
       version: { increment: 1 }, lastActivityAt: new Date(),
       ...(reassigned && patch.assigneeId && ["NEW", "TRIAGED"].includes(c.status) ? { status: "ASSIGNED" } : {}),
       ...(reassigned ? { events: { create: { fromStatus: c.status, toStatus: patch.assigneeId && ["NEW", "TRIAGED"].includes(c.status) ? "ASSIGNED" : c.status, changedById: actor.id, changedByName: actor.name, reason: patch.assigneeId ? `Assigned to ${(await prisma.user.findUnique({ where: { id: patch.assigneeId }, select: { name: true } }))?.name}` : "Unassigned" } } } : {}),
@@ -297,6 +298,7 @@ export const caseInclude = {
   category: { select: { id: true, name: true, icon: true } },
   assignee: { select: { id: true, name: true, avatarUrl: true } },
   project: { select: { id: true, code: true, name: true } },
+  asset: { select: { id: true, tag: true, category: true, make: true, model: true } },
   _count: { select: { comments: true, attachments: true } },
 } as const;
 

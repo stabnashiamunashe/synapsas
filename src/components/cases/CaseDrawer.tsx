@@ -26,6 +26,7 @@ export function CaseDrawer({ id, onClose, onChanged, requireReason }: { id: stri
   const { data: categories } = useApi<(Opt & { departmentId: string })[]>(id ? "/api/case-categories" : null);
   const { data: users } = useApi<(Opt & { departmentId?: string | null; role: string })[]>(id ? "/api/users" : null);
   const { data: projects } = useApi<{ id: string; code: string; name: string }[]>(id ? "/api/projects" : null);
+  const { data: assets } = useApi<{ items: { id: string; tag: string; category: string; make?: string | null; model?: string | null; assignedTo?: { name: string } | null }[] }>(id ? "/api/assets" : null);
   const [comment, setComment] = useState("");
   const [internal, setInternal] = useState(true);
   const [reasonFor, setReasonFor] = useState<CaseStatus | null>(null);
@@ -108,6 +109,7 @@ export function CaseDrawer({ id, onClose, onChanged, requireReason }: { id: stri
                   { key: "d", label: "Section", children: <Select value={c.departmentId || undefined} allowClear style={{ width: "100%" }} disabled={!c.canEditRouting} onChange={(v) => patch({ departmentId: v || null })} options={(departments || []).map((d) => ({ value: d.id, label: d.name }))} /> },
                   { key: "c", label: "Category", children: <Select value={c.categoryId || undefined} allowClear style={{ width: "100%" }} onChange={(v) => patch({ categoryId: v || null })} options={catOptions.map((x) => ({ value: x.id, label: x.name }))} /> },
                   { key: "p", label: "Project / survey", children: <Select value={c.projectId || undefined} allowClear showSearch optionFilterProp="label" style={{ width: "100%" }} onChange={(v) => patch({ projectId: v || null })} options={(projects || []).map((p) => ({ value: p.id, label: `${p.code} · ${p.name}` }))} /> },
+                  { key: "asset", label: "Asset / equipment", children: <Select value={c.assetId || undefined} allowClear showSearch optionFilterProp="label" style={{ width: "100%" }} placeholder="Link the faulty item from the asset register" onChange={(v) => patch({ assetId: v || null })} options={(assets?.items || []).map((a) => ({ value: a.id, label: `${a.tag} · ${a.category}${a.make ? ` ${a.make}` : ""}${a.model ? ` ${a.model}` : ""}${a.assignedTo ? ` (${a.assignedTo.name})` : ""}` }))} /> },
                   { key: "s", label: "SLA target (hours)", children: <InputNumber min={1} value={c.slaHours} disabled={!c.canEditRouting} onChange={(v) => v && v !== c.slaHours && patch({ slaHours: v })} /> },
                   { key: "due", label: "SLA due", children: c.slaDueAt ? formatDate(c.slaDueAt, true) : "–" },
                   { key: "r", label: "Reporter", children: <span>{c.reporterName}{c.reporterPhone ? ` · ${c.reporterPhone}` : ""}{c.reporterEmail ? ` · ${c.reporterEmail}` : ""} <Tag style={{ marginLeft: 6 }}>{c.source.toLowerCase().replace("_", " ")}</Tag></span> },

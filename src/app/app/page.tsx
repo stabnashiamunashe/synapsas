@@ -12,6 +12,7 @@ import { Suspense } from "react";
 import { useApi, useMe, timeAgo } from "@/lib/client";
 import { PriorityTag, StatusTag } from "@/components/StatusTag";
 import { CATEGORY_LABELS, type TemplateCategory } from "@/lib/types";
+import { HomeModules } from "@/components/HomeModules";
 
 interface Dash {
   cards: { pendingMine: number; myRequests: number; pendingAll: number; approvedMonth: number; rejectedMonth: number; overdue: number; avgHours: number | null };
@@ -48,6 +49,7 @@ function Dashboard() {
         <Alert type="success" showIcon style={{ marginBottom: 16 }} title="Workspace created"
           description={<span>Next steps: <Link href="/app/templates">design a workflow</Link>, <Link href="/app/users">invite your team</Link>, and <Link href="/app/settings/branding">brand your workspace</Link>.</span>} />
       )}
+      <HomeModules />
       {isLoading || !data ? <Skeleton active /> : (
         <>
           <Row gutter={[16, 16]}>

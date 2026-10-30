@@ -9,6 +9,7 @@ export interface CaseListItem {
   departmentId?: string | null; categoryId?: string | null; assigneeId?: string | null; projectId?: string | null;
   department?: { id: string; name: string; code?: string | null } | null; category?: { id: string; name: string; icon?: string | null } | null;
   assignee?: { id: string; name: string; avatarUrl?: string | null } | null; project?: { id: string; code: string; name: string } | null;
+  assetId?: string | null; asset?: { id: string; tag: string; category: string; make?: string | null; model?: string | null } | null;
   reporterName: string; reporterPhone?: string | null; reporterEmail?: string | null; reporterUserId?: string | null; source: string;
   locationAddress?: string | null; latitude?: number | null; longitude?: number | null; office?: string | null;
   slaHours: number; slaDueAt?: string | null; slaBreached: boolean; slaWarning: boolean; slaHoursRemaining: number | null;

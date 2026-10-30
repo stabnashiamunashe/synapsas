@@ -12,6 +12,7 @@ import { DataView } from "@/components/DataView";
 import { RequestTimeline, type ApprovalRow } from "@/components/RequestTimeline";
 import { WorkflowDiagram } from "@/components/WorkflowDiagram";
 import { LeaveBalance } from "@/components/LeaveBalance";
+import { AdvanceBalance } from "@/components/AdvanceBalance";
 import { DynamicFields } from "@/components/DynamicForm";
 import type { FieldDef, LevelDef, TemplateSettings, TemplateSnapshot } from "@/lib/types";
 
@@ -151,6 +152,7 @@ export default function RequestDetailPage() {
         <Card title="Where this request is in the flow" size="small" style={{ marginBottom: 16 }} styles={{ body: { padding: 8 } }}>
           <WorkflowDiagram levels={levels} activeLevels={r.activeLevels || []} approvals={r.approvals} currentLevel={r.currentLevel} status={r.status} height={200} compact />
           {isLeave && <div style={{ marginTop: 12 }}><LeaveBalance userId={r.requester.id} requestedDays={Number((r.data as Record<string, unknown>).daysRequired) || undefined} compact /></div>}
+          {snap.settings.advances && <div style={{ marginTop: 12 }}><AdvanceBalance userId={r.requester.id} compact /></div>}
         </Card>
       )}
 

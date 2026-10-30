@@ -156,7 +156,12 @@ export function TemplateBuilder({ initial }: { initial: TemplateModel | null }) 
                       <span><Switch size="small" checked={model.settings.allowRequesterCancel !== false} onChange={(v) => set({ settings: { ...model.settings, allowRequesterCancel: v } })} /> Requester may cancel after submitting</span>
                       <span><Switch size="small" checked={!!model.settings.notifyRequesterOnEachLevel} onChange={(v) => set({ settings: { ...model.settings, notifyRequesterOnEachLevel: v } })} /> Notify requester at each level</span>
                       <span><Switch size="small" checked={!!model.settings.requireProject} onChange={(v) => set({ settings: { ...model.settings, requireProject: v } })} /> Require a project on every request</span>
+                      <span><Switch size="small" checked={!!model.settings.createsTrip} onChange={(v) => set({ settings: { ...model.settings, createsTrip: v } })} /> Book a vehicle trip when approved (fields: destination, dates, passengers, purpose)</span>
                     </Space>
+                    <div style={{ marginTop: 10 }}>
+                      <Typography.Text style={{ marginRight: 8 }}>Advances ledger:</Typography.Text>
+                      <Select size="small" style={{ width: 360 }} value={model.settings.advances || "none"} onChange={(v) => set({ settings: { ...model.settings, advances: v === "none" ? undefined : (v as "open" | "clear") } })} options={[{ value: "none", label: "Not linked" }, { value: "open", label: "Approval opens an advance for the cost amount (T&S advance)" }, { value: "clear", label: "Approval clears advances listed in the claim (T&S claim)" }]} />
+                    </div>
                   </Col>
                 </Row>
               </Card>

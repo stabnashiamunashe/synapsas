@@ -118,7 +118,7 @@ export default function UsersPage() {
           <Form.Item name="departmentId" label="Department"><Select allowClear options={(departments || []).map((d) => ({ value: d.id, label: d.name }))} /></Form.Item>
           {editing !== "invite" && (
             <Form.Item name="managerId" label="Line manager (used by 'Requester's manager' levels)">
-              <Select allowClear showSearch optionFilterProp="label" options={(users || []).filter((u) => u.isActive && (editing === "new" || u.id !== (editing as U).id)).map((u) => ({ value: u.id, label: u.name }))} />
+              <Select allowClear showSearch optionFilterProp="label" options={(users || []).filter((u) => u.isActive && (typeof editing !== "object" || !editing || u.id !== editing.id)).map((u) => ({ value: u.id, label: u.name }))} />
             </Form.Item>
           )}
           {editing !== "invite" && editing !== null && (editing === "new" || (editing as U).id !== me?.user.id) && (

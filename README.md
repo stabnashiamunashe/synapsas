@@ -57,6 +57,14 @@ Every later release: `bash scripts/deploy-docker.sh` (pulls, rebuilds, restarts)
 
 The app refuses to start in production with a default `AUTH_SECRET`, a non-HTTPS `APP_URL` or a weak `CRON_SECRET` (`src/instrumentation.ts`).
 
+### Upgrading an existing database with the resource modules
+
+```bash
+npx prisma db push && npm run db:seed:modules
+```
+
+`prisma/seed-modules.ts` is additive: it links the T&S workflows to the advances ledger, adds the Vehicle request workflow, public holidays and sample notices, assets, vehicles and trips, and skips anything already present. In Docker: `docker compose --profile seed run --rm seed npx tsx prisma/seed-modules.ts`.
+
 ## What is included
 
 - **Workflows modelled on the Agency's forms**: T&S Advance Application (TSA), T&S Expense Claim (TSC), Application for Leave (LV), Application for Annual Leave / off days (AL), Internal memo. Each is fully editable: fields, line-item tables with computed columns, approval levels, conditions, loop-backs.
@@ -64,6 +72,11 @@ The app refuses to start in production with a default `AUTH_SECRET`, a non-HTTPS
 - **Service desk** (ported from the local-council issue tracker): cases with a nine-state lifecycle, categories with SLAs, least-busy auto-assignment, duplicate detection, Kanban board and table with saved views, internal notes and public updates, attachments, and a public portal at `/report` and `/track` with ratings. See docs/ZIMSTAT-WORKFLOWS.md section 5.
 - **WhatsApp intake** (optional): button-driven reporting and tracking on the Meta WhatsApp Business Cloud API, template updates to reporters, in-app sandbox; the system runs unchanged when it is not configured. See docs/WHATSAPP.md.
 - **Leave balance**: 12-day annual entitlement (Settings → Organisation), taken/pending/remaining shown on every leave request.
+- **Advances ledger**: every approved T&S advance opens an account entry that the approved claim clears automatically; Finance records refunds, salary recoveries and write-offs; overdue reminders; balance strip on the forms.
+- **Leave calendar & register**: who is away per month with public holidays; per-officer register for the year with CSV export.
+- **Notice board**: circulars, policies, announcements and memos with audiences by section and role, pinning, expiry and tracked acknowledgements.
+- **Asset register**: equipment with issue/return/repair/loss history, holders, warranties, CSV export and links from service desk cases.
+- **Fleet & trips**: Vehicle request workflow creates trip bookings on approval; the transport office assigns vehicles and drivers with overlap checks and records odometer and fuel.
 - **Projects & surveys** (ZDHS, MICS, Census…): every advance and claim is charged to a project so costs roll up per survey and funder.
 - **Email**: SMTP outbox with retries, invitations, temporary passwords, password reset, security alerts, approval notifications and digests.
 - **Security**: OWASP ASVS L2 controls (see SECURITY.md): strict CSP, 2FA with encrypted secrets, breached-password check, lockout, audit log, hardened uploads, rate limits.

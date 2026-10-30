@@ -93,3 +93,35 @@ Alongside form-based approvals, the **Service desk** handles tickets and public 
 | Analytics summary | KPIs on the board (open, resolution rate, average resolution hours, SLA breached) and `GET /api/cases/stats` (status, priority, source and section breakdowns, 14-day trend). |
 | WhatsApp (Twilio/Infobip) intake and sandbox | Re-implemented on the **Meta WhatsApp Business Cloud API** with a button/list driven conversation, approved templates for outbound updates, signed webhooks and an in-app sandbox. Optional and fail-safe. See docs/WHATSAPP.md. |
 | Multi-council tenancy, super-admin console, workspaces | Not needed in the single-organisation edition; "workspaces" map to **Projects & surveys**. |
+
+## 6. Vehicle request (prefix `VR`)
+
+Fields: destination, travel dates, purpose, number of passengers, driver required, equipment to carry.
+
+| Level | Who | Notes |
+| --- | --- | --- |
+| 1 | Head of Section (`DEPARTMENT_HEAD`) | skipped when the requester is the head; falls back to the Director General |
+| 2 | Any officer in HR & Administration (`DEPARTMENT`, transport office) | confirms a vehicle can be made available |
+
+The template setting `createsTrip: true` makes the engine create a **trip booking** on final approval (Fleet & trips page, status *Needs vehicle*) and notify the transport office, who assign a vehicle and driver with overlap checks and record odometer and fuel.
+
+## 7. Advances ledger (opened and cleared by the T&S workflows)
+
+| Template setting | Effect on final approval |
+| --- | --- |
+| `advances: "open"` (TSA) | Opens an `Advance` for the request's cost amount on the requester's account. Clearance due ten days after the end of the travel period (`period[1]`). |
+| `advances: "clear"` (TSC) | Settles the advances named in the `advances` table (`reference` + `amount`); without references, settles the officer's oldest open advances with the claim total. |
+
+Statuses: `OPEN` → `PARTIALLY_CLEARED` → `CLEARED`, or `RECOVERED` (salary) / `WRITTEN_OFF`. Finance and administrators record cash refunds, salary recoveries and write-offs at `POST /api/advances/:id`. `GET /api/advances/balance?userId=` gives the figure Finance certifies on the TSA form. The escalation cron (`/api/cron/escalate`) reminds officers and the Head of Finance about overdue advances every three days.
+
+## 8. Leave calendar and register
+
+`GET /api/leave/calendar?month=YYYY-MM&departmentId=` lists approved and pending leave overlapping the month (from `dates`, `daysRequired`, `leaveType` on LEAVE-category requests) plus the public holidays from Settings → Organisation. `GET /api/leave/register?year=&format=csv` (managers and above) gives entitlement, taken, pending, remaining, sick and other days per officer.
+
+## 9. Notice board
+
+`Notice` (circular, policy, announcement, memo) with an audience by section ids and roles, optional acknowledgement, pinning and expiry. `POST /api/notices/:id/ack` records "read and understood" once per person; `GET /api/notices/:id` shows administrators who has and has not acknowledged.
+
+## 10. Asset register and fleet
+
+`Asset` (tag unique per organisation, category, make/model/serial, status `IN_STORE | ISSUED | IN_REPAIR | LOST | DISPOSED`, holder, section, warranty) with an `AssetEvent` history (`ISSUED`, `RETURNED`, `REPAIR`, `REPAIRED`, `LOST`, `DISPOSED`, `NOTE`). Cases carry an optional `assetId`. `Vehicle` (registration unique, status `AVAILABLE | IN_USE | MAINTENANCE | RETIRED`, odometer) and `VehicleTrip` (`PLANNED → ASSIGNED → ONGOING → COMPLETED`, or `CANCELLED`) with odometer start/end and fuel. Trip actions: `POST /api/fleet/trips/:id` with `action: assign | start | complete | cancel`.

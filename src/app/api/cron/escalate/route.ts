@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { escalateOverdue } from "@/lib/engine";
 import { caseSlaSweep } from "@/lib/cases";
+import { advanceReminderSweep } from "@/lib/advances";
 
 /**
  * SLA escalation job. Call from a scheduler (Vercel Cron, GitHub Actions, cron) with
@@ -15,7 +16,8 @@ async function run(req: Request) {
   }
   const result = await escalateOverdue();
   const cases = await caseSlaSweep();
-  return NextResponse.json({ ok: true, data: { ...result, cases } });
+  const advances = await advanceReminderSweep();
+  return NextResponse.json({ ok: true, data: { ...result, cases, advances } });
 }
 
 export const GET = run;

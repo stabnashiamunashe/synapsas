@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { LeaveBalance } from "@/components/LeaveBalance";
+import { AdvanceBalance } from "@/components/AdvanceBalance";
 import { api, useApi, useMe } from "@/lib/client";
 import { DynamicFields, defaultsFor } from "@/components/DynamicForm";
 import { ProjectPicker } from "@/components/ProjectPicker";
@@ -87,6 +88,7 @@ function NewRequest() {
                   <Col xs={24} md={5}><Form.Item name="priority" label="Priority"><Select options={["LOW", "NORMAL", "HIGH", "URGENT"].map((p) => ({ value: p, label: p }))} /></Form.Item></Col>
                 </Row>
                 {template.category === "LEAVE" && <LeaveBalance requestedDays={Number(daysWatch) || undefined} compact />}
+                {template.settings.advances && <AdvanceBalance compact />}
                 <DynamicFields fields={template.fields} currency={currency} />
               </Form>
             </Card>

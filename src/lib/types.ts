@@ -167,6 +167,10 @@ export interface TemplateSettings {
   costField?: string;
   /** Requester must pick a project before submitting. */
   requireProject?: boolean;
+  /** Advances ledger: "open" creates an advance on approval (TSA), "clear" settles advances from the claim (TSC). */
+  advances?: "open" | "clear";
+  /** Fleet: create a trip booking on approval (vehicle request). */
+  createsTrip?: boolean;
 }
 
 export type ProjectStatus = "ACTIVE" | "ON_HOLD" | "CLOSED" | "ARCHIVED";
@@ -190,6 +194,8 @@ export interface OrgSettings {
   cases?: import("./caseTypes").CaseSettings;
   /** annual leave entitlement per officer per calendar year (ZimStat: 12 days) */
   annualLeaveDays?: number;
+  /** public holidays shown on the leave calendar (YYYY-MM-DD) */
+  publicHolidays?: { date: string; name: string }[];
   timezone?: string;
   currency?: string;
   dateFormat?: string;
