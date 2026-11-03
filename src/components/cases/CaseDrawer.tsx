@@ -43,11 +43,11 @@ export function CaseDrawer({ id, onClose, onChanged, requireReason }: { id: stri
   };
   const patch = async (data: Record<string, unknown>) => {
     if (!c) return;
-    try { await api(`/api/cases/${c.id}`, { method: "PATCH", json: { version: c.version, ...data } }); await refresh(); } catch (e) { handle(e); }
+    try { await api(`/api/cases/${c.id}`, { method: "PATCH", json: { version: c.version, ...data } }); await refresh(); message.success(data.assigneeId !== undefined ? "Assignee updated" : "Case updated"); } catch (e) { handle(e); }
   };
   const move = async (status: CaseStatus, why?: string) => {
     if (!c) return;
-    try { await api(`/api/cases/${c.id}/status`, { method: "POST", json: { version: c.version, status, reason: why || undefined } }); setReasonFor(null); setReason(""); await refresh(); } catch (e) { handle(e); }
+    try { await api(`/api/cases/${c.id}/status`, { method: "POST", json: { version: c.version, status, reason: why || undefined } }); setReasonFor(null); setReason(""); await refresh(); message.success(`Case moved to ${CASE_STATUS_LABELS[status] || status}`); } catch (e) { handle(e); }
   };
   const nextStatuses = useMemo(() => {
     if (!c) return [] as CaseStatus[];
@@ -56,7 +56,7 @@ export function CaseDrawer({ id, onClose, onChanged, requireReason }: { id: stri
   }, [c, me]);
   const send = async () => {
     if (!c || !comment.trim()) return;
-    try { await api(`/api/cases/${c.id}/comments`, { method: "POST", json: { body: comment.trim(), isInternal: internal } }); setComment(""); await refresh(); } catch (e) { handle(e); }
+    try { await api(`/api/cases/${c.id}/comments`, { method: "POST", json: { body: comment.trim(), isInternal: internal } }); setComment(""); await refresh(); message.success(internal ? "Internal note added" : "Update sent to the reporter"); } catch (e) { handle(e); }
   };
   const upload = async (file: File) => {
     if (!c) return false;
@@ -133,7 +133,7 @@ export function CaseDrawer({ id, onClose, onChanged, requireReason }: { id: stri
                     <a href={`/api/case-attachments/${a.id}`} style={{ flex: 1 }}>{a.fileName}</a>
                     <span className="muted" style={{ fontSize: 12 }}>{Math.round(a.size / 1024)} KB · {a.stage.toLowerCase().replace("_", " ")} · {a.uploadedBy}</span>
                     <Switch size="small" checked={a.isPublic} checkedChildren="public" unCheckedChildren="staff" onChange={async (v) => { await api(`/api/case-attachments/${a.id}`, { method: "PATCH", json: { isPublic: v } }); mutate(); }} />
-                    <Popconfirm title="Remove file?" onConfirm={async () => { await api(`/api/case-attachments/${a.id}`, { method: "DELETE" }); mutate(); }}><a style={{ color: "#c53030" }}>remove</a></Popconfirm>
+                    <Popconfirm title="Remove file?" onConfirm={async () => { try { await api(`/api/case-attachments/${a.id}`, { method: "DELETE" }); message.success("File removed"); mutate(); } catch (e) { handle(e); } }}><a style={{ color: "#c53030" }}>remove</a></Popconfirm>
                   </div>
                 ))}
               </div>
@@ -149,7 +149,7 @@ export function CaseDrawer({ id, onClose, onChanged, requireReason }: { id: stri
         const list = await api<{ items: CaseListItem[] }>(`/api/cases?q=${encodeURIComponent(linkRef.trim())}&pageSize=5`);
         const orig = list.items.find((x) => x.referenceNo.toUpperCase() === linkRef.trim().toUpperCase() && x.id !== c.id);
         if (!orig) return message.error("No other case with that reference");
-        try { await api(`/api/cases/${c.id}/link-duplicate`, { method: "POST", json: { originalId: orig.id } }); setLinkOpen(false); setLinkRef(""); await refresh(); } catch (e) { handle(e); }
+        try { await api(`/api/cases/${c.id}/link-duplicate`, { method: "POST", json: { originalId: orig.id } }); setLinkOpen(false); setLinkRef(""); await refresh(); message.success(`Linked as a duplicate of ${orig.referenceNo}`); } catch (e) { handle(e); }
       }}>
         <Typography.Paragraph type="secondary">This case will be rejected and linked to the original. The reporter is told which case is being handled.</Typography.Paragraph>
         <Input value={linkRef} onChange={(e) => setLinkRef(e.target.value)} placeholder="Original reference, e.g. ZS-2026-0001" className="mono" />

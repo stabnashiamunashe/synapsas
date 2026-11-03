@@ -42,9 +42,11 @@ Passwords need at least 12 characters with upper and lower case letters and a nu
 ![The dashboard](images/04-dashboard.png)
 
 - **Home** shows what is waiting on you, your open requests, recent activity and quick actions, plus notices you still have to acknowledge and any outstanding advance on your account.
-- The **sidebar** is grouped: Work (Home, Inbox, Requests, Reports, Activity, Notice board, Leave calendar), **Service desk** (Cases, Log a case, Categories & SLAs), Workflows (Projects & surveys, Workflow designs, New request, Out of office), **Resources** (Advances ledger, Asset register, Fleet & trips) and Organisation (People, Sections & divisions, Audit log, Settings). What you see depends on your role.
+- The dark **sidebar** is grouped by purpose: **Overview** (Home, Inbox, Activity, Reports), **Requests & approvals** (New request, Requests, Projects & surveys, Out of office), **Service desk** (Cases, Log a case, Categories & SLAs, WhatsApp channel, Portal & desk settings), **Staff & notices** (Notice board, Leave calendar), **Resources** (Advances ledger, Asset register, Fleet & trips), **Workflow design** (Workflow designs, Create workflow) and **Administration** (People, Sections & divisions, Audit log, Settings). What you see depends on your role; the selected page carries a gold bar.
+- **Search** (the box in the header, or Ctrl K anywhere) finds every page in the system by name or purpose, for example "whatsapp", "create workflow" or "holidays", as well as requests and service desk cases by reference or title. On a phone the magnifier in the header opens the same search.
 - The red badge next to **Inbox** is the number of approvals waiting on you.
-- **Search** (or Ctrl K) finds a request by reference, title or requester. The **bell** shows unread notifications. The **avatar menu** opens your profile, security settings and sign out.
+- The **bell** shows unread notifications. The **avatar menu** opens your profile, security settings and sign out.
+- Every action that changes something (approve, submit, move a case, issue an asset, save settings, delete) is confirmed with a short message at the top of the screen; errors are shown the same way with the reason.
 
 On a phone the sidebar collapses into a menu button. Tables scroll sideways and forms stack into one column; approving from the inbox works the same way.
 

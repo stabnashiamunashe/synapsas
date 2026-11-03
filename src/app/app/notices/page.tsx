@@ -61,7 +61,7 @@ function Notices() {
             { title: "Audience", width: 200, render: (_, n) => <span className="muted" style={{ fontSize: 12 }}>{n.departmentIds.length ? n.departmentIds.map((id) => departments?.find((d) => d.id === id)?.name || "?").join(", ") : "Everyone"}{n.roles.length ? ` · ${n.roles.join("/").toLowerCase()}` : ""}</span> },
             { title: "Status", width: 120, render: (_, n) => n.publishedAt ? (n.expiresAt && new Date(n.expiresAt) < new Date() ? <Tag>Expired</Tag> : <Tag color="green">Published</Tag>) : <Tag color="gold">Draft</Tag> },
             { title: "Acknowledged", width: 130, render: (_, n) => n.requiresAck ? <a onClick={() => setOpenId(n.id)}>{n.ackCount} so far</a> : <span className="muted">not required</span> },
-            { title: "", width: 120, render: (_, n) => <Space><a onClick={() => compose(n)}>Edit</a><Popconfirm title="Delete this notice?" onConfirm={async () => { await api(`/api/notices/${n.id}`, { method: "DELETE" }); mutate(); }}><a style={{ color: "#c53030" }}>Delete</a></Popconfirm></Space> },
+            { title: "", width: 120, render: (_, n) => <Space><a onClick={() => compose(n)}>Edit</a><Popconfirm title="Delete this notice?" onConfirm={async () => { try { await api(`/api/notices/${n.id}`, { method: "DELETE" }); message.success("Notice deleted"); mutate(); } catch (e) { message.error((e as Error).message); } }}><a style={{ color: "#c53030" }}>Delete</a></Popconfirm></Space> },
           ]} />
         </Card>
       ) : data.length === 0 ? <Card><Empty description="No notices yet" /></Card> : (

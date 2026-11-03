@@ -2,9 +2,14 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { AntdRegistry } from "@/components/AntdRegistry";
 import "@ant-design/v5-patch-for-react-19";
+import "@fontsource/ibm-plex-sans/400.css";
+import "@fontsource/ibm-plex-sans/400-italic.css";
+import "@fontsource/ibm-plex-sans/500.css";
+import "@fontsource/ibm-plex-sans/600.css";
+import "@fontsource/ibm-plex-mono/400.css";
 import "./globals.css";
 
-// System font stack (see --font-sans in globals.css): no external stylesheet or font download under the strict CSP.
+// IBM Plex is self-hosted from @fontsource, so no external stylesheet or font download is needed under the strict CSP.
 
 export const metadata: Metadata = {
   title: process.env.NEXT_PUBLIC_APP_NAME || "ZimStat Approvals",

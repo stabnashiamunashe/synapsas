@@ -13,6 +13,7 @@ import { useApi, useMe, timeAgo } from "@/lib/client";
 import { PriorityTag, StatusTag } from "@/components/StatusTag";
 import { CATEGORY_LABELS, type TemplateCategory } from "@/lib/types";
 import { HomeModules } from "@/components/HomeModules";
+import { AppIcon } from "@/components/AppIcon";
 
 interface Dash {
   cards: { pendingMine: number; myRequests: number; pendingAll: number; approvedMonth: number; rejectedMonth: number; overdue: number; avgHours: number | null };
@@ -114,7 +115,7 @@ function Dashboard() {
                       {templates.slice(0, 6).map((t) => (
                         <Col span={12} key={t.id}>
                           <Card size="small" hoverable onClick={() => router.push(`/app/requests/new?template=${t.id}`)} style={{ borderTop: `3px solid ${t.color || "var(--brand-color)"}`, height: "100%" }}>
-                            <Typography.Text strong>{t.icon ? `${t.icon} ` : ""}{t.name}</Typography.Text>
+                            <Typography.Text strong><AppIcon name={t.icon} style={{ marginRight: 8, color: t.color || undefined }} />{t.name}</Typography.Text>
                             <div className="muted" style={{ fontSize: 12 }}>{CATEGORY_LABELS[t.category] || t.category} · {t.levels.length} level{t.levels.length === 1 ? "" : "s"}</div>
                           </Card>
                         </Col>

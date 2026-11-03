@@ -1,22 +1,19 @@
 "use client";
 
 import { Alert, App, Avatar, Button, Drawer, Dropdown, Form, Grid, Input, Layout, Menu, Modal, Space, Typography, theme } from "antd";
-import {
-  ApartmentOutlined, AuditOutlined, BarChartOutlined, DashboardOutlined, FileTextOutlined, InboxOutlined, LogoutOutlined,
-  MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined, PlusOutlined, SafetyCertificateOutlined, SearchOutlined, SettingOutlined,
-  TeamOutlined, UserOutlined, BranchesOutlined, ClockCircleOutlined, CalendarOutlined, FolderOpenOutlined, CustomerServiceOutlined, TagsOutlined,
-  NotificationOutlined, ScheduleOutlined, WalletOutlined, LaptopOutlined, CarOutlined,
-} from "@ant-design/icons";
+import { CalendarOutlined, LogoutOutlined, MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined, SafetyCertificateOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { BrandProvider, DEFAULT_BRANDING, tint } from "./Providers";
+import { useEffect, useState } from "react";
+import { BrandProvider, DEFAULT_BRANDING, SHELL_DARK, tint } from "./Providers";
 import { BrandMark } from "./BrandMark";
 import { NotificationTray } from "./NotificationTray";
+import { CommandPalette } from "./CommandPalette";
+import { NavIcon } from "./NavIcon";
 import { api, useMe } from "@/lib/client";
 import type { BrandingSettings, SessionUser } from "@/lib/types";
-import { ROLE_RANK } from "@/lib/roles";
 import { PASSWORD_POLICY } from "@/lib/security";
+import { activeNavKey, sidebarGroups } from "@/lib/nav";
 
 const { Header, Sider, Content } = Layout;
 
@@ -40,8 +37,7 @@ function Shell({ branding, orgName, session, children }: {
   const isMobile = screens.lg === false; // < 992px
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const searchRef = useRef<{ focus: () => void } | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
   const { data: me, mutate } = useMe();
   const { token } = theme.useToken();
   const [pwForm] = Form.useForm();
@@ -49,69 +45,16 @@ function Shell({ branding, orgName, session, children }: {
   const b = { ...DEFAULT_BRANDING, ...branding };
   const dark = b.sidebarTheme === "dark";
   const role = me?.user.role || session.role;
-  const isManager = ROLE_RANK[role] >= ROLE_RANK.MANAGER;
-  const isAdmin = ROLE_RANK[role] >= ROLE_RANK.ADMIN;
 
   useEffect(() => { setDrawerOpen(false); }, [pathname]);
   // Date is client-only to avoid server/client locale mismatches during hydration.
   const [today, setToday] = useState("");
   useEffect(() => { setToday(new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric", year: "numeric" })); }, []);
-  // ⌘K / Ctrl+K focuses search
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); searchRef.current?.focus(); } };
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  }, []);
-
-  const groups: { label?: string; items: { key: string; icon: React.ReactNode; label: string; show?: boolean }[] }[] = [
-    {
-      items: [
-        { key: "/app", icon: <DashboardOutlined />, label: "Home" },
-        { key: "/app/inbox", icon: <InboxOutlined />, label: `Inbox${me?.pendingApprovals ? ` (${me.pendingApprovals})` : ""}` },
-        { key: "/app/requests", icon: <FileTextOutlined />, label: "Requests" },
-        { key: "/app/reports", icon: <BarChartOutlined />, label: "Reports", show: isManager },
-        { key: "/app/notifications", icon: <ClockCircleOutlined />, label: "Activity" },
-        { key: "/app/notices", icon: <NotificationOutlined />, label: "Notice board" },
-        { key: "/app/leave", icon: <ScheduleOutlined />, label: "Leave calendar" },
-      ],
-    },
-    {
-      label: "Service desk",
-      items: [
-        { key: "/app/cases", icon: <CustomerServiceOutlined />, label: "Cases" },
-        { key: "/app/cases/new", icon: <PlusOutlined />, label: "Log a case" },
-        { key: "/app/cases/categories", icon: <TagsOutlined />, label: "Categories & SLAs", show: isAdmin },
-      ],
-    },
-    {
-      label: "Workflows",
-      items: [
-        { key: "/app/projects", icon: <FolderOpenOutlined />, label: "Projects & surveys" },
-        { key: "/app/templates", icon: <BranchesOutlined />, label: "Workflow designs", show: isAdmin },
-        { key: "/app/requests/new", icon: <PlusOutlined />, label: "New request" },
-        { key: "/app/settings/delegations", icon: <CalendarOutlined />, label: "Out of office" },
-      ],
-    },
-    {
-      label: "Resources",
-      items: [
-        { key: "/app/advances", icon: <WalletOutlined />, label: "Advances ledger" },
-        { key: "/app/assets", icon: <LaptopOutlined />, label: "Asset register" },
-        { key: "/app/fleet", icon: <CarOutlined />, label: "Fleet & trips" },
-      ],
-    },
-    {
-      label: "Organisation",
-      items: [
-        { key: "/app/users", icon: <TeamOutlined />, label: "People", show: isAdmin },
-        { key: "/app/departments", icon: <ApartmentOutlined />, label: "Sections & divisions", show: isAdmin },
-        { key: "/app/audit", icon: <AuditOutlined />, label: "Audit log", show: isAdmin },
-        { key: "/app/settings", icon: <SettingOutlined />, label: "Settings", show: isAdmin },
-      ],
-    },
-  ];
-  const allKeys = groups.flatMap((g) => g.items.filter((i) => i.show !== false).map((i) => i.key));
-  const selected = allKeys.filter((k) => pathname === k || (k !== "/app" && pathname.startsWith(k))).sort((a, b2) => b2.length - a.length)[0] || "/app";
+  const groups = sidebarGroups(role).map((g) => ({
+    label: g.label,
+    items: g.items.map((i) => ({ key: i.key, icon: <NavIcon name={i.icon} />, label: i.key === "/app/inbox" && me?.pendingApprovals ? `${i.label} (${me.pendingApprovals})` : i.label })),
+  }));
+  const selected = activeNavKey(pathname, role);
 
   const logout = async () => {
     await api("/api/auth/logout", { method: "POST" });
@@ -131,53 +74,54 @@ function Shell({ branding, orgName, session, children }: {
       message.error(err.details?.length ? err.details.map((d) => d.message).join(". ") : err.message);
     } finally { setChanging(false); }
   };
-  const goSearch = () => { if (search.trim()) router.push(`/app/requests?q=${encodeURIComponent(search.trim())}`); };
 
   const mustChangePassword = !!me?.security?.mustChangePassword;
   const mustSetup2fa = !!me?.security?.mustSetup2fa && !mustChangePassword;
   const showLabels = isMobile || !collapsed;
 
   const nav = (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
+    <div className={`side-nav${dark ? " side-nav-dark" : ""}`} style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
       <div className="side-team" style={{ justifyContent: showLabels ? "flex-start" : "center", margin: showLabels ? undefined : "12px 8px 8px", padding: showLabels ? undefined : 8 }}>
         {b.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={b.logoUrl} alt="" style={{ height: 28, maxWidth: showLabels ? 150 : 28, objectFit: "contain" }} />
         ) : (
-          <span style={{ width: 30, height: 30, borderRadius: 9, background: dark ? "rgba(255,255,255,.1)" : tint(b.primaryColor, 0.88), display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <BrandMark size={18} color={dark ? "#FFFDF0" : b.primaryColor} />
+          <span style={{ width: 32, height: 32, background: dark ? "rgba(255,255,255,.08)" : tint(b.primaryColor, 0.88), display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <BrandMark size={18} color={dark ? SHELL_DARK.accent : b.primaryColor} />
           </span>
         )}
         {showLabels && (
           <div style={{ lineHeight: 1.15, minWidth: 0 }}>
-            <div style={{ fontSize: 10, opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Workspace</div>
+            <div style={{ fontSize: 11, opacity: 0.65, letterSpacing: "0.32px" }}>Workspace</div>
             <div style={{ fontWeight: 600, whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>{b.productName || orgName}</div>
           </div>
         )}
       </div>
       {groups.map((g, gi) => {
-        const items = g.items.filter((i) => i.show !== false);
+        const items = g.items;
         if (!items.length) return null;
         return (
           <div key={gi}>
             {g.label && showLabels && <div className="side-section">{g.label}</div>}
+            {!showLabels && gi > 0 && <div className="side-divider" />}
             <Menu theme={dark ? "dark" : "light"} mode="inline" inlineCollapsed={!showLabels} selectedKeys={[selected]} style={{ borderInlineEnd: 0, background: "transparent" }}
-              items={items.map((i) => ({ key: i.key, icon: i.icon, label: <Link href={i.key === "/app/settings" ? "/app/settings/branding" : i.key}>{i.label}</Link> }))} />
+              items={items.map((i) => ({ key: i.key, icon: i.icon, label: <Link href={i.key}>{i.label}</Link>, title: i.label }))} />
           </div>
         );
       })}
       <div style={{ flex: 1 }} />
+      {showLabels && <div className="side-foot">{me?.user.name || session.name}<br /><span style={{ opacity: 0.6 }}>{role.toLowerCase()}{me?.user.department ? ` · ${me.user.department.name}` : ""}</span></div>}
     </div>
   );
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
       {isMobile ? (
-        <Drawer placement="left" open={drawerOpen} onClose={() => setDrawerOpen(false)} size={272} closable={false} styles={{ body: { padding: 0, background: dark ? "#022A24" : "#fff" }, header: { display: "none" } }}>
-          <div style={{ background: dark ? "#022A24" : "#fff", minHeight: "100%", color: dark ? "#fff" : undefined }}>{nav}</div>
+        <Drawer placement="left" open={drawerOpen} onClose={() => setDrawerOpen(false)} size={272} closable={false} styles={{ body: { padding: 0, background: dark ? SHELL_DARK.bg : "#fff" }, header: { display: "none" } }}>
+          <div style={{ background: dark ? SHELL_DARK.bg : "#fff", minHeight: "100%", color: dark ? "#f4f4f4" : undefined }}>{nav}</div>
         </Drawer>
       ) : (
-        <Sider collapsible collapsed={collapsed} trigger={null} width={248} collapsedWidth={72} theme={dark ? "dark" : "light"} style={{ position: "sticky", top: 0, height: "100vh", overflow: "auto", borderRight: `1px solid ${dark ? "rgba(255,255,255,.08)" : token.colorBorderSecondary}` }}>
+        <Sider collapsible collapsed={collapsed} trigger={null} width={256} collapsedWidth={64} theme={dark ? "dark" : "light"} style={{ position: "sticky", top: 0, height: "100vh", overflow: "auto", background: dark ? SHELL_DARK.bg : undefined, borderRight: `1px solid ${dark ? SHELL_DARK.border : token.colorBorderSecondary}` }}>
           {nav}
         </Sider>
       )}
@@ -199,9 +143,10 @@ function Shell({ branding, orgName, session, children }: {
             )}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 4 : 12 }}>
-            {!isMobile && (
-              <Input ref={searchRef as never} value={search} onChange={(e) => setSearch(e.target.value)} onPressEnter={goSearch} prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />} placeholder="Search requests…" allowClear
-                suffix={<span style={{ fontSize: 11, color: token.colorTextTertiary, border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 5, padding: "0 5px" }}>⌘K</span>} style={{ width: 280, borderRadius: 8, background: token.colorFillAlter }} />
+            {!isMobile ? (
+              <div style={{ width: 340 }}><CommandPalette role={role} /></div>
+            ) : (
+              <Button type="text" icon={<SearchOutlined />} aria-label="Search" onClick={() => setSearchOpen(true)} />
             )}
             <NotificationTray />
             <Dropdown
@@ -240,6 +185,10 @@ function Shell({ branding, orgName, session, children }: {
           </div>
         )}
       </Layout>
+
+      <Modal open={searchOpen} onCancel={() => setSearchOpen(false)} footer={null} title="Search" destroyOnHidden>
+        <CommandPalette role={role} autoFocus hotkey={false} onNavigate={() => setSearchOpen(false)} />
+      </Modal>
 
       <Modal open={mustChangePassword} closable={false} mask={{ closable: false }} keyboard={false} title="Set a new password to continue" onOk={changePassword} confirmLoading={changing} okText="Update password" cancelButtonProps={{ style: { display: "none" } }}>
         <Typography.Paragraph type="secondary">You signed in with a temporary password. {PASSWORD_POLICY.description}</Typography.Paragraph>

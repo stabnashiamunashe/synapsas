@@ -8,6 +8,7 @@ import { useState } from "react";
 import { api, useApi } from "@/lib/client";
 import { QuickWorkflowModal } from "@/components/QuickWorkflowModal";
 import { CATEGORY_LABELS, type LevelDef, type TemplateCategory } from "@/lib/types";
+import { AppIcon } from "@/components/AppIcon";
 
 interface T { id: string; name: string; description?: string | null; category: TemplateCategory; icon?: string | null; color?: string | null; prefix: string; isActive: boolean; version: number; fields: unknown[]; levels: LevelDef[]; _count: { requests: number } }
 
@@ -57,7 +58,7 @@ export default function TemplatesPage() {
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                   <div>
-                    <Typography.Text strong style={{ fontSize: 16 }}>{t.icon ? `${t.icon} ` : ""}{t.name}</Typography.Text>
+                    <Typography.Text strong style={{ fontSize: 16 }}><AppIcon name={t.icon} style={{ marginRight: 8, color: t.color || undefined }} />{t.name}</Typography.Text>
                     <div><Tag>{CATEGORY_LABELS[t.category] || t.category}</Tag><Tag className="mono">{t.prefix}-YYYY-0001</Tag><Tag>v{t.version}</Tag></div>
                   </div>
                   <Switch checked={t.isActive} onChange={(v) => toggle(t, v)} checkedChildren="Active" unCheckedChildren="Off" />

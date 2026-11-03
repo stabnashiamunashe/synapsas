@@ -5,29 +5,33 @@ import { useNonce } from "./AntdRegistry";
 import { useEffect } from "react";
 import type { BrandingSettings } from "@/lib/types";
 
-/** Defaults: ZimStat blue primary, light surfaces, soft radii, pill controls. Overridable under Settings → Branding. */
+/** Defaults: ZimStat blue primary on IBM Carbon surfaces (IBM Plex, square corners, gray-10 canvas). Overridable under Settings → Branding. */
 export const DEFAULT_BRANDING: Required<Pick<BrandingSettings, "productName" | "primaryColor" | "sidebarTheme" | "borderRadius">> = {
   productName: process.env.NEXT_PUBLIC_APP_NAME || "ZimStat Approvals",
   primaryColor: "#1414D2", // ZimStat blue (logo wordmark)
-  sidebarTheme: "light",
-  borderRadius: 8,
+  sidebarTheme: "dark",
+  borderRadius: 0,
 };
+
+/** IBM Carbon UI-shell dark palette (gray 100) with the ZimStat gold as the selection accent. */
+export const SHELL_DARK = { bg: "#161616", layer: "#262626", hover: "#353535", selected: "#393939", border: "#393939", text: "#f4f4f4", textSecondary: "#c6c6c6", accent: "#F0D040" };
 
 /** ZimStat palette from the agency logo: blue wordmark, red star, gold bird, black. */
 export const BRAND = { blue: "#1414D2", blueDeep: "#0B0B8F", red: "#D7262D", gold: "#F0D040", black: "#000000", white: "#FFFFFF", cream: "#FFFFFF" };
 
-/** Neutral UI surfaces (light, airy dashboard look). */
+/** IBM Carbon "white" theme neutrals (gray 10 canvas, gray 20 borders, gray 100 text). */
 export const UI = {
-  pageBg: "#f5f6f8",
+  pageBg: "#f4f4f4",
   surface: "#ffffff",
   sidebarBg: "#ffffff",
-  border: "#e6e8ec",
-  borderStrong: "#d5d9e0",
-  text: "#111827",
-  textSecondary: "#6b7280",
-  textMuted: "#9aa3b2",
-  tableHeaderBg: "#fafbfc",
-  hover: "#f3f4f6",
+  border: "#e0e0e0",
+  borderStrong: "#8d8d8d",
+  text: "#161616",
+  textSecondary: "#525252",
+  textMuted: "#6f6f6f",
+  tableHeaderBg: "#f4f4f4",
+  hover: "#e8e8e8",
+  focus: "#0f62fe",
 };
 
 /** Mix a hex colour with white for tinted backgrounds. */
@@ -42,7 +46,7 @@ export function tint(hex: string, amount = 0.9) {
 
 export function BrandProvider({ branding, children }: { branding?: BrandingSettings | null; children: React.ReactNode }) {
   const b = { ...DEFAULT_BRANDING, ...(branding || {}) };
-  const radius = Math.min(Math.max(b.borderRadius ?? 12, 0), 24);
+  const radius = Math.min(Math.max(b.borderRadius ?? 0, 0), 24);
   const nonce = useNonce();
   useEffect(() => {
     document.documentElement.style.setProperty("--brand-color", b.primaryColor);
@@ -69,12 +73,16 @@ export function BrandProvider({ branding, children }: { branding?: BrandingSetti
           colorPrimary: b.primaryColor,
           colorInfo: b.primaryColor,
           colorLink: b.primaryColor,
-          borderRadius: Math.max(6, radius - 2),
-          borderRadiusLG: radius + 4,
-          borderRadiusSM: Math.max(4, radius - 4),
-          borderRadiusXS: 4,
-          fontFamily: "var(--font-sans), 'Segoe UI', 'Helvetica Neue', Arial, sans-serif",
-          fontSize: 13,
+          borderRadius: radius,
+          borderRadiusLG: radius,
+          borderRadiusSM: radius,
+          borderRadiusXS: radius,
+          fontFamily: "'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif",
+          fontFamilyCode: "'IBM Plex Mono', Menlo, Consolas, monospace",
+          fontSize: 14,
+          fontSizeHeading1: 32, fontSizeHeading2: 28, fontSizeHeading3: 20, fontSizeHeading4: 16, fontSizeHeading5: 14,
+          fontWeightStrong: 600,
+          lineHeight: 1.43,
           colorText: UI.text,
           colorTextSecondary: UI.textSecondary,
           colorTextTertiary: UI.textMuted,
@@ -83,60 +91,68 @@ export function BrandProvider({ branding, children }: { branding?: BrandingSetti
           colorBgLayout: UI.pageBg,
           colorBgContainer: UI.surface,
           colorFillAlter: UI.tableHeaderBg,
-          controlHeight: 36,
-          controlHeightSM: 28,
-          controlHeightLG: 44,
-          boxShadow: "0 1px 2px rgba(16,24,40,.04), 0 8px 24px rgba(16,24,40,.06)",
-          boxShadowSecondary: "0 1px 2px rgba(16,24,40,.04), 0 8px 24px rgba(16,24,40,.06)",
+          controlHeight: 40,
+          controlHeightSM: 32,
+          controlHeightLG: 48,
+          controlOutline: "rgba(15, 98, 254, 0)",
+          controlOutlineWidth: 0,
+          boxShadow: "0 2px 6px rgba(0,0,0,.2)",
+          boxShadowSecondary: "0 2px 6px rgba(0,0,0,.2)",
+          motionDurationMid: "0.11s",
           wireframe: false,
         },
         components: {
-          Layout: { siderBg: b.sidebarTheme === "dark" ? BRAND.blueDeep : UI.sidebarBg, headerBg: UI.surface, bodyBg: UI.pageBg },
+          Layout: { siderBg: b.sidebarTheme === "dark" ? SHELL_DARK.bg : UI.sidebarBg, headerBg: UI.surface, bodyBg: UI.pageBg },
           Menu: {
-            itemBorderRadius: 10,
-            subMenuItemBorderRadius: 10,
-            itemMarginInline: 8,
-            itemMarginBlock: 2,
-            itemHeight: 38,
-            itemSelectedBg: tint(b.primaryColor, 0.9),
-            itemSelectedColor: b.primaryColor,
+            itemBorderRadius: 0,
+            subMenuItemBorderRadius: 0,
+            itemMarginInline: 0,
+            itemMarginBlock: 0,
+            itemHeight: 40,
+            itemSelectedBg: "#e0e0e0",
+            itemSelectedColor: UI.text,
             itemHoverBg: UI.hover,
-            darkItemBg: BRAND.blueDeep,
-            darkSubMenuItemBg: BRAND.blueDeep,
-            darkItemSelectedBg: "rgba(255,255,255,0.14)",
-            darkItemHoverBg: "rgba(255,255,255,0.06)",
+            darkItemBg: SHELL_DARK.bg,
+            darkSubMenuItemBg: SHELL_DARK.bg,
+            darkItemSelectedBg: SHELL_DARK.selected,
+            darkItemHoverBg: SHELL_DARK.hover,
+            darkItemColor: SHELL_DARK.textSecondary,
+            darkItemHoverColor: SHELL_DARK.text,
+            darkItemSelectedColor: SHELL_DARK.text,
+            darkPopupBg: SHELL_DARK.layer,
             iconSize: 16,
           },
-          Card: { headerBg: "transparent", headerFontSize: 14, headerHeight: 52, paddingLG: 20, borderRadiusLG: radius + 4, colorBorderSecondary: UI.border },
-          Table: { headerBg: UI.tableHeaderBg, headerColor: UI.textSecondary, headerSplitColor: "transparent", cellPaddingBlock: 12, borderColor: UI.border, rowHoverBg: UI.hover, headerBorderRadius: 12 },
+          Card: { headerBg: "transparent", headerFontSize: 16, headerFontSizeSM: 14, headerHeight: 56, paddingLG: 24, borderRadiusLG: radius, colorBorderSecondary: UI.border },
+          Table: { headerBg: "#e0e0e0", headerColor: UI.text, headerSplitColor: "transparent", cellPaddingBlock: 12, cellPaddingInline: 16, borderColor: UI.border, rowHoverBg: UI.hover, headerBorderRadius: 0, fontWeightStrong: 600 },
           Button: {
-            borderRadius: 8, borderRadiusLG: 10, borderRadiusSM: 6, fontWeight: 500, paddingInline: 16, paddingInlineSM: 12,
-            primaryShadow: "none", defaultShadow: "0 1px 2px rgba(16,24,40,.05)", dangerShadow: "none",
-            defaultBg: UI.surface, defaultBorderColor: UI.border, defaultColor: UI.text, defaultHoverBg: UI.hover, defaultHoverBorderColor: UI.borderStrong, defaultHoverColor: UI.text, defaultActiveBg: "#e9ebef",
-            textHoverBg: UI.hover, contentFontSizeSM: 12, onlyIconSize: 16,
+            borderRadius: radius, borderRadiusLG: radius, borderRadiusSM: radius, fontWeight: 400, paddingInline: 16, paddingInlineSM: 12,
+            primaryShadow: "none", defaultShadow: "none", dangerShadow: "none",
+            defaultBg: UI.surface, defaultBorderColor: UI.text, defaultColor: UI.text, defaultHoverBg: UI.hover, defaultHoverBorderColor: UI.text, defaultHoverColor: UI.text, defaultActiveBg: "#c6c6c6",
+            textHoverBg: UI.hover, contentFontSizeSM: 14, onlyIconSize: 16,
           },
-          Input: { borderRadius: 8, borderRadiusLG: 10, borderRadiusSM: 6, activeShadow: `0 0 0 3px ${tint(b.primaryColor, 0.85)}`, hoverBorderColor: UI.borderStrong, paddingInline: 12 },
-          InputNumber: { borderRadius: 8, hoverBorderColor: UI.borderStrong },
-          Select: { borderRadius: 8, borderRadiusLG: 10, optionSelectedBg: tint(b.primaryColor, 0.9), optionSelectedFontWeight: 500, hoverBorderColor: UI.borderStrong, optionPadding: "7px 10px" },
-          DatePicker: { borderRadius: 8, hoverBorderColor: UI.borderStrong },
-          Tag: { borderRadiusSM: 999, defaultBg: UI.hover, defaultColor: UI.textSecondary },
-          Modal: { titleFontSize: 16, borderRadiusLG: 18, paddingContentHorizontalLG: 24 },
-          Drawer: { paddingLG: 20 },
-          Dropdown: { borderRadiusLG: 14, paddingBlock: 8 },
-          Popover: { borderRadiusLG: 14 },
-          Tooltip: { borderRadius: 8 },
-          Descriptions: { labelBg: UI.tableHeaderBg },
-          Tabs: { titleFontSize: 13, inkBarColor: UI.text, itemSelectedColor: UI.text, itemHoverColor: UI.text, horizontalItemGutter: 24 },
-          Segmented: { itemSelectedBg: UI.text, itemSelectedColor: "#ffffff", itemColor: UI.textSecondary, itemHoverColor: UI.text, itemHoverBg: "#e9ebef", trackBg: UI.hover, trackPadding: 3, borderRadius: 8, borderRadiusSM: 6 },
-          Checkbox: { borderRadiusSM: 5 },
-          Switch: { trackHeight: 22, handleSize: 18 },
+          Input: { borderRadius: radius, borderRadiusLG: radius, borderRadiusSM: radius, activeShadow: `inset 0 0 0 1px ${UI.focus}`, activeBorderColor: UI.focus, hoverBorderColor: UI.borderStrong, paddingInline: 16, colorBgContainer: UI.surface },
+          InputNumber: { borderRadius: radius, hoverBorderColor: UI.borderStrong, activeBorderColor: UI.focus },
+          Select: { borderRadius: radius, borderRadiusLG: radius, optionSelectedBg: "#e0e0e0", optionSelectedFontWeight: 600, hoverBorderColor: UI.borderStrong, activeBorderColor: UI.focus, optionPadding: "9px 16px" },
+          DatePicker: { borderRadius: radius, hoverBorderColor: UI.borderStrong, activeBorderColor: UI.focus },
+          Tag: { borderRadiusSM: 24, defaultBg: "#e0e0e0", defaultColor: UI.text, fontSizeSM: 12 },
+          Modal: { titleFontSize: 20, borderRadiusLG: radius, paddingContentHorizontalLG: 24 },
+          Drawer: { paddingLG: 24 },
+          Dropdown: { borderRadiusLG: radius, paddingBlock: 8 },
+          Popover: { borderRadiusLG: radius },
+          Tooltip: { borderRadius: radius, colorBgSpotlight: "#393939" },
+          Descriptions: { labelBg: UI.tableHeaderBg, labelColor: UI.textSecondary },
+          Tabs: { titleFontSize: 14, inkBarColor: b.primaryColor, itemSelectedColor: UI.text, itemHoverColor: UI.text, horizontalItemGutter: 24, horizontalItemPadding: "12px 0" },
+          Segmented: { itemSelectedBg: UI.text, itemSelectedColor: "#ffffff", itemColor: UI.textSecondary, itemHoverColor: UI.text, itemHoverBg: "#e0e0e0", trackBg: "#e0e0e0", trackPadding: 0, borderRadius: radius, borderRadiusSM: radius },
+          Checkbox: { borderRadiusSM: radius },
+          Switch: { trackHeight: 24, handleSize: 18 },
           Avatar: { containerSize: 32 },
           Badge: { dotSize: 8 },
-          Pagination: { itemBg: UI.surface, itemActiveBg: UI.text, borderRadius: 8 },
-          Steps: { iconSize: 26 },
-          Statistic: { contentFontSize: 26, titleFontSize: 12 },
-          Alert: { borderRadiusLG: 12 },
+          Pagination: { itemBg: UI.surface, itemActiveBg: UI.text, borderRadius: radius },
+          Steps: { iconSize: 24 },
+          Statistic: { contentFontSize: 28, titleFontSize: 12 },
+          Alert: { borderRadiusLG: radius },
           Progress: { defaultColor: b.primaryColor },
+          Typography: { titleMarginBottom: 0 },
         },
       }}
     >

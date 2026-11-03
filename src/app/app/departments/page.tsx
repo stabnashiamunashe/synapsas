@@ -24,7 +24,7 @@ export default function DepartmentsPage() {
     } catch (e) { message.error((e as Error).message); }
   };
   const remove = async (d: D) => {
-    try { await api(`/api/departments/${d.id}`, { method: "DELETE" }); mutate(); } catch (e) { message.error((e as Error).message); }
+    try { await api(`/api/departments/${d.id}`, { method: "DELETE" }); message.success(`${d.name} removed`); mutate(); } catch (e) { message.error((e as Error).message); }
   };
 
   return (

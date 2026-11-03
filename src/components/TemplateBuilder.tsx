@@ -2,6 +2,7 @@
 
 import { App, Button, Card, Col, Form, Input, InputNumber, Row, Select, Space, Switch, Tabs, Typography } from "antd";
 import { ArrowLeftOutlined, EyeOutlined, SaveOutlined } from "@ant-design/icons";
+import { IconPicker } from "@/components/AppIcon";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -21,7 +22,7 @@ export interface TemplateModel {
 
 export const PRESETS: Record<string, Partial<TemplateModel>> = {
   MEMO: {
-    prefix: "MEMO", icon: "📝", color: "#722ed1",
+    prefix: "MEMO", icon: "memo", color: "#722ed1",
     fields: [
       { key: "to", label: "To", type: "text", required: true, width: "half" },
       { key: "subject", label: "Subject", type: "text", required: true, width: "half" },
@@ -32,7 +33,7 @@ export const PRESETS: Record<string, Partial<TemplateModel>> = {
     settings: { titleTemplate: "Memo: {{subject}}", allowAttachments: true },
   },
   REQUISITION: {
-    prefix: "PR", icon: "🛒", color: "#13c2c2",
+    prefix: "PR", icon: "cart", color: "#13c2c2",
     fields: [
       { key: "purpose", label: "Purpose", type: "textarea", required: true, width: "full" },
       { key: "neededBy", label: "Needed by", type: "date", width: "half" },
@@ -48,7 +49,7 @@ export const PRESETS: Record<string, Partial<TemplateModel>> = {
     settings: { titleTemplate: "Purchase requisition: {{purpose}}", allowAttachments: true, dueInDays: 7 },
   },
   DOCUMENT: {
-    prefix: "DOC", icon: "📄", color: "#fa8c16",
+    prefix: "DOC", icon: "document", color: "#fa8c16",
     fields: [
       { key: "documentTitle", label: "Document title", type: "text", required: true, width: "half" },
       { key: "documentType", label: "Document type", type: "select", options: ["Policy", "Contract", "Report", "Procedure", "Other"], required: true, width: "half" },
@@ -112,7 +113,7 @@ export function TemplateBuilder({ initial }: { initial: TemplateModel | null }) 
           <Col xs={24} md={8}><label className="muted">Name</label><Input value={model.name} onChange={(e) => set({ name: e.target.value })} placeholder="Purchase requisition" /></Col>
           <Col xs={12} md={5}><label className="muted">Category</label><Select style={{ width: "100%" }} value={model.category} onChange={applyPreset} options={(Object.keys(CATEGORY_LABELS) as TemplateCategory[]).map((c) => ({ value: c, label: CATEGORY_LABELS[c] }))} /></Col>
           <Col xs={6} md={3}><label className="muted">Prefix</label><Input className="mono" value={model.prefix} maxLength={10} onChange={(e) => set({ prefix: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "") })} /></Col>
-          <Col xs={6} md={2}><label className="muted">Icon</label><Input value={model.icon || ""} onChange={(e) => set({ icon: e.target.value })} placeholder="📝" /></Col>
+          <Col xs={12} md={4}><label className="muted">Icon</label><IconPicker value={model.icon} onChange={(v) => set({ icon: v || null })} style={{ width: "100%" }} /></Col>
           <Col xs={12} md={3}><label className="muted">Colour</label><Input type="color" value={model.color || "#1677ff"} onChange={(e) => set({ color: e.target.value })} /></Col>
           <Col xs={24} md={24} style={{ marginTop: 10 }}><label className="muted">Description</label><Input value={model.description || ""} onChange={(e) => set({ description: e.target.value })} placeholder="When to use this workflow" /></Col>
         </Row>

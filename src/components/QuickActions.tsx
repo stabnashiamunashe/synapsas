@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useApi, useMe } from "@/lib/client";
 import { ROLE_RANK } from "@/lib/roles";
 import { tint } from "./Providers";
+import { AppIcon } from "@/components/AppIcon";
 
 interface Tpl { id: string; name: string; icon?: string | null; color?: string | null; levels: unknown[] }
 
@@ -27,7 +28,7 @@ export function QuickActions() {
           <Tooltip key={t.id} title={`${t.levels.length} approval level${t.levels.length === 1 ? "" : "s"}`}>
             <Link href={`/app/requests/new?template=${t.id}`}>
               <Button className="btn-icon-color" icon={<PlusOutlined />} style={{ ["--btn-icon" as string]: c, background: tint(c, 0.93), borderColor: tint(c, 0.7), color: "#111827" }}>
-                {t.icon ? `${t.icon} ` : ""}{t.name}
+                <AppIcon name={t.icon} style={{ marginRight: 8, color: t.color || undefined }} />{t.name}
               </Button>
             </Link>
           </Tooltip>

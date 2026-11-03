@@ -12,6 +12,7 @@ import { DynamicFields, defaultsFor } from "@/components/DynamicForm";
 import { ProjectPicker } from "@/components/ProjectPicker";
 import type { FieldDef, TemplateSettings } from "@/lib/types";
 import { CATEGORY_LABELS } from "@/lib/types";
+import { AppIcon } from "@/components/AppIcon";
 
 interface Template { id: string; name: string; description?: string | null; category: keyof typeof CATEGORY_LABELS; icon?: string | null; color?: string | null; fields: FieldDef[]; levels: unknown[]; settings: TemplateSettings }
 
@@ -69,7 +70,7 @@ function NewRequest() {
             {visible.map((t) => (
               <Col xs={24} sm={12} lg={8} key={t.id}>
                 <Card hoverable onClick={() => setTemplateId(t.id)} style={{ height: "100%", borderTop: `3px solid ${t.color || "#1677ff"}` }}>
-                  <Typography.Text strong style={{ fontSize: 16 }}>{t.icon ? `${t.icon} ` : ""}{t.name}</Typography.Text>
+                  <Typography.Text strong style={{ fontSize: 16 }}><AppIcon name={t.icon} style={{ marginRight: 8, color: t.color || undefined }} />{t.name}</Typography.Text>
                   <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{CATEGORY_LABELS[t.category] || t.category} · {t.levels.length} level{t.levels.length === 1 ? "" : "s"}</div>
                   <Typography.Paragraph type="secondary" ellipsis={{ rows: 2 }} style={{ marginBottom: 0 }}>{t.description || "No description"}</Typography.Paragraph>
                 </Card>
@@ -80,7 +81,7 @@ function NewRequest() {
       ) : (
         <Row gutter={16}>
           <Col xs={24} lg={17}>
-            <Card title={<span>{template.icon ? `${template.icon} ` : ""}{template.name}</span>} extra={<Button type="link" onClick={() => setTemplateId(null)}>Change workflow</Button>}>
+            <Card title={<span><AppIcon name={template.icon} style={{ marginRight: 8, color: template.color || undefined }} />{template.name}</span>} extra={<Button type="link" onClick={() => setTemplateId(null)}>Change workflow</Button>}>
               <Form form={form} layout="vertical" requiredMark="optional">
                 <Row gutter={16}>
                   <Col xs={24} md={12}><Form.Item name="title" label="Title" rules={template.settings.titleTemplate ? [] : [{ required: true, message: "Give the request a title" }]}><Input placeholder={template.settings.titleTemplate ? `Leave blank to use: ${template.settings.titleTemplate}` : "Short summary"} /></Form.Item></Col>

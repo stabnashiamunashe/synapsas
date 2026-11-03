@@ -42,7 +42,7 @@ export default function DelegationsPage() {
           { title: "Period", render: (_, d) => `${formatDate(d.startsAt)} → ${formatDate(d.endsAt)}` },
           { title: "Reason", dataIndex: "reason", render: (v) => v || <span className="muted">–</span> },
           { title: "Status", render: (_, d) => !d.isActive ? <Tag>ended</Tag> : new Date(d.startsAt).getTime() > now ? <Tag color="blue">scheduled</Tag> : new Date(d.endsAt).getTime() < now ? <Tag>expired</Tag> : <Tag color="green">active</Tag> },
-          { title: "", width: 80, render: (_, d) => d.isActive && (d.fromUserId === me?.user.id || isAdmin) ? <Popconfirm title="End delegation?" onConfirm={async () => { await api(`/api/delegations/${d.id}`, { method: "DELETE" }); mutate(); }}><a style={{ color: "#ff4d4f" }}>End</a></Popconfirm> : null },
+          { title: "", width: 80, render: (_, d) => d.isActive && (d.fromUserId === me?.user.id || isAdmin) ? <Popconfirm title="End delegation?" onConfirm={async () => { try { await api(`/api/delegations/${d.id}`, { method: "DELETE" }); message.success("Delegation ended"); mutate(); } catch (e) { message.error((e as Error).message); } }}><a style={{ color: "#ff4d4f" }}>End</a></Popconfirm> : null },
         ]} />
     </div>
   );

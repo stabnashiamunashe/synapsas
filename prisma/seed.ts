@@ -37,7 +37,7 @@ async function main() {
       onboardingCompletedAt: new Date(),
       billingEmail: "ict@zimstat.co.zw",
       branding: j({
-        productName: "ZimStat Approvals", primaryColor: "#1414D2", sidebarTheme: "light", borderRadius: 8,
+        productName: "ZimStat Approvals", primaryColor: "#1414D2", sidebarTheme: "dark", borderRadius: 0,
         logoUrl: "/brand/zimstat-logo.png", loginTagline: "Travelling & subsistence, leave and internal approvals",
         footerText: "© Zimbabwe National Statistics Agency · 20th Floor, Kaguvi Building, Harare", hideVendorBranding: true, supportEmail: "ict@zimstat.co.zw",
       }),
@@ -101,7 +101,7 @@ async function main() {
   // 1. Application for Field Duty and Travelling & Subsistence Advance
   const tsAdvance = await prisma.workflowTemplate.create({
     data: {
-      orgId: org.id, name: "T&S Advance Application", category: "EXPENSE", prefix: "TSA", icon: "🧳", color: "#1414D2", createdById: ict.id,
+      orgId: org.id, name: "T&S Advance Application", category: "EXPENSE", prefix: "TSA", icon: "travel", color: "#1414D2", createdById: ict.id,
       description: "Application for Field Duty and Travelling & Subsistence Advance. Recommended by the Head of Section, certified by Finance, approved by the Director General / Head of Division.",
       fields: j([
         { key: "h1", label: "Section A — Basic information", type: "heading", width: "full" },
@@ -136,7 +136,7 @@ async function main() {
   // 2. Travelling and Subsistence Expense Claim Form
   const tsClaim = await prisma.workflowTemplate.create({
     data: {
-      orgId: org.id, name: "T&S Expense Claim", category: "EXPENSE", prefix: "TSC", icon: "🧾", color: "#D7262D", createdById: ict.id,
+      orgId: org.id, name: "T&S Expense Claim", category: "EXPENSE", prefix: "TSC", icon: "receipt", color: "#D7262D", createdById: ict.id,
       description: "Travelling and Subsistence Expense Claim. Certified by the Supervisor/Team Leader, checked and passed for payment by Finance, examined by Internal Audit.",
       fields: j([
         { key: "h1", label: "Claimant", type: "heading", width: "full" },
@@ -196,7 +196,7 @@ async function main() {
   // 3. Application for Leave (Public Service form)
   const leave = await prisma.workflowTemplate.create({
     data: {
-      orgId: org.id, name: "Application for Leave", category: "LEAVE", prefix: "LV", icon: "📋", color: "#2F855A", createdById: ict.id,
+      orgId: org.id, name: "Application for Leave", category: "LEAVE", prefix: "LV", icon: "clipboard", color: "#2F855A", createdById: ict.id,
       description: "Public Service Application for Leave (Second Schedule, s.34): vacation, sick, annual, special, without pay, urgent private affairs. Recommended by the supervisor, approved by the Head of Section, recorded by Registry.",
       fields: j([
         { key: "employeeCode", label: "Employee code number", type: "text", required: true, width: "third", helpText: "If the E.C. number or check digit is incorrect the form is rejected." },
@@ -224,7 +224,7 @@ async function main() {
   // 4. Application for Annual Leave (off days)
   const annual = await prisma.workflowTemplate.create({
     data: {
-      orgId: org.id, name: "Application for Annual Leave (off days)", category: "LEAVE", prefix: "AL", icon: "🌴", color: "#F0A020", createdById: ict.id,
+      orgId: org.id, name: "Application for Annual Leave (off days)", category: "LEAVE", prefix: "AL", icon: "leave", color: "#F0A020", createdById: ict.id,
       description: "Annual leave / off days against the 12-day yearly entitlement. Recommended by the supervisor, approved by the Head of Office, recorded and filed by Registry/Admin. The officer's balance is shown on the request.",
       fields: j([
         { key: "leaveType", label: "Type", type: "select", options: ["Annual (off days)"], required: true, width: "third", defaultValue: "Annual (off days)" },
@@ -244,7 +244,7 @@ async function main() {
   // 5. Internal memo (general purpose)
   const memo = await prisma.workflowTemplate.create({
     data: {
-      orgId: org.id, name: "Internal memo", category: "MEMO", prefix: "MEMO", icon: "📝", color: "#722ed1", createdById: ict.id,
+      orgId: org.id, name: "Internal memo", category: "MEMO", prefix: "MEMO", icon: "memo", color: "#722ed1", createdById: ict.id,
       description: "Circulate an internal memo for approval by the Head of Section, and by the Director General when marked for the Directorate.",
       fields: j([
         { key: "to", label: "To", type: "text", required: true, width: "half" },
@@ -263,7 +263,7 @@ async function main() {
   // 6. Vehicle request (fleet): approved requests become trip bookings for the transport office
   const vehicleReq = await prisma.workflowTemplate.create({
     data: {
-      orgId: org.id, name: "Vehicle request", category: "OTHER", prefix: "VR", icon: "🚙", color: "#0e7490", createdById: ict.id,
+      orgId: org.id, name: "Vehicle request", category: "OTHER", prefix: "VR", icon: "vehicle", color: "#0e7490", createdById: ict.id,
       description: "Request an Agency vehicle for official travel. Approved by the Head of Section, then the transport office assigns a vehicle and driver on the Fleet page.",
       fields: j([
         { key: "destination", label: "Destination", type: "text", required: true, width: "half" },
@@ -372,13 +372,13 @@ async function main() {
   // --- Service desk: categories with SLAs and a few cases ---
   const cat = (name: string, departmentId: string, defaultSlaHours: number, defaultPriority: string, icon: string, description: string, isPublic = true) =>
     prisma.caseCategory.create({ data: { orgId: org.id, name, departmentId, defaultSlaHours, defaultPriority, icon, description, isPublic } });
-  const catData = await cat("Statistical data request", surveys.id, 120, "MEDIUM", "📊", "Request tables, microdata or publications (census, surveys, CPI, trade).");
-  const catPublication = await cat("Publication or release query", surveys.id, 72, "LOW", "📰", "Questions about a published release or dissemination schedule.");
-  const catIct = await cat("ICT support", ictSec.id, 24, "HIGH", "💻", "Email, network, laptop, printer, system access.", false);
-  const catSystem = await cat("System access / password", ictSec.id, 8, "HIGH", "🔐", "Account creation, password reset, access to applications.", false);
-  const catFacilities = await cat("Facilities & office maintenance", hr.id, 72, "MEDIUM", "🏢", "Lifts, lights, plumbing, furniture, office equipment.", false);
-  const catComplaint = await cat("Complaint about service", directorate.id, 48, "HIGH", "📣", "Complaints about a ZimStat service, officer or field visit.");
-  const catPayment = await cat("Payment or finance query", finance.id, 72, "MEDIUM", "💵", "Advance, claim or supplier payment queries.", false);
+  const catData = await cat("Statistical data request", surveys.id, 120, "MEDIUM", "data", "Request tables, microdata or publications (census, surveys, CPI, trade).");
+  const catPublication = await cat("Publication or release query", surveys.id, 72, "LOW", "publication", "Questions about a published release or dissemination schedule.");
+  const catIct = await cat("ICT support", ictSec.id, 24, "HIGH", "laptop", "Email, network, laptop, printer, system access.", false);
+  const catSystem = await cat("System access / password", ictSec.id, 8, "HIGH", "lock", "Account creation, password reset, access to applications.", false);
+  const catFacilities = await cat("Facilities & office maintenance", hr.id, 72, "MEDIUM", "building", "Lifts, lights, plumbing, furniture, office equipment.", false);
+  const catComplaint = await cat("Complaint about service", directorate.id, 48, "HIGH", "megaphone", "Complaints about a ZimStat service, officer or field visit.");
+  const catPayment = await cat("Payment or finance query", finance.id, 72, "MEDIUM", "payment", "Advance, claim or supplier payment queries.", false);
 
   const mkCase = async (d: { ref: string; title: string; description: string; category: { id: string; departmentId: string; defaultSlaHours: number }; status: string; priority: string; assigneeId?: string | null; reporterName: string; reporterPhone?: string; reporterEmail?: string; reporterUserId?: string | null; source: string; location?: string; office?: string; ageHours: number; resolvedHoursAgo?: number; projectId?: string | null }) => {
     const created = hoursAgo(d.ageHours);

@@ -63,6 +63,7 @@ function CasesBoard() {
     try {
       await api(`/api/cases/${item.id}/status`, { method: "POST", json: { version: item.version, status: to, reason: why || undefined } });
       setReasonFor(null); setReason("");
+      message.success(`${item.referenceNo} moved to ${CASE_STATUS_LABELS[to] || to}`);
       refresh();
     } catch (e) {
       const err = e as { status?: number; message: string };
@@ -186,7 +187,7 @@ function CasesBoard() {
       <Modal open={!!reasonFor} title={reasonFor ? `Move ${reasonFor.item.referenceNo} to ${CASE_STATUS_LABELS[reasonFor.to]}` : ""} onCancel={() => { setReasonFor(null); setLocal(null); }} onOk={() => reasonFor && doMove(reasonFor.item, reasonFor.to, reason)} okText="Move">
         <Input.TextArea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (required by your settings)" autoSize={{ minRows: 2 }} />
       </Modal>
-      <Modal open={saveOpen} title="Save view" onCancel={() => setSaveOpen(false)} okText="Save" onOk={async () => { if (!viewName.trim()) return; await api("/api/case-views", { method: "POST", json: { name: viewName.trim(), filters, isDefault: false } }); setViewName(""); setSaveOpen(false); mutateViews(); message.success("View saved"); }}>
+      <Modal open={saveOpen} title="Save view" onCancel={() => setSaveOpen(false)} okText="Save" onOk={async () => { if (!viewName.trim()) return; message.success("View saved"); await api("/api/case-views", { method: "POST", json: { name: viewName.trim(), filters, isDefault: false } }); setViewName(""); setSaveOpen(false); mutateViews(); message.success("View saved"); }}>
         <Input value={viewName} onChange={(e) => setViewName(e.target.value)} placeholder="e.g. ICT · breached" />
       </Modal>
     </div>

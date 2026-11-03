@@ -7,6 +7,7 @@ import { useState } from "react";
 import { api, useApi } from "@/lib/client";
 import { CASE_PRIORITIES, CASE_PRIORITY_LABELS, type CasePriority } from "@/lib/caseTypes";
 import { PriorityDot } from "@/components/cases/CaseBits";
+import { AppIcon, IconPicker } from "@/components/AppIcon";
 
 interface Cat { id: string; name: string; description?: string | null; departmentId: string; department: { id: string; name: string }; defaultPriority: CasePriority; defaultSlaHours: number; icon?: string | null; isPublic: boolean; isActive: boolean; _count: { cases: number } }
 
@@ -36,14 +37,14 @@ export default function CaseCategoriesPage() {
       </div>
       <Card>
         <Table<Cat> rowKey="id" dataSource={data || []} pagination={false} size="small" columns={[
-          { title: "Category", render: (_, c) => <span>{c.icon ? `${c.icon} ` : ""}<b>{c.name}</b>{c.description && <div className="muted" style={{ fontSize: 12 }}>{c.description}</div>}</span> },
+          { title: "Category", render: (_, c) => <span><AppIcon name={c.icon} style={{ marginRight: 8, color: undefined }} /><b>{c.name}</b>{c.description && <div className="muted" style={{ fontSize: 12 }}>{c.description}</div>}</span> },
           { title: "Section", render: (_, c) => c.department?.name },
           { title: "SLA", dataIndex: "defaultSlaHours", width: 90, render: (h) => `${h} h` },
           { title: "Priority", dataIndex: "defaultPriority", width: 110, render: (p: CasePriority) => <PriorityDot priority={p} withLabel /> },
           { title: "Public", dataIndex: "isPublic", width: 90, render: (v) => (v ? <Tag color="green">yes</Tag> : <Tag>no</Tag>) },
           { title: "Active", dataIndex: "isActive", width: 90, render: (v) => (v ? <Tag color="blue">active</Tag> : <Tag>off</Tag>) },
           { title: "Cases", width: 80, render: (_, c) => c._count.cases },
-          { title: "", width: 140, render: (_, c) => <Space><a onClick={() => open(c)}>Edit</a><Popconfirm title={c._count.cases ? "Deactivate this category?" : "Delete this category?"} onConfirm={async () => { await api(`/api/case-categories/${c.id}`, { method: "DELETE" }); mutate(); }}><a style={{ color: "#c53030" }}>{c._count.cases ? "Deactivate" : "Delete"}</a></Popconfirm></Space> },
+          { title: "", width: 140, render: (_, c) => <Space><a onClick={() => open(c)}>Edit</a><Popconfirm title={c._count.cases ? "Deactivate this category?" : "Delete this category?"} onConfirm={async () => { try { await api(`/api/case-categories/${c.id}`, { method: "DELETE" }); message.success(c._count.cases ? "Category deactivated" : "Category deleted"); mutate(); } catch (e) { message.error((e as Error).message); } }}><a style={{ color: "#c53030" }}>{c._count.cases ? "Deactivate" : "Delete"}</a></Popconfirm></Space> },
         ]} />
       </Card>
       <Modal open={!!editing} title={editing === "new" ? "Add category" : "Edit category"} onCancel={() => setEditing(null)} onOk={save} okText="Save" destroyOnHidden>
@@ -54,7 +55,7 @@ export default function CaseCategoriesPage() {
           <Space size="large" wrap>
             <Form.Item name="defaultSlaHours" label="SLA (hours)" rules={[{ required: true }]}><InputNumber min={1} max={2160} /></Form.Item>
             <Form.Item name="defaultPriority" label="Default priority"><Select style={{ width: 140 }} options={CASE_PRIORITIES.map((p) => ({ value: p, label: CASE_PRIORITY_LABELS[p] }))} /></Form.Item>
-            <Form.Item name="icon" label="Icon (emoji)"><Input style={{ width: 80 }} maxLength={4} /></Form.Item>
+            <Form.Item name="icon" label="Icon"><IconPicker style={{ width: 200 }} /></Form.Item>
             <Form.Item name="isPublic" label="On public form" valuePropName="checked"><Switch /></Form.Item>
             <Form.Item name="isActive" label="Active" valuePropName="checked"><Switch /></Form.Item>
           </Space>

@@ -8,7 +8,7 @@ export interface Preset {
 
 export const PRESETS: Partial<Record<TemplateCategory, Preset>> = {
   MEMO: {
-    name: "Internal memo", prefix: "MEMO", icon: "📝", color: "#722ed1",
+    name: "Internal memo", prefix: "MEMO", icon: "memo", color: "#722ed1",
     description: "Circulate an internal memo. Reviewed by the line manager, then the department head when marked confidential.",
     fields: [
       { key: "to", label: "To", type: "text", required: true, width: "half" },
@@ -24,7 +24,7 @@ export const PRESETS: Partial<Record<TemplateCategory, Preset>> = {
     settings: { titleTemplate: "Memo: {{subject}}", allowAttachments: true, allowRequesterCancel: true },
   },
   REQUISITION: {
-    name: "Purchase requisition", prefix: "PR", icon: "🛒", color: "#13c2c2",
+    name: "Purchase requisition", prefix: "PR", icon: "cart", color: "#13c2c2",
     description: "Request goods or services with line items. Manager, then department head; the CFO-style level runs only above a threshold.",
     fields: [
       { key: "purpose", label: "Purpose", type: "textarea", required: true, width: "full" },
@@ -46,7 +46,7 @@ export const PRESETS: Partial<Record<TemplateCategory, Preset>> = {
     settings: { titleTemplate: "PR: {{purpose}}", allowAttachments: true, dueInDays: 7, allowRequesterCancel: true, notifyRequesterOnEachLevel: true },
   },
   DOCUMENT: {
-    name: "Document approval", prefix: "DOC", icon: "📄", color: "#fa8c16",
+    name: "Document approval", prefix: "DOC", icon: "document", color: "#fa8c16",
     description: "Approve policies, contracts and reports. A reviewer chosen on the form goes first, then the department head, then an admin for policies and contracts.",
     fields: [
       { key: "documentTitle", label: "Document title", type: "text", required: true, width: "half" },
@@ -63,7 +63,7 @@ export const PRESETS: Partial<Record<TemplateCategory, Preset>> = {
     settings: { titleTemplate: "{{documentType}}: {{documentTitle}}", allowAttachments: true },
   },
   LEAVE: {
-    name: "Leave request", prefix: "LV", icon: "🌴", color: "#52c41a",
+    name: "Leave request", prefix: "LV", icon: "leave", color: "#52c41a",
     description: "Annual, sick or unpaid leave. Line manager approves; HR is notified through the department head level.",
     fields: [
       { key: "leaveType", label: "Leave type", type: "select", options: ["Annual", "Sick", "Unpaid", "Compassionate", "Study"], required: true, width: "half" },
@@ -76,7 +76,7 @@ export const PRESETS: Partial<Record<TemplateCategory, Preset>> = {
     settings: { titleTemplate: "{{leaveType}} leave", allowAttachments: true, allowRequesterCancel: true },
   },
   EXPENSE: {
-    name: "Expense claim", prefix: "EXP", icon: "🧾", color: "#eb2f96",
+    name: "Expense claim", prefix: "EXP", icon: "receipt", color: "#eb2f96",
     description: "Reimbursement claims with itemised expenses and receipts.",
     fields: [
       { key: "purpose", label: "Purpose", type: "text", required: true, width: "full" },

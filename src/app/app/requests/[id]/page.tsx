@@ -94,7 +94,7 @@ export default function RequestDetailPage() {
   };
   const addComment = async () => {
     if (!newComment.trim()) return;
-    try { await api(`/api/requests/${id}/comments`, { method: "POST", json: { body: newComment } }); setNewComment(""); mutate(); } catch (e) { message.error((e as Error).message); }
+    try { await api(`/api/requests/${id}/comments`, { method: "POST", json: { body: newComment } }); setNewComment(""); message.success("Comment added"); mutate(); } catch (e) { message.error((e as Error).message); }
   };
   const upload = async (file: File) => {
     const fd = new FormData(); fd.append("file", file);
@@ -185,7 +185,7 @@ export default function RequestDetailPage() {
                         <div className="muted" style={{ fontSize: 12 }}>{(a.size / 1024).toFixed(0)} KB · {a.uploadedBy.name} · {formatDate(a.createdAt, true)}</div>
                       </div>
                       <a href={`/api/attachments/${a.id}`} target="_blank" rel="noopener">Open</a>
-                      {canAttach && <Popconfirm title="Remove file?" onConfirm={async () => { await api(`/api/attachments/${a.id}`, { method: "DELETE" }); mutate(); }}><a style={{ color: "#c53030" }}>Remove</a></Popconfirm>}
+                      {canAttach && <Popconfirm title="Remove file?" onConfirm={async () => { try { await api(`/api/attachments/${a.id}`, { method: "DELETE" }); message.success("File removed"); mutate(); } catch (e) { message.error((e as Error).message); } }}><a style={{ color: "#c53030" }}>Remove</a></Popconfirm>}
                     </div>
                   </Card>
                 ))}

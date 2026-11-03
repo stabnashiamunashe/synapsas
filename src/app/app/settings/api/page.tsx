@@ -42,7 +42,7 @@ export default function ApiSettingsPage() {
             { title: "Prefix", dataIndex: "prefix", render: (p) => <span className="mono">{p}_…</span> },
             { title: "Created", dataIndex: "createdAt", render: (d) => formatDate(d) },
             { title: "Last used", dataIndex: "lastUsedAt", render: (d) => d ? formatDate(d, true) : <span className="muted">never</span> },
-            { title: "", width: 80, render: (_, k) => <Popconfirm title="Revoke key?" onConfirm={async () => { await api(`/api/api-keys/${k.id}`, { method: "DELETE" }); mutateKeys(); }}><a style={{ color: "#ff4d4f" }}>Revoke</a></Popconfirm> },
+            { title: "", width: 80, render: (_, k) => <Popconfirm title="Revoke key?" onConfirm={async () => { try { await api(`/api/api-keys/${k.id}`, { method: "DELETE" }); message.success("API key revoked"); mutateKeys(); } catch (e) { message.error((e as Error).message); } }}><a style={{ color: "#ff4d4f" }}>Revoke</a></Popconfirm> },
           ]} />
       </Card>
       {newSecret && <Alert type="success" showIcon closable onClose={() => setNewSecret(null)} title={`Signing secret for ${newSecret.url}. Copy it now; it will not be shown again.`} description={<Typography.Text code copyable>{newSecret.secret}</Typography.Text>} />}
@@ -57,8 +57,8 @@ export default function ApiSettingsPage() {
             { title: "Events", dataIndex: "events", render: (ev: string[]) => ev.length ? ev.map((e) => <Tag key={e}>{e}</Tag>) : <Tag>all</Tag> },
             { title: "Secret", dataIndex: "secretHint", render: (s, h) => <Space><span className="mono">{s}</span><Popconfirm title="Rotate secret? Deliveries signed with the old secret will fail." onConfirm={async () => { const r = await api<{ secret: string }>(`/api/webhooks/${h.id}`, { method: "POST" }); setNewSecret({ url: h.url, secret: r.secret }); mutateHooks(); }}><a>rotate</a></Popconfirm></Space> },
             { title: "Last", render: (_, h) => h.lastFiredAt ? <span>{h.lastStatus === 0 ? <Tag color="red">error</Tag> : <Tag color={h.lastStatus && h.lastStatus < 300 ? "green" : "orange"}>{h.lastStatus}</Tag>}{formatDate(h.lastFiredAt, true)}</span> : <span className="muted">never</span> },
-            { title: "Active", render: (_, h) => <Switch size="small" checked={h.isActive} onChange={async (v) => { await api(`/api/webhooks/${h.id}`, { method: "PATCH", json: { isActive: v } }); mutateHooks(); }} /> },
-            { title: "", width: 80, render: (_, h) => <Popconfirm title="Delete webhook?" onConfirm={async () => { await api(`/api/webhooks/${h.id}`, { method: "DELETE" }); mutateHooks(); }}><a style={{ color: "#ff4d4f" }}>Delete</a></Popconfirm> },
+            { title: "Active", render: (_, h) => <Switch size="small" checked={h.isActive} onChange={async (v) => { try { await api(`/api/webhooks/${h.id}`, { method: "PATCH", json: { isActive: v } }); message.success(v ? "Webhook enabled" : "Webhook paused"); mutateHooks(); } catch (e) { message.error((e as Error).message); } }} /> },
+            { title: "", width: 80, render: (_, h) => <Popconfirm title="Delete webhook?" onConfirm={async () => { try { await api(`/api/webhooks/${h.id}`, { method: "DELETE" }); message.success("Webhook deleted"); mutateHooks(); } catch (e) { message.error((e as Error).message); } }}><a style={{ color: "#ff4d4f" }}>Delete</a></Popconfirm> },
           ]} />
       </Card>
       <Modal open={hookOpen} onCancel={() => setHookOpen(false)} onOk={createHook} title="Add webhook">

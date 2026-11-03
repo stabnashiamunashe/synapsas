@@ -17,6 +17,8 @@ const HOLIDAYS = [
   [`${year}-12-22`, "Unity Day"], [`${year}-12-25`, "Christmas Day"], [`${year}-12-26`, "Boxing Day"],
 ].map(([date, name]) => ({ date, name }));
 
+const LEGACY_ICONS: Record<string, string> = { "🧳": "travel", "🧾": "receipt", "📋": "clipboard", "🌴": "leave", "📝": "memo", "🚙": "vehicle", "🛒": "cart", "📄": "document", "📊": "data", "📰": "publication", "💻": "laptop", "🔐": "lock", "🏢": "building", "📣": "megaphone", "💵": "payment" };
+
 async function main() {
   const org = await prisma.organization.findFirst({ where: { slug: "zimstat" } }) || (await prisma.organization.findFirst());
   if (!org) throw new Error("No organisation found. Run the main seed first (npm run db:seed).");
@@ -31,6 +33,16 @@ async function main() {
   const projects = await prisma.project.findMany({ where: { orgId: org.id } });
   const proj = (code: string) => projects.find((p) => p.code === code) || null;
   const zdhs = proj("ZDHS"), mics = proj("MICS");
+
+  // 0. Visual refresh: named icons instead of emoji, square corners (IBM Carbon style)
+  for (const t of await prisma.workflowTemplate.findMany({ where: { orgId: org.id }, select: { id: true, icon: true } })) {
+    if (t.icon && LEGACY_ICONS[t.icon]) await prisma.workflowTemplate.update({ where: { id: t.id }, data: { icon: LEGACY_ICONS[t.icon] } });
+  }
+  for (const c of await prisma.caseCategory.findMany({ where: { orgId: org.id }, select: { id: true, icon: true } })) {
+    if (c.icon && LEGACY_ICONS[c.icon]) await prisma.caseCategory.update({ where: { id: c.id }, data: { icon: LEGACY_ICONS[c.icon] } });
+  }
+  const branding = JSON.parse(org.branding || "{}");
+  if ((branding.borderRadius && branding.borderRadius > 2) || branding.sidebarTheme !== "dark") { await prisma.organization.update({ where: { id: org.id }, data: { branding: j({ ...branding, borderRadius: 0, sidebarTheme: "dark" }) } }); console.log("Branding: square corners, dark navigation"); }
 
   // 1. Organisation settings: public holidays
   const settings = JSON.parse(org.settings || "{}");
@@ -52,7 +64,7 @@ async function main() {
   if (!vehicleReq) {
     vehicleReq = await prisma.workflowTemplate.create({
       data: {
-        orgId: org.id, name: "Vehicle request", category: "OTHER", prefix: "VR", icon: "🚙", color: "#0e7490", createdById: ict.id,
+        orgId: org.id, name: "Vehicle request", category: "OTHER", prefix: "VR", icon: "vehicle", color: "#0e7490", createdById: ict.id,
         description: "Request an Agency vehicle for official travel. Approved by the Head of Section, then the transport office assigns a vehicle and driver on the Fleet page.",
         fields: j([
           { key: "destination", label: "Destination", type: "text", required: true, width: "half" },
