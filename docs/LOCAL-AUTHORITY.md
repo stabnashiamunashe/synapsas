@@ -55,6 +55,22 @@ SUBMITTED → UNDER_REVIEW → INSPECTION → UNDER_REVIEW → APPROVED → ISSU
 - **Renew** opens a new linked application with the applicant's details and the *current* fee, leaving the old licence on record.
 - **Expiry sweep**: the cron endpoint (`/api/cron/escalate`) marks lapsed licences `EXPIRED` and sends a reminder to the officer, inspector and department head 30 days before expiry (at most once a week per licence).
 
+### Citizen channels
+
+Applications arrive three ways and all go through one creation path (`createLicenceApplication` in `src/lib/licensing.ts`), so numbering, checklists, officer routing and applicant notices are identical. The register and the record drawer show a **Portal** or **WhatsApp** tag on applications that did not come over the counter.
+
+| Channel | How a citizen applies | Tracking and documents |
+| --- | --- | --- |
+| **Counter** (`source = STAFF`) | An officer logs it on *New licence application*. | Officer ticks documents as they are handed in. |
+| **Public portal** (`source = PUBLIC`) | `/apply`: choose a licence (fee, validity, required documents shown), fill in applicant and premises, attach documents against each requirement, accept the declaration. No account; honeypot and 10 applications per hour per IP. The applicant gets a reference `LA-<year>-nnnn`. | `/verify` → *Track my application* with the reference and the phone number (or email) given on the application: status, next step, fee due, document checklist with upload buttons (uploads tick the officer checklist), public timeline, licence number and expiry once issued. |
+| **WhatsApp** (`source = WHATSAPP`) | Main menu → *Apply for a licence* (or type **licence**): pick the licence from a list, give the applicant name, trading name, premises, ward and a description, confirm. The bot replies with the reference, the documents to bring or upload, the fee and the inspection notice. | *My licence applications* (or type **my licences**) lists the applications from that phone number with status, fee due or licence number. Applications are matched to the phone number, so another number cannot see them. |
+
+**Applicant notifications** (`notifyApplicant`): received, inspection scheduled, approved with the fee to pay, issued with the licence number and expiry, rejected with the reason, suspended, revoked. WhatsApp applicants get them on WhatsApp (through an approved template once `WHATSAPP_TEMPLATE_LICENCE_UPDATE` or the case-update template is configured; in the sandbox they appear in the message log as *simulated*). Applicants who gave an email address get the same text by email when SMTP is configured. Expiry reminders also go to WhatsApp applicants 30 days before a licence lapses.
+
+**Uploaded documents** are stored under `UPLOAD_DIR/<org>/licences`, limited to photos and PDFs of 8 MB, at most 15 per application, and are listed in the record drawer under *Uploaded by the applicant* (download via `/api/licence-attachments/:id`, staff only). Uploads need the token returned by the application or the tracking lookup, so only someone who knows the reference and the phone number can add files.
+
+Switch the portal off with `settings.licensing.portal = false` on the organisation; the WhatsApp licensing flow follows the *Accept reports on WhatsApp* switch.
+
 ### Screens
 
 | Route | Who | Purpose |
@@ -62,7 +78,8 @@ SUBMITTED → UNDER_REVIEW → INSPECTION → UNDER_REVIEW → APPROVED → ISSU
 | `/app/licences` | everyone | Register with KPI tiles (awaiting action, inspections, issued, expiring, fees collected this year, suspended/revoked), scopes (*Needs action, Issued, Expiring, Mine, All*), search and filters, CSV export, and the record drawer with actions, document checklist and history. |
 | `/app/licences/new` | everyone | Log an application; fee, validity and checklist come from the chosen type. |
 | `/app/licences/types` | administrators | Fee schedule: add or edit licence types; deleting a type with history deactivates it. |
-| `/verify` | public | Check a licence number printed on a certificate. |
+| `/apply` | public | Citizen self-service application with document upload. |
+| `/verify` | public | Track an application (reference + phone) or check a licence number printed on a certificate. |
 | `/api/licences/:id/certificate` | signed-in | Printable certificate. |
 
 The dashboard shows a licensing strip (applications awaiting action, items assigned to you, licences expiring within 30 days). Everything is searchable from the command palette (Ctrl K): "licence", "permit", "fees", "verify".
@@ -76,7 +93,8 @@ The dashboard shows a licensing strip (applications awaiting action, items assig
 | `POST /api/licences` | Log an application. |
 | `GET/PATCH /api/licences/:id` | Detail with events and renewals; edit applicant details, priority, officer, documents. |
 | `POST /api/licences/:id` | `{ action }` = `review`, `schedule_inspection`, `record_inspection`, `approve`, `reject`, `pay`, `issue`, `renew`, `suspend`, `reinstate`, `revoke`, `cancel`, `note`, `document` with the fields each needs (inspectorId/inspectionDue, outcome/conditions, receiptNo/amount/paidAt, issuedAt/validityMonths, note, documents). |
-| `GET /api/public/licence-verify?no=` | Public lookup. |
+| `GET /api/public/licence-verify?no=` | Public licence check. |
+| `GET /api/public/licensing` · `POST /api/public/licences` · `GET /api/public/licences/:ref?phone=` · `POST /api/public/licences/:ref/attachments` | Public catalogue, citizen application, tracking and document upload (upload token in `x-upload-token`). |
 
 ## Sample data
 

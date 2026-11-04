@@ -13,7 +13,7 @@ export interface PortalConfig {
 }
 
 /** Frame for the public report/track pages: agency header, announcement, footer with contacts. */
-export function PublicShell({ children, onConfig, active }: { children: (cfg: PortalConfig | null) => React.ReactNode; onConfig?: (c: PortalConfig) => void; active: "report" | "track" | "verify" }) {
+export function PublicShell({ children, onConfig, active }: { children: (cfg: PortalConfig | null) => React.ReactNode; onConfig?: (c: PortalConfig) => void; active: "report" | "track" | "verify" | "apply" }) {
   const [cfg, setCfg] = useState<PortalConfig | null>(null);
   useEffect(() => { api<PortalConfig>("/api/public/portal").then((c) => { setCfg(c); onConfig?.(c); }).catch(() => setCfg(null)); }, [onConfig]);
   const b = { ...DEFAULT_BRANDING, ...(cfg?.branding || {}) };
@@ -25,12 +25,13 @@ export function PublicShell({ children, onConfig, active }: { children: (cfg: Po
             <Link href="/report" style={{ display: "flex", alignItems: "center", gap: 10, color: "inherit" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={b.logoUrl || "/brand/ruwa-logo.jpg"} alt="" style={{ height: 44 }} />
-              <div><div style={{ fontWeight: 700 }}>{cfg?.orgName || b.productName}</div><div className="muted" style={{ fontSize: 12 }}>Service requests, reports and licence checks</div></div>
+              <div><div style={{ fontWeight: 700 }}>{cfg?.orgName || b.productName}</div><div className="muted" style={{ fontSize: 12 }}>Service requests, licences and permits</div></div>
             </Link>
             <Space>
               <Link href="/report"><Button type={active === "report" ? "primary" : "default"}>Report an issue</Button></Link>
               <Link href="/track"><Button type={active === "track" ? "primary" : "default"}>Track a report</Button></Link>
-              <Link href="/verify"><Button type={active === "verify" ? "primary" : "default"}>Verify a licence</Button></Link>
+              <Link href="/apply"><Button type={active === "apply" ? "primary" : "default"}>Apply for a licence</Button></Link>
+              <Link href="/verify"><Button type={active === "verify" ? "primary" : "default"}>Track / verify a licence</Button></Link>
               <Link href="/login"><Button type="text">Staff sign in</Button></Link>
             </Space>
           </div>

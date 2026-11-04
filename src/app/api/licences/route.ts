@@ -2,9 +2,8 @@ import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { badRequest, getQuery, ok, parseBody, withAuth } from "@/lib/api";
-import { audit, notify } from "@/lib/notify";
 import { hasRole } from "@/lib/auth";
-import { licenceInclude, nextLicenceReference, serializeLicence } from "@/lib/licensing";
+import { createLicenceApplication, licenceInclude, serializeLicence } from "@/lib/licensing";
 import { LICENCE_OPEN, LICENCE_STATUSES } from "@/lib/licenceTypes";
 
 export const licenceSchema = z.object({
@@ -56,28 +55,13 @@ export const GET = withAuth(async (req, { user }) => {
   return ok({ items: list.map(serializeLicence), counts: Object.fromEntries(counts.map((c) => [c.status, c._count._all])), expiringSoon, revenueYtd: Number(revenue._sum.feeAmount || 0) });
 });
 
-/** Log a new application (walk-in or received by post). The fee and document checklist come from the licence type. */
+/** Log a new application received at the counter. The fee and document checklist come from the licence type. */
 export const POST = withAuth(async (req, { user }) => {
   const body = await parseBody(req, licenceSchema);
-  const type = await prisma.licenceType.findFirst({ where: { id: body.typeId, orgId: user.orgId, isActive: true } });
-  if (!type) throw badRequest("Choose a licence type");
-  const required = (type.requirements as string[]) || [];
-  const documents = body.documents?.length ? body.documents : required.map((name) => ({ name, received: false }));
   const officerId = hasRole(user, "MANAGER") ? body.officerId || user.id : user.id;
-  const referenceNo = await nextLicenceReference(user.orgId);
-  const l = await prisma.licence.create({
-    data: {
-      orgId: user.orgId, typeId: type.id, referenceNo, status: "SUBMITTED", applicantName: body.applicantName, tradingName: body.tradingName || null, idNumber: body.idNumber || null, phone: body.phone || null, email: body.email || null,
-      standNumber: body.standNumber || null, address: body.address || null, ward: body.ward || null, activity: body.activity || null, priority: body.priority || "MEDIUM", feeAmount: type.fee, currency: type.currency,
-      officerId, documents, renewedFromId: body.renewedFromId || null,
-      events: { create: { kind: "SUBMITTED", toStatus: "SUBMITTED", actorId: user.id, note: body.renewedFromId ? "Renewal application" : "Application received" } },
-    },
-    include: licenceInclude,
-  });
-  if (type.departmentId) {
-    const d = await prisma.department.findUnique({ where: { id: type.departmentId }, select: { headUserId: true } });
-    if (d?.headUserId && d.headUserId !== user.id) await notify(user.orgId, [d.headUserId], { title: `New licence application: ${referenceNo}`, body: `${type.name} for ${body.tradingName || body.applicantName}.`, link: `/app/licences?open=${l.id}`, type: "INFO" });
-  }
-  await audit(user.orgId, user.id, "licence.submitted", "Licence", l.id, { referenceNo, type: type.code });
+  let l;
+  try {
+    l = await createLicenceApplication(user.orgId, { ...body, email: body.email || null, officerId }, { actorId: user.id, source: "STAFF" });
+  } catch (e) { throw badRequest((e as Error).message); }
   return ok(serializeLicence(l), { status: 201 });
 });

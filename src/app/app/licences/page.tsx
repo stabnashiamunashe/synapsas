@@ -13,13 +13,13 @@ import { ROLE_RANK } from "@/lib/roles";
 import { LICENCE_ACTION_LABELS, LICENCE_CATEGORIES, LICENCE_EVENT_LABELS, LICENCE_STATUSES, LICENCE_STATUS_LABELS, LICENCE_TRANSITIONS, daysUntil, type LicenceAction, type LicenceStatus } from "@/lib/licenceTypes";
 
 interface Lic {
-  id: string; referenceNo: string; licenceNo?: string | null; status: LicenceStatus; priority: string; applicantName: string; tradingName?: string | null; idNumber?: string | null; phone?: string | null; email?: string | null;
+  id: string; referenceNo: string; licenceNo?: string | null; status: LicenceStatus; priority: string; source?: string; applicantName: string; tradingName?: string | null; idNumber?: string | null; phone?: string | null; email?: string | null;
   standNumber?: string | null; address?: string | null; ward?: string | null; activity?: string | null; feeAmount: number; currency: string; paidAt?: string | null; receiptNo?: string | null;
   inspectionDue?: string | null; inspectedAt?: string | null; inspectionOutcome?: string | null; inspectionNotes?: string | null; conditions?: string | null; decisionNote?: string | null;
   issuedAt?: string | null; expiresAt?: string | null; submittedAt: string; updatedAt: string; documents: { name: string; received: boolean }[];
   type: { id: string; code: string; name: string; category: string; validityMonths: number; requiresInspection: boolean }; officer?: { id: string; name: string } | null; inspector?: { id: string; name: string } | null;
 }
-interface Detail extends Lic { events: { id: string; kind: string; fromStatus?: string | null; toStatus?: string | null; note?: string | null; createdAt: string; actor?: { name: string } | null }[]; renewedFrom?: { id: string; referenceNo: string; licenceNo?: string | null } | null; renewals: { id: string; referenceNo: string; licenceNo?: string | null; status: string }[] }
+interface Detail extends Lic { attachments?: { id: string; label?: string | null; fileName: string; size: number; createdAt: string; uploadedBy?: string }[]; events: { id: string; kind: string; fromStatus?: string | null; toStatus?: string | null; note?: string | null; createdAt: string; actor?: { name: string } | null }[]; renewedFrom?: { id: string; referenceNo: string; licenceNo?: string | null } | null; renewals: { id: string; referenceNo: string; licenceNo?: string | null; status: string }[] }
 interface Resp { items: Lic[]; counts: Record<string, number>; expiringSoon: number; revenueYtd: number }
 interface LType { id: string; code: string; name: string; category: string; fee: number; validityMonths: number; requiresInspection: boolean }
 
@@ -122,7 +122,7 @@ function Licences() {
           columns={[
             { title: "Reference", width: 150, render: (_, l) => <div><div className="mono">{l.licenceNo || l.referenceNo}</div>{l.licenceNo && <div className="muted" style={{ fontSize: 12 }}>{l.referenceNo}</div>}</div> },
             { title: "Licence", width: 200, render: (_, l) => <div><div>{l.type.name}</div><div className="muted" style={{ fontSize: 12 }}>{l.type.category}</div></div> },
-            { title: "Applicant", width: 260, render: (_, l) => <div><div style={{ fontWeight: 500 }}>{l.tradingName || l.applicantName}</div><div className="muted" style={{ fontSize: 12 }}>{l.tradingName ? `${l.applicantName} · ` : ""}{[l.standNumber ? `Stand ${l.standNumber}` : null, l.ward ? `Ward ${l.ward}` : null].filter(Boolean).join(", ")}</div></div> },
+            { title: "Applicant", width: 260, render: (_, l) => <div><div style={{ fontWeight: 500 }}>{l.tradingName || l.applicantName}{l.source && l.source !== "STAFF" && <Tag style={{ marginLeft: 6, fontSize: 11, lineHeight: "16px" }} color={l.source === "WHATSAPP" ? "green" : "blue"}>{l.source === "WHATSAPP" ? "WhatsApp" : "Portal"}</Tag>}</div><div className="muted" style={{ fontSize: 12 }}>{l.tradingName ? `${l.applicantName} · ` : ""}{[l.standNumber ? `Stand ${l.standNumber}` : null, l.ward ? `Ward ${l.ward}` : null].filter(Boolean).join(", ")}</div></div> },
             { title: "Priority", width: 110, render: (_, l) => <PriorityTag priority={l.priority} /> },
             { title: "Status", width: 170, render: (_, l) => <StatusTag status={l.status} labels={LIC_LABELS} /> },
             { title: "Fee", width: 120, align: "right", render: (_, l) => <span>{formatMoney(l.feeAmount, l.currency)}<div className="muted" style={{ fontSize: 12 }}>{l.paidAt ? `paid ${formatDate(l.paidAt)}` : "unpaid"}</div></span> },
@@ -147,7 +147,7 @@ function Licences() {
         {!detail ? <Skeleton active /> : (
           <div>
             <Typography.Title level={4} style={{ marginTop: 0 }}>{detail.type.name}</Typography.Title>
-            <Typography.Text type="secondary">{detail.type.category} · valid for {detail.type.validityMonths} months{detail.type.requiresInspection ? " · inspection required" : ""}</Typography.Text>
+            <Typography.Text type="secondary">{detail.type.category} · valid for {detail.type.validityMonths} months{detail.type.requiresInspection ? " · inspection required" : ""}{detail.source === "WHATSAPP" ? " · applied via WhatsApp" : detail.source === "PUBLIC" ? " · applied on the public portal" : ""}</Typography.Text>
             {detail.status === "APPROVED" && !detail.paidAt && <Tag color="gold" style={{ marginLeft: 8 }}>Fee outstanding: {formatMoney(detail.feeAmount, detail.currency)}</Tag>}
             {detail.inspectionOutcome === "FAIL" && detail.status !== "REJECTED" && <Tag color="red" style={{ marginLeft: 8 }}>Last inspection failed</Tag>}
             <Descriptions column={2} size="small" bordered style={{ marginTop: 16 }}>
@@ -184,6 +184,12 @@ function Licences() {
                     ))}
                     <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{(docs || detail.documents).filter((d) => d.received).length} of {detail.documents.length} received</div>
                     {docs && <Space style={{ marginTop: 8 }}><Button type="primary" size="small" onClick={saveDocs}>Save checklist</Button><Button size="small" onClick={() => setDocs(null)}>Discard</Button></Space>}
+                  </div>
+                )}
+                {detail.attachments && detail.attachments.length > 0 && (
+                  <div style={{ marginTop: 16 }}>
+                    <Typography.Text strong>Uploaded by the applicant</Typography.Text>
+                    {detail.attachments.map((a) => <div key={a.id} style={{ fontSize: 13, padding: "4px 0", borderBottom: "1px solid var(--border)" }}><a href={`/api/licence-attachments/${a.id}`}>{a.fileName}</a>{a.label && <span className="muted"> · {a.label}</span>}<span className="muted"> · {Math.max(1, Math.round(a.size / 1024))} KB · {formatDate(a.createdAt)}</span></div>)}
                   </div>
                 )}
               </Col>

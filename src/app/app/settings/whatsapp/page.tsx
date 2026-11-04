@@ -92,7 +92,7 @@ export default function WhatsAppSettingsPage() {
                 <span><Switch checked={wa.enabled !== false} onChange={(v) => saveWa({ enabled: v })} /> Accept reports on WhatsApp</span>
                 <span><Switch checked={!!wa.notifyAllReporters} onChange={(v) => saveWa({ notifyAllReporters: v })} /> Also message reporters who used the website or phone</span>
               </Space>
-              <Form.Item name="greeting" label="Greeting (main menu text)"><Input placeholder="Welcome to ZimStat. How can we help you today?" /></Form.Item>
+              <Form.Item name="greeting" label="Greeting (main menu text)"><Input placeholder="Welcome to Ruwa Local Board. How can we help you today?" /></Form.Item>
               <Form.Item name="helpText" label="Help text"><Input.TextArea autoSize={{ minRows: 2 }} placeholder="Shown when the user taps Help" /></Form.Item>
               <Button htmlType="submit">Save texts</Button>
             </Form>
@@ -100,7 +100,7 @@ export default function WhatsAppSettingsPage() {
         </Col>
         <Col xs={24} lg={12}>
           <Card title="Sandbox (no Meta account needed)" extra={<Button size="small" onClick={() => setChat([])}>Clear</Button>}>
-            <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>This runs the real conversation engine for the number {simPhone}. Tap the buttons exactly as a WhatsApp user would; a case is created in the service desk at the end.</Typography.Paragraph>
+            <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>This runs the real conversation engine for the number {simPhone}. Tap the buttons exactly as a WhatsApp user would; a case or a licence application is created at the end. Type licence to start a licence application.</Typography.Paragraph>
             <div style={{ background: "#e5ddd5", borderRadius: 8, padding: 12, height: 420, overflowY: "auto", overflowX: "hidden" }}>
               {chat.length === 0 && <div className="muted" style={{ textAlign: "center", marginTop: 160 }}>Say “Hi” to start.</div>}
               {chat.map((b, i) => (

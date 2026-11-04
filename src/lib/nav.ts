@@ -81,7 +81,8 @@ export const NAV: NavItem[] = [
 
   // Public pages
   { key: "/report", label: "Public portal: report an issue", icon: "global", group: "Public pages", sidebar: false, external: true, description: "What members of the public see when they log a case", keywords: "public form citizen portal" },
-  { key: "/verify", label: "Public portal: verify a licence", icon: "global", group: "Public pages", sidebar: false, external: true, description: "Anyone can check a licence number printed on a certificate", keywords: "public verify licence check" },
+  { key: "/apply", label: "Public portal: apply for a licence", icon: "global", group: "Public pages", sidebar: false, external: true, description: "Citizen self-service: choose a licence, apply, upload documents, get a reference", keywords: "public apply licence citizen portal online application" },
+  { key: "/verify", label: "Public portal: track or verify a licence", icon: "global", group: "Public pages", sidebar: false, external: true, description: "Anyone can check a licence number printed on a certificate", keywords: "public verify licence check" },
   { key: "/track", label: "Public portal: track a case", icon: "global", group: "Public pages", sidebar: false, external: true, description: "Reference lookup and rating for reporters", keywords: "public tracking reference" },
 ];
 

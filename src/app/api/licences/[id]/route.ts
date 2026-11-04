@@ -4,11 +4,11 @@ import { badRequest, forbidden, notFound, ok, parseBody, withAuth } from "@/lib/
 import { audit, notify } from "@/lib/notify";
 import { hasRole } from "@/lib/auth";
 import { parseJson } from "@/lib/json";
-import { addMonths, isLicenceStatus, licenceInclude, nextLicenceNumber, nextLicenceReference, serializeLicence } from "@/lib/licensing";
+import { addMonths, isLicenceStatus, licenceInclude, nextLicenceNumber, nextLicenceReference, notifyApplicant, serializeLicence } from "@/lib/licensing";
 import { LICENCE_ACTIONS, LICENCE_STATUS_LABELS, LICENCE_TRANSITIONS } from "@/lib/licenceTypes";
 import { licenceSchema } from "../route";
 
-const detailInclude = { ...licenceInclude, events: { orderBy: { createdAt: "desc" as const }, include: { actor: { select: { name: true } } } }, renewedFrom: { select: { id: true, referenceNo: true, licenceNo: true } }, renewals: { select: { id: true, referenceNo: true, licenceNo: true, status: true } } };
+const detailInclude = { ...licenceInclude, events: { orderBy: { createdAt: "desc" as const }, include: { actor: { select: { name: true } } } }, renewedFrom: { select: { id: true, referenceNo: true, licenceNo: true } }, renewals: { select: { id: true, referenceNo: true, licenceNo: true, status: true } }, attachments: { select: { id: true, label: true, fileName: true, size: true, createdAt: true, uploadedBy: true }, orderBy: { createdAt: "asc" as const } } };
 
 export const GET = withAuth(async (_req, { params, user }) => {
   const l = await prisma.licence.findFirst({ where: { id: params.id, orgId: user.orgId }, include: detailInclude });
@@ -135,6 +135,8 @@ export const POST = withAuth(async (req, { params, user }) => {
   if (toStatus && ["APPROVED", "ISSUED", "REJECTED", "SUSPENDED", "REVOKED"].includes(toStatus) && l.officerId && l.officerId !== user.id) {
     await notify(user.orgId, [l.officerId], { title: `${l.referenceNo}: ${LICENCE_STATUS_LABELS[toStatus as keyof typeof LICENCE_STATUS_LABELS]}`, body: `${l.type.name} for ${l.tradingName || l.applicantName}${note ? ` · ${note}` : ""}`, link: `/app/licences?open=${l.id}`, type: toStatus === "ISSUED" || toStatus === "APPROVED" ? "SUCCESS" : "WARNING" });
   }
+  const applicantKind: Record<string, "inspection" | "approved" | "issued" | "rejected" | "suspended" | "revoked"> = { INSPECTION: "inspection", APPROVED: "approved", ISSUED: "issued", REJECTED: "rejected", SUSPENDED: "suspended", REVOKED: "revoked" };
+  if (toStatus && applicantKind[toStatus]) void notifyApplicant(updated, applicantKind[toStatus], toStatus === "APPROVED" ? (body.conditions || null) : note);
   await audit(user.orgId, user.id, `licence.${body.action}`, "Licence", l.id, { referenceNo: l.referenceNo, from: l.status, to: toStatus });
   return ok(serializeLicence(updated));
 });

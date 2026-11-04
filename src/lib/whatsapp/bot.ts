@@ -1,9 +1,12 @@
-// Button-and-list driven WhatsApp conversation. The only free-text step is the description of the issue; everything
-// else is a reply button, a list pick or a shared location. State is kept per phone in WhatsAppSession.
+// List-and-button driven WhatsApp conversation for the service desk (report / track an issue) and licensing
+// (apply for a licence / check an application). Free text is only used where a description, name or address is
+// needed. State is kept per phone in WhatsAppSession.
 import { prisma } from "../prisma";
 import { parseJson, toJson } from "../json";
 import { caseSettings, createCase } from "../cases";
 import { CASE_STATUS_LABELS, type CaseStatus } from "../caseTypes";
+import { LICENCE_STATUS_LABELS, type LicenceStatus } from "../licenceTypes";
+import { createLicenceApplication, phoneTail } from "../licensing";
 import { describe, logMessage, normalizePhone, sendWhatsApp, type WaOutgoing } from "./client";
 
 export type Inbound =
@@ -13,16 +16,29 @@ export type Inbound =
   | { kind: "location"; latitude: number; longitude: number; name?: string; address?: string }
   | { kind: "other" };
 
-type Step = "IDLE" | "MENU" | "CATEGORY" | "DESCRIBE" | "LOCATION" | "NAME" | "CONFIRM" | "TRACK" | "RATE";
-type Data = { categoryId?: string; categoryName?: string; description?: string; latitude?: number; longitude?: number; locationAddress?: string; name?: string; trackCaseId?: string; rateCaseId?: string; page?: number };
+type Step = "IDLE" | "MENU" | "CATEGORY" | "DESCRIBE" | "LOCATION" | "NAME" | "CONFIRM" | "TRACK" | "RATE"
+  | "LIC_TYPE" | "LIC_NAME" | "LIC_TRADING" | "LIC_PREMISES" | "LIC_WARD" | "LIC_ACTIVITY" | "LIC_CONFIRM" | "LIC_TRACK";
+type Data = {
+  categoryId?: string; categoryName?: string; description?: string; latitude?: number; longitude?: number; locationAddress?: string; name?: string; trackCaseId?: string; rateCaseId?: string; page?: number;
+  licTypeId?: string; licTypeName?: string; licFee?: string; licRequirements?: string[]; licRequiresInspection?: boolean; applicant?: string; trading?: string; premises?: string; ward?: string; activity?: string;
+};
 
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000;
 const B = {
-  REPORT: "menu_report", TRACK: "menu_track", HELP: "menu_help", MENU: "go_menu", CANCEL: "go_cancel",
+  REPORT: "menu_report", TRACK: "menu_track", HELP: "menu_help", MENU: "go_menu", CANCEL: "go_cancel", APPLY: "menu_apply", LIC_TRACK: "menu_lictrack",
   LOC_SKIP: "loc_skip", NAME_OK: "name_ok", NAME_ANON: "name_anon", CONFIRM: "confirm_yes", MORE: "cat_more", RATE: "rate_", BACK: "track_back",
+  TRADING_SKIP: "trading_skip", WARD_SKIP: "ward_skip", LIC_CONFIRM: "lic_confirm",
 };
 
-const menu = (greeting: string): WaOutgoing => ({ type: "buttons", header: "Main menu", body: greeting, buttons: [{ id: B.REPORT, title: "Report an issue" }, { id: B.TRACK, title: "Track a report" }, { id: B.HELP, title: "Help" }] });
+const menu = (greeting: string): WaOutgoing => ({
+  type: "list", header: "Main menu", body: greeting, button: "Choose",
+  sections: [
+    { title: "Service desk", rows: [{ id: B.REPORT, title: "Report an issue", description: "Water, roads, refuse, complaints" }, { id: B.TRACK, title: "Track a report", description: "Progress of your reports" }] },
+    { title: "Licences & permits", rows: [{ id: B.APPLY, title: "Apply for a licence", description: "Shop, liquor, hawker, food, building and more" }, { id: B.LIC_TRACK, title: "My licence applications", description: "Status, fees due, licence numbers" }] },
+    { title: "", rows: [{ id: B.HELP, title: "Help", description: "Contact details" }] },
+  ],
+});
+const backToMenu = { id: B.MENU, title: "Main menu" };
 
 async function categoryList(orgId: string, page: number): Promise<WaOutgoing> {
   const cats = await prisma.caseCategory.findMany({ where: { orgId, isActive: true, isPublic: true }, orderBy: { name: "asc" }, select: { id: true, name: true, description: true, defaultSlaHours: true } });
@@ -33,8 +49,29 @@ async function categoryList(orgId: string, page: number): Promise<WaOutgoing> {
   return { type: "list", header: "What is it about?", body: "Pick the category that fits best.", button: "Choose", sections: [{ rows }], footer: "Reply Cancel at any time" };
 }
 
+async function licenceTypeList(orgId: string, page: number): Promise<WaOutgoing> {
+  const types = await prisma.licenceType.findMany({ where: { orgId, isActive: true }, orderBy: [{ category: "asc" }, { name: "asc" }], select: { id: true, name: true, fee: true, currency: true, validityMonths: true } });
+  const pageSize = 9;
+  const slice = types.slice(page * pageSize, page * pageSize + pageSize);
+  const rows = slice.map((t) => ({ id: `lt_${t.id}`, title: t.name.slice(0, 24), description: `${t.currency} ${Number(t.fee).toFixed(2)} · ${t.validityMonths} months`.slice(0, 72) }));
+  if (types.length > (page + 1) * pageSize) rows.push({ id: B.MORE, title: "More licences…", description: "" });
+  return { type: "list", header: "Which licence?", body: "Choose the licence or permit you are applying for. Fees are payable only once the application is approved.", button: "Choose", sections: [{ rows }], footer: "Reply Cancel at any time" };
+}
+
 const statusLine = (c: { referenceNo: string; title: string; status: string; slaDueAt: Date | null; resolvedAt: Date | null }) =>
   `*${c.referenceNo}* · ${CASE_STATUS_LABELS[c.status as CaseStatus] || c.status}\n${c.title}${c.resolvedAt ? `\nResolved ${c.resolvedAt.toDateString()}` : c.slaDueAt ? `\nTarget ${c.slaDueAt.toDateString()}` : ""}`;
+
+const licenceLine = (l: { referenceNo: string; licenceNo: string | null; status: string; feeAmount: unknown; currency: string; paidAt: Date | null; expiresAt: Date | null; inspectionDue: Date | null; decisionNote: string | null; type: { name: string }; documents: unknown }) => {
+  const docs = (l.documents as { name: string; received: boolean }[]) || [];
+  const missing = docs.filter((d) => !d.received).map((d) => d.name);
+  const lines = [`*${l.licenceNo || l.referenceNo}* · ${LICENCE_STATUS_LABELS[l.status as LicenceStatus] || l.status}`, l.type.name];
+  if (l.status === "APPROVED" && !l.paidAt) lines.push(`Fee due: ${l.currency} ${Number(l.feeAmount).toFixed(2)} — pay at the council cashier quoting ${l.referenceNo}.`);
+  if (l.status === "INSPECTION" && l.inspectionDue) lines.push(`Inspection due by ${l.inspectionDue.toDateString()}.`);
+  if (l.status === "ISSUED" && l.expiresAt) lines.push(`Valid until ${l.expiresAt.toDateString()}.`);
+  if (l.status === "REJECTED" && l.decisionNote) lines.push(`Reason: ${l.decisionNote.slice(0, 300)}`);
+  if (["SUBMITTED", "UNDER_REVIEW", "INSPECTION"].includes(l.status) && missing.length) lines.push(`Documents still needed: ${missing.join("; ")}.`);
+  return lines.join("\n");
+};
 
 /**
  * Process one inbound message and return the replies. `send` decides whether replies go to Meta or only into the log
@@ -49,7 +86,7 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
   const say = (m: WaOutgoing) => replies.push(m);
   try {
     if (wa.enabled === false) {
-      say({ type: "text", text: wa.helpText || "WhatsApp reporting is not available at the moment. Please use the website or call the office." });
+      say({ type: "text", text: wa.helpText || "WhatsApp services are not available at the moment. Please use the website or call the office." });
       return await flush();
     }
     let session = await prisma.whatsAppSession.findUnique({ where: { phone } });
@@ -63,9 +100,11 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
     const text = input.kind === "text" ? input.text.trim() : "";
     const lower = text.toLowerCase();
 
-    // global commands
+    // global commands and shortcuts
     if (id === B.CANCEL || ["cancel", "stop", "exit"].includes(lower)) { await save("MENU", {}); say({ type: "text", text: "Cancelled." }); say(menu(greeting)); return await flush(); }
     if (id === B.MENU || ["menu", "hi", "hello", "start", "mhoro", "salibonani"].includes(lower)) { await save("MENU", {}); say(menu(greeting)); return await flush(); }
+    if (id === B.APPLY || ["licence", "license", "apply", "permit"].includes(lower)) { await save("LIC_TYPE", { page: 0 }); say(await licenceTypeList(orgId, 0)); return await flush(); }
+    if (id === B.LIC_TRACK || ["my licences", "my licenses", "licence status"].includes(lower)) { say(await licenceList(orgId, phone)); await save("LIC_TRACK", {}); return await flush(); }
 
     switch (step) {
       case "IDLE":
@@ -76,10 +115,11 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
       case "MENU":
         if (id === B.REPORT) { await save("CATEGORY", { page: 0 }); say(await categoryList(orgId, 0)); }
         else if (id === B.TRACK) { say(await trackList(orgId, phone)); await save("TRACK", {}); }
-        else if (id === B.HELP) { say({ type: "buttons", body: wa.helpText || `${settings.contactEmail ? `Email ${settings.contactEmail}. ` : ""}${settings.contactPhone ? `Call ${settings.contactPhone}. ` : ""}Use the buttons below to report or track an issue.`, buttons: [{ id: B.REPORT, title: "Report an issue" }, { id: B.TRACK, title: "Track a report" }] }); }
+        else if (id === B.HELP) { say({ type: "buttons", body: wa.helpText || `${settings.contactEmail ? `Email ${settings.contactEmail}. ` : ""}${settings.contactPhone ? `Call ${settings.contactPhone}. ` : ""}Use the menu to report an issue, track a report, or apply for a licence.`, buttons: [{ id: B.REPORT, title: "Report an issue" }, { id: B.APPLY, title: "Apply for a licence" }, backToMenu] }); }
         else say(menu(greeting));
         break;
 
+      // ---------------- service desk ----------------
       case "CATEGORY":
         if (id === B.MORE) { const page = (data.page || 0) + 1; await save("CATEGORY", { ...data, page }); say(await categoryList(orgId, page)); }
         else if (id.startsWith("cat_")) {
@@ -125,7 +165,7 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
           }, null);
           await logMessage({ orgId, phone, direction: "IN", kind: "system", body: `Case ${c.referenceNo} created`, status: "received", caseId: c.id });
           await save("MENU", {});
-          say({ type: "buttons", header: "Report received", body: `Your reference is *${c.referenceNo}*. Our target is to attend to it within ${c.slaHours} hours. We will message you here when it progresses.`, buttons: [{ id: B.TRACK, title: "Track a report" }, { id: B.MENU, title: "Main menu" }] });
+          say({ type: "buttons", header: "Report received", body: `Your reference is *${c.referenceNo}*. Our target is to attend to it within ${c.slaHours} hours. We will message you here when it progresses.`, buttons: [{ id: B.TRACK, title: "Track a report" }, backToMenu] });
         }
         break;
 
@@ -136,14 +176,14 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
           const updates = c.comments.map((m) => `• ${m.body.slice(0, 200)}`).join("\n");
           const canRate = ["RESOLVED", "CLOSED"].includes(c.status) && !c.rating;
           await save("TRACK", { ...data, trackCaseId: c.id });
-          say({ type: "buttons", body: `${statusLine(c)}${updates ? `\n\nLatest updates:\n${updates}` : ""}`, buttons: [...(canRate ? [{ id: `${B.RATE}${c.id}`, title: "Rate the service" }] : []), { id: B.TRACK, title: "Other reports" }, { id: B.MENU, title: "Main menu" }] });
+          say({ type: "buttons", body: `${statusLine(c)}${updates ? `\n\nLatest updates:\n${updates}` : ""}`, buttons: [...(canRate ? [{ id: `${B.RATE}${c.id}`, title: "Rate the service" }] : []), { id: B.TRACK, title: "Other reports" }, backToMenu] });
         } else if (id.startsWith(B.RATE)) {
           await save("RATE", { ...data, rateCaseId: id.slice(B.RATE.length) });
           say({ type: "list", header: "Rate the service", body: "How satisfied are you with how this was handled?", button: "Choose", sections: [{ rows: [5, 4, 3, 2, 1].map((n) => ({ id: `stars_${n}`, title: `${"★".repeat(n)}${"☆".repeat(5 - n)}`, description: ["", "Very poor", "Poor", "Fair", "Good", "Excellent"][n] })) }] });
         } else if (id === B.TRACK || id === B.BACK) { say(await trackList(orgId, phone)); }
         else if (/^[A-Z0-9]{1,6}-\d{4}-\d{4,6}$/i.test(text)) {
           const c = await prisma.case.findFirst({ where: { referenceNo: text.toUpperCase(), orgId } });
-          say(c ? { type: "buttons", body: statusLine(c), buttons: [{ id: B.TRACK, title: "My reports" }, { id: B.MENU, title: "Main menu" }] } : { type: "buttons", body: "No report found with that reference.", buttons: [{ id: B.TRACK, title: "My reports" }, { id: B.MENU, title: "Main menu" }] });
+          say(c ? { type: "buttons", body: statusLine(c), buttons: [{ id: B.TRACK, title: "My reports" }, backToMenu] } : { type: "buttons", body: "No report found with that reference.", buttons: [{ id: B.TRACK, title: "My reports" }, backToMenu] });
         } else say(await trackList(orgId, phone));
         break;
 
@@ -153,9 +193,85 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
         const c = await prisma.case.findFirst({ where: { id: data.rateCaseId, orgId, reporterPhone: { endsWith: phone.slice(-9) } } });
         if (c) await prisma.case.update({ where: { id: c.id }, data: { rating: Number(m[1]), feedback: "Rated via WhatsApp" } });
         await save("MENU", {});
-        say({ type: "buttons", body: "Thank you for your feedback.", buttons: [{ id: B.TRACK, title: "Track a report" }, { id: B.MENU, title: "Main menu" }] });
+        say({ type: "buttons", body: "Thank you for your feedback.", buttons: [{ id: B.TRACK, title: "Track a report" }, backToMenu] });
         break;
       }
+
+      // ---------------- licensing ----------------
+      case "LIC_TYPE":
+        if (id === B.MORE) { const page = (data.page || 0) + 1; await save("LIC_TYPE", { ...data, page }); say(await licenceTypeList(orgId, page)); }
+        else if (id.startsWith("lt_")) {
+          const t = await prisma.licenceType.findFirst({ where: { id: id.slice(3), orgId, isActive: true } });
+          if (!t) { say(await licenceTypeList(orgId, 0)); break; }
+          const reqs = (t.requirements as string[]) || [];
+          await save("LIC_NAME", { licTypeId: t.id, licTypeName: t.name, licFee: `${t.currency} ${Number(t.fee).toFixed(2)}`, licRequirements: reqs, licRequiresInspection: t.requiresInspection });
+          say({ type: "text", text: `*${t.name}*\nFee ${t.currency} ${Number(t.fee).toFixed(2)}, valid ${t.validityMonths} months.${t.requiresInspection ? " The premises are inspected before approval." : ""}${reqs.length ? `\n\nYou will need:\n${reqs.map((r) => `• ${r}`).join("\n")}` : ""}` });
+          say({ type: "buttons", body: profileName ? `Apply in the name *${profileName}*? Or type the full name of the applicant (as on the national ID or company registration).` : "Type the full name of the applicant (as on the national ID or company registration).", buttons: [...(profileName ? [{ id: B.NAME_OK, title: `Yes, ${profileName}`.slice(0, 20) }] : []), { id: B.CANCEL, title: "Cancel" }] });
+        } else say(await licenceTypeList(orgId, data.page || 0));
+        break;
+
+      case "LIC_NAME":
+        if (id === B.NAME_OK) data = { ...data, applicant: profileName || "WhatsApp applicant" };
+        else if (text.length >= 2) data = { ...data, applicant: text.slice(0, 160) };
+        else { say({ type: "buttons", body: "Please type the full name of the applicant.", buttons: [{ id: B.CANCEL, title: "Cancel" }] }); break; }
+        await save("LIC_TRADING", data);
+        say({ type: "buttons", body: "What is the trading name of the business? (Tap Skip if it trades under your own name.)", buttons: [{ id: B.TRADING_SKIP, title: "Skip" }, { id: B.CANCEL, title: "Cancel" }] });
+        break;
+
+      case "LIC_TRADING":
+        if (id === B.TRADING_SKIP) data = { ...data, trading: undefined };
+        else if (text) data = { ...data, trading: text.slice(0, 160) };
+        else { say({ type: "buttons", body: "Type the trading name or tap Skip.", buttons: [{ id: B.TRADING_SKIP, title: "Skip" }, { id: B.CANCEL, title: "Cancel" }] }); break; }
+        await save("LIC_PREMISES", data);
+        say({ type: "buttons", body: "Where are the premises? Give the stand number and address (e.g. Stand 1120 Zimre Park, Shop 3).", buttons: [{ id: B.CANCEL, title: "Cancel" }] });
+        break;
+
+      case "LIC_PREMISES":
+        if (text.length < 3) { say({ type: "buttons", body: "Please type the stand number and address of the premises.", buttons: [{ id: B.CANCEL, title: "Cancel" }] }); break; }
+        await save("LIC_WARD", { ...data, premises: text.slice(0, 255) });
+        say({ type: "list", header: "Which ward?", body: "Choose the ward the premises are in, or skip.", button: "Ward", sections: [{ rows: [...Array.from({ length: 9 }, (_, i) => ({ id: `ward_${i + 1}`, title: `Ward ${i + 1}` })), { id: B.WARD_SKIP, title: "Not sure / other" }] }] });
+        break;
+
+      case "LIC_WARD":
+        if (id.startsWith("ward_")) data = { ...data, ward: id.slice(5) };
+        else if (id === B.WARD_SKIP) data = { ...data, ward: undefined };
+        else if (/^\d{1,2}$/.test(text)) data = { ...data, ward: text };
+        else { say({ type: "buttons", body: "Choose a ward from the list, type the ward number, or skip.", buttons: [{ id: B.WARD_SKIP, title: "Skip" }, { id: B.CANCEL, title: "Cancel" }] }); break; }
+        await save("LIC_ACTIVITY", data);
+        say({ type: "buttons", body: "Describe the business or purpose in one message (what you sell or do, trading hours, number of employees).", buttons: [{ id: B.CANCEL, title: "Cancel" }] });
+        break;
+
+      case "LIC_ACTIVITY":
+        if (text.length < 5) { say({ type: "buttons", body: "Please describe the business in a few words.", buttons: [{ id: B.CANCEL, title: "Cancel" }] }); break; }
+        await save("LIC_CONFIRM", { ...data, activity: text.slice(0, 4000) });
+        say({ type: "buttons", header: "Confirm your application", body: `*Licence:* ${data.licTypeName} (${data.licFee})\n*Applicant:* ${data.applicant}${data.trading ? `\n*Trading as:* ${data.trading}` : ""}\n*Premises:* ${data.premises}${data.ward ? `, Ward ${data.ward}` : ""}\n*Business:* ${text.slice(0, 300)}\n\nBy submitting you declare that the information is true and that you will comply with council by-laws.`, buttons: [{ id: B.LIC_CONFIRM, title: "Submit" }, { id: B.CANCEL, title: "Cancel" }] });
+        break;
+
+      case "LIC_CONFIRM":
+        if (id !== B.LIC_CONFIRM) { say({ type: "buttons", body: "Submit this application?", buttons: [{ id: B.LIC_CONFIRM, title: "Submit" }, { id: B.CANCEL, title: "Cancel" }] }); break; }
+        {
+          if (!data.licTypeId || !data.applicant) { await save("LIC_TYPE", { page: 0 }); say(await licenceTypeList(orgId, 0)); break; }
+          const stand = /^(?:stand\s*)?([A-Za-z0-9/-]+)/i.exec(data.premises || "")?.[1] || null;
+          const l = await createLicenceApplication(orgId, { typeId: data.licTypeId, applicantName: data.applicant, tradingName: data.trading || null, phone: `+${phone}`, standNumber: stand, address: data.premises || null, ward: data.ward || null, activity: data.activity || null }, { actorId: null, source: "WHATSAPP" });
+          await logMessage({ orgId, phone, direction: "IN", kind: "system", body: `Licence application ${l.referenceNo} created`, status: "received" });
+          const reqs = data.licRequirements || [];
+          const fee = data.licFee;
+          const inspected = !!data.licRequiresInspection;
+          await save("MENU", {});
+          say({ type: "buttons", header: "Application received", body: `Your reference is *${l.referenceNo}*.${reqs.length ? `\n\nPlease bring these documents to the licensing office at the Civic Centre, or upload them at ${process.env.APP_URL || ""}/verify using this reference and your phone number:\n${reqs.map((r) => `• ${r}`).join("\n")}` : ""}${inspected ? "\n\nAn officer will contact you to inspect the premises." : ""}\n\nThe fee of ${fee} is payable at the cashier once the application is approved. We will message you here at each step.`, buttons: [{ id: B.LIC_TRACK, title: "My applications" }, backToMenu] });
+        }
+        break;
+
+      case "LIC_TRACK":
+        if (id.startsWith("lic_")) {
+          const l = await prisma.licence.findFirst({ where: { id: id.slice(4), orgId }, include: { type: { select: { name: true } } } });
+          if (!l || phoneTail(l.phone) !== phone.slice(-9)) { say(await licenceList(orgId, phone)); break; }
+          say({ type: "buttons", body: licenceLine(l), buttons: [{ id: B.LIC_TRACK, title: "My applications" }, { id: B.APPLY, title: "Apply for another" }, backToMenu] });
+        } else if (/^(LA-\d{4}-\d{4,6}|[A-Z]{2,6}\/[A-Z0-9]{2,8}\/\d{4}\/\d{4,6})$/i.test(text)) {
+          const l = await prisma.licence.findFirst({ where: { orgId, OR: [{ referenceNo: text.toUpperCase() }, { licenceNo: text.toUpperCase() }] }, include: { type: { select: { name: true } } } });
+          say(l && phoneTail(l.phone) === phone.slice(-9) ? { type: "buttons", body: licenceLine(l), buttons: [{ id: B.LIC_TRACK, title: "My applications" }, backToMenu] } : { type: "buttons", body: "No application from this number with that reference.", buttons: [{ id: B.LIC_TRACK, title: "My applications" }, backToMenu] });
+        } else say(await licenceList(orgId, phone));
+        break;
     }
   } catch (e) {
     console.error("[whatsapp] bot error", e);
@@ -178,8 +294,14 @@ async function setStep(phone: string, step: Step, data: Data, profileName?: stri
 
 async function trackList(orgId: string, phone: string): Promise<WaOutgoing> {
   const cases = await prisma.case.findMany({ where: { orgId, reporterPhone: { endsWith: phone.slice(-9) } }, orderBy: { createdAt: "desc" }, take: 9, select: { id: true, referenceNo: true, title: true, status: true } });
-  if (!cases.length) return { type: "buttons", body: "We have no reports from this number yet. You can also type a reference number (e.g. ZS-2026-0001).", buttons: [{ id: B.REPORT, title: "Report an issue" }, { id: B.MENU, title: "Main menu" }] };
+  if (!cases.length) return { type: "buttons", body: "We have no reports from this number yet. You can also type a reference number (e.g. RLB-2026-0001).", buttons: [{ id: B.REPORT, title: "Report an issue" }, backToMenu] };
   return { type: "list", header: "Your reports", body: "Choose a report to see its progress, or type a reference number.", button: "My reports", sections: [{ rows: cases.map((c) => ({ id: `case_${c.id}`, title: c.referenceNo, description: `${CASE_STATUS_LABELS[c.status as CaseStatus] || c.status} · ${c.title}`.slice(0, 72) })) }] };
+}
+
+async function licenceList(orgId: string, phone: string): Promise<WaOutgoing> {
+  const list = await prisma.licence.findMany({ where: { orgId, phone: { endsWith: phone.slice(-9) } }, orderBy: { createdAt: "desc" }, take: 9, include: { type: { select: { name: true } } } });
+  if (!list.length) return { type: "buttons", body: "We have no licence applications from this number yet. You can also type an application reference (e.g. LA-2026-0001) or a licence number.", buttons: [{ id: B.APPLY, title: "Apply for a licence" }, backToMenu] };
+  return { type: "list", header: "Your licence applications", body: "Choose one to see its status, or type a reference number.", button: "My applications", sections: [{ rows: list.map((l) => ({ id: `lic_${l.id}`, title: (l.licenceNo || l.referenceNo).slice(0, 24), description: `${LICENCE_STATUS_LABELS[l.status as LicenceStatus] || l.status} · ${l.type.name}`.slice(0, 72) })) }] };
 }
 
 export const transcript = describe;

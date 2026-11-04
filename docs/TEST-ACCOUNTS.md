@@ -40,5 +40,7 @@ Sign-in page: `https://<your-host>/login` (locally `http://localhost:3000/login`
 | 9 | health.officer | Licensing → *Expiring* | `RLB/HWK/…/0203` is expired: **Renew** opens a linked renewal application with the applicant's details copied. |
 | 10 | health.officer | Licensing → open `Gwaze Hardware` | A **suspended** licence with the reason on record; **Reinstate** or **Revoke** from *More*. |
 | 11 | secretary (admin) | Licensing → **Licence types & fees** | Edit the fee schedule, validity, inspection requirement and required documents. |
+| 12 | nobody (public) | `/apply` | Apply for a *Hawker / vendor permit* as a citizen: fee and required documents are shown, documents can be attached per requirement, a reference comes back. Then `/verify` → *Track my application* with the reference and phone number: status, next step, upload buttons for outstanding documents. |
+| 13 | secretary (admin) | Settings → **WhatsApp channel** → Sandbox | Type **licence**: pick a licence from the list, answer name, trading name, premises, ward (type a number) and description, tap **Submit**. The reference and document list come back. Type **my licences** to see the status, fee due or licence number. Approving the application in the register produces the applicant notice in the message log. |
 
 Service desk, approvals, advances, leave, notices, assets and fleet work as in the user manual; the sample data (water and sewer faults, refuse collection, road works, devolution-funded projects) is council-flavoured.
