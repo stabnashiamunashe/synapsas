@@ -6,6 +6,7 @@ import dayjs from "dayjs";
 import Link from "next/link";
 import { useState } from "react";
 import { StatCard } from "@/components/StatCard";
+import { StatusTag } from "@/components/StatusTag";
 import { api, formatDate, useApi, useMe } from "@/lib/client";
 import { ROLE_RANK } from "@/lib/roles";
 
@@ -13,7 +14,6 @@ interface Vehicle { id: string; registration: string; make?: string | null; mode
 interface Trip { id: string; destination: string; purpose: string; passengers: number; startsAt: string; endsAt: string; status: string; odometerStart?: number | null; odometerEnd?: number | null; fuelLitres?: number | null; notes?: string | null; vehicle?: { id: string; registration: string; make?: string | null; model?: string | null } | null; driver?: { id: string; name: string } | null; requester: { id: string; name: string; department?: { name: string } | null }; project?: { id: string; code: string } | null; request?: { id: string; referenceNo: string } | null }
 
 const V_STATUS: Record<string, { label: string; color: string }> = { AVAILABLE: { label: "Available", color: "green" }, IN_USE: { label: "On a trip", color: "blue" }, MAINTENANCE: { label: "Maintenance", color: "gold" }, RETIRED: { label: "Retired", color: "default" } };
-const T_STATUS: Record<string, { label: string; color: string }> = { PLANNED: { label: "Needs vehicle", color: "gold" }, ASSIGNED: { label: "Assigned", color: "blue" }, ONGOING: { label: "On the road", color: "purple" }, COMPLETED: { label: "Completed", color: "green" }, CANCELLED: { label: "Cancelled", color: "default" } };
 
 export default function FleetPage() {
   const { message } = App.useApp();
@@ -60,7 +60,7 @@ export default function FleetPage() {
     { title: "Destination / purpose", render: (_: unknown, t: Trip) => <span><b>{t.destination}</b>{t.project && <Tag style={{ marginLeft: 6 }}>{t.project.code}</Tag>}<div className="muted" style={{ fontSize: 12 }}>{t.purpose}{t.request ? <> · <Link href={`/app/requests/${t.request.id}`}>{t.request.referenceNo}</Link></> : null}</div></span> },
     { title: "Requested by", render: (_: unknown, t: Trip) => <span>{t.requester.name}<div className="muted" style={{ fontSize: 12 }}>{t.requester.department?.name} · {t.passengers} pax</div></span> },
     { title: "Vehicle / driver", render: (_: unknown, t: Trip) => t.vehicle ? <span><b>{t.vehicle.registration}</b> <span className="muted">{[t.vehicle.make, t.vehicle.model].filter(Boolean).join(" ")}</span><div className="muted" style={{ fontSize: 12 }}>{t.driver?.name || "Self-drive"}</div></span> : <span className="muted">not assigned</span> },
-    { title: "Status", width: 130, render: (_: unknown, t: Trip) => <Tag color={T_STATUS[t.status]?.color}>{T_STATUS[t.status]?.label || t.status}</Tag> },
+    { title: "Status", width: 130, render: (_: unknown, t: Trip) => <StatusTag status={t.status} /> },
     { title: "Km", width: 90, align: "right" as const, render: (_: unknown, t: Trip) => t.odometerEnd != null && t.odometerStart != null ? `${t.odometerEnd - t.odometerStart}` : "" },
     { title: "", width: 190, render: (_: unknown, t: Trip) => {
       const office = isManager, driver = t.driver?.id === me?.user.id, requester = t.requester.id === me?.user.id;
@@ -105,7 +105,7 @@ export default function FleetPage() {
               <Table<Vehicle> rowKey="id" dataSource={vehicles} size="small" pagination={false} scroll={{ x: 800 }} columns={[
                 { title: "Registration", width: 140, render: (_, v) => <b className="mono">{v.registration}</b> },
                 { title: "Vehicle", render: (_, v) => <span>{[v.make, v.model].filter(Boolean).join(" ") || "–"}<div className="muted" style={{ fontSize: 12 }}>{v.type}{v.department ? ` · ${v.department.name}` : ""}</div></span> },
-                { title: "Status", width: 120, render: (_, v) => <Tag color={V_STATUS[v.status]?.color}>{V_STATUS[v.status]?.label || v.status}</Tag> },
+                { title: "Status", width: 120, render: (_, v) => <StatusTag status={v.status} /> },
                 { title: "Odometer", width: 110, align: "right", render: (_, v) => `${v.odometer.toLocaleString()} km` },
                 { title: "Next trip", render: (_, v) => v.nextTrip ? <span>{v.nextTrip.destination} <span className="muted">· {formatDate(v.nextTrip.startsAt)}</span></span> : <span className="muted">–</span> },
                 ...(isManager ? [{ title: "", width: 120, render: (_: unknown, v: Vehicle) => <Space><a onClick={() => { setEditingV(v); vForm.resetFields(); vForm.setFieldsValue({ ...v, departmentId: v.department?.id }); }}>Edit</a>{isAdmin && <Popconfirm title="Retire this vehicle?" onConfirm={() => run(() => api(`/api/fleet/vehicles/${v.id}`, { method: "DELETE" }), "Retired")}><a style={{ color: "#c53030" }}>Retire</a></Popconfirm>}</Space> }] : []),

@@ -30,7 +30,7 @@ export function AuthShell({ slug, title, subtitle, children, onBrand }: {
         <Card style={{ width: 420, maxWidth: "100%", borderTop: `4px solid ${b.primaryColor}` }} styles={{ body: { padding: 32 } }}>
           <Space orientation="vertical" align="center" style={{ width: "100%", marginBottom: 24 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={b.logoUrl || "/brand/zimstat-logo.png"} alt={productName} style={{ height: 96, maxWidth: 240, objectFit: "contain" }} />
+            <img src={b.logoUrl || "/brand/ruwa-logo.jpg"} alt={productName} style={{ height: 96, maxWidth: 240, objectFit: "contain" }} />
             <Typography.Title level={3} style={{ margin: 0 }}>{productName}</Typography.Title>
             {b.loginTagline && <Typography.Text type="secondary">{b.loginTagline}</Typography.Text>}
           </Space>

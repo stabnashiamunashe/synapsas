@@ -5,19 +5,19 @@ import { useNonce } from "./AntdRegistry";
 import { useEffect } from "react";
 import type { BrandingSettings } from "@/lib/types";
 
-/** Defaults: ZimStat blue primary on IBM Carbon surfaces (IBM Plex, square corners, gray-10 canvas). Overridable under Settings → Branding. */
+/** Defaults: Ruwa Local Board green on IBM Carbon surfaces (IBM Plex, square corners, gray-10 canvas). Overridable under Settings → Branding. */
 export const DEFAULT_BRANDING: Required<Pick<BrandingSettings, "productName" | "primaryColor" | "sidebarTheme" | "borderRadius">> = {
-  productName: process.env.NEXT_PUBLIC_APP_NAME || "ZimStat Approvals",
-  primaryColor: "#1414D2", // ZimStat blue (logo wordmark)
+  productName: process.env.NEXT_PUBLIC_APP_NAME || "Ruwa Local Board",
+  primaryColor: "#1E7B34", // crest green
   sidebarTheme: "dark",
   borderRadius: 0,
 };
 
-/** IBM Carbon UI-shell dark palette (gray 100) with the ZimStat gold as the selection accent. */
-export const SHELL_DARK = { bg: "#161616", layer: "#262626", hover: "#353535", selected: "#393939", border: "#393939", text: "#f4f4f4", textSecondary: "#c6c6c6", accent: "#F0D040" };
+/** Dark UI shell in the deep green of the crest with the crest gold as the selection accent (Carbon gray-100 layout rules). */
+export const SHELL_DARK = { bg: "#0E3B1F", layer: "#154A28", hover: "#1B5A31", selected: "#1F6638", border: "#1F6638", text: "#f4f4f4", textSecondary: "#cfe3d4", accent: "#F2B705" };
 
-/** ZimStat palette from the agency logo: blue wordmark, red star, gold bird, black. */
-export const BRAND = { blue: "#1414D2", blueDeep: "#0B0B8F", red: "#D7262D", gold: "#F0D040", black: "#000000", white: "#FFFFFF", cream: "#FFFFFF" };
+/** Ruwa Local Board palette from the crest: council green, deep green, leaf green, gold band, cream. */
+export const BRAND = { green: "#1E7B34", greenDeep: "#0E3B1F", leaf: "#3FA34D", gold: "#F2B705", goldDeep: "#C9950A", black: "#161616", white: "#FFFFFF", cream: "#FFF8E1" };
 
 /** IBM Carbon "white" theme neutrals (gray 10 canvas, gray 20 borders, gray 100 text). */
 export const UI = {
@@ -71,7 +71,7 @@ export function BrandProvider({ branding, children }: { branding?: BrandingSetti
         algorithm: antTheme.defaultAlgorithm,
         token: {
           colorPrimary: b.primaryColor,
-          colorInfo: b.primaryColor,
+          colorInfo: UI.focus, // informational blue stays distinct from the brand green (alerts, info tags)
           colorLink: b.primaryColor,
           borderRadius: radius,
           borderRadiusLG: radius,

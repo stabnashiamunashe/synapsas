@@ -5,8 +5,8 @@
 }
 
 :root {
-  --brand-color: #1414d2;
-  --brand-tint: #e8e8fb;
+  --brand-color: #1e7b34;
+  --brand-tint: #e4f1e7;
   --brand-radius: 0px;
   --page-bg: #f4f4f4;
   --surface: #ffffff;
@@ -194,6 +194,9 @@ h4.ant-typography, h5.ant-typography { font-weight: 600 !important; }
 .pill-blue { background: #d0e2ff; color: #002d9c; }
 .pill-purple { background: #e8daff; color: #491d8b; }
 .pill-amber { background: #fcf4d6; color: #684e00; }
+.pill-teal { background: #9ef0f0; color: #004144; }
+.pill-cyan { background: #bae6ff; color: #003a6d; }
+.pill-magenta { background: #ffd6e8; color: #740937; }
 .pill-plain::before { display: none; }
 
 /* ---------- Tables ---------- */
@@ -252,7 +255,7 @@ h4.ant-typography, h5.ant-typography { font-weight: 600 !important; }
 .side-nav-dark .side-promo { background: #262626; border-color: #393939; color: #f4f4f4; }
 .side-nav-dark .side-divider { border-top: 1px solid #393939; margin: 8px 16px; }
 .side-nav .side-divider { border-top: 1px solid var(--border); margin: 8px 16px; }
-.side-nav-dark .ant-menu-dark .ant-menu-item-selected { box-shadow: inset 4px 0 0 #F0D040; font-weight: 600; }
+.side-nav-dark .ant-menu-dark .ant-menu-item-selected { box-shadow: inset 4px 0 0 #F2B705; font-weight: 600; }
 .side-nav-dark .ant-menu-dark .ant-menu-item { margin: 0; width: 100%; border-radius: 0; }
 .side-nav-dark .ant-menu-dark .ant-menu-item a { color: inherit; }
 .side-foot { padding: 16px; font-size: 12px; line-height: 1.4; border-top: 1px solid var(--border); color: var(--text-secondary); }
@@ -303,10 +306,11 @@ h4.ant-typography, h5.ant-typography { font-weight: 600 !important; }
   letter-spacing: 0;
   line-height: 1.25;
 }
-.stat-blue { --stat-accent: #0f62fe; }
-.stat-green { --stat-accent: #24a148; }
-.stat-orange { --stat-accent: #ff832b; }
-.stat-purple { --stat-accent: #8a3ffc; }
+/* KPI accent bars use the crest palette: council green, leaf green, gold, deep green */
+.stat-blue { --stat-accent: #1e7b34; }
+.stat-green { --stat-accent: #3fa34d; }
+.stat-orange { --stat-accent: #f2b705; }
+.stat-purple { --stat-accent: #0e3b1f; }
 .stat-grey { --stat-accent: #8d8d8d; }
 
 /* Carbon weights for modal titles and statistics */

@@ -1,4 +1,6 @@
-# ZimStat Approvals
+# Ruwa Local Board · Approvals, Licensing & Service Desk
+
+> **Local authority edition (`local-authority` branch).** Branded for **Ruwa Local Board** (crest green `#1E7B34`, deep-green shell, gold accent) and extended with a **licensing module**: a licence schedule with fees, validity and document checklists; applications → review → inspection → approval → fee receipt → issue, with printable certificates, renewals, suspension/revocation, a 30-day expiry sweep and a public *Verify a licence* page. Every status and priority in the system is colour-coded through one registry (`src/components/StatusTag.tsx`). Demo accounts: `docs/TEST-ACCOUNTS.md`; module guide: `docs/LOCAL-AUTHORITY.md`.
 
 Internal approval system for the **Zimbabwe National Statistics Agency**: travelling & subsistence advances and expense claims, leave applications and internal memos, routed through the same signatures as the paper forms (Head of Section → Finance → Director General, Supervisor → Head of Office → Registry, and so on).
 

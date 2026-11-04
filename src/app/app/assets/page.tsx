@@ -1,12 +1,13 @@
 "use client";
 
-import { App, Button, Card, Col, DatePicker, Drawer, Empty, Form, Input, InputNumber, Modal, Row, Segmented, Select, Skeleton, Space, Table, Tag, Timeline, Typography } from "antd";
+import { App, Button, Card, Col, DatePicker, Drawer, Empty, Form, Input, InputNumber, Modal, Row, Segmented, Select, Skeleton, Space, Table, Timeline, Typography } from "antd";
 import { DownloadOutlined, LaptopOutlined, PlusOutlined, SearchOutlined, ToolOutlined, UserOutlined, WarningOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import Link from "next/link";
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { StatCard } from "@/components/StatCard";
+import { StatusTag } from "@/components/StatusTag";
 import { api, downloadUrl, formatDate, formatMoney, useApi, useMe } from "@/lib/client";
 import { ROLE_RANK } from "@/lib/roles";
 
@@ -83,7 +84,7 @@ function Assets() {
           <Table<Asset> rowKey="id" dataSource={data.items} size="small" pagination={{ pageSize: 25, hideOnSinglePage: true }} scroll={{ x: 900 }} onRow={(a) => ({ onClick: () => setOpenId(a.id), style: { cursor: "pointer" } })} columns={[
             { title: "Tag", width: 140, render: (_, a) => <span className="mono"><b>{a.tag}</b></span> },
             { title: "Item", render: (_, a) => <span>{a.category}<div className="muted" style={{ fontSize: 12 }}>{[a.make, a.model].filter(Boolean).join(" ")}{a.serial ? ` · S/N ${a.serial}` : ""}</div></span> },
-            { title: "Status", width: 110, render: (_, a) => <Tag color={ASSET_STATUS[a.status]?.color}>{ASSET_STATUS[a.status]?.label || a.status}</Tag> },
+            { title: "Status", width: 110, render: (_, a) => <StatusTag status={a.status === "ISSUED" ? "ISSUED_ASSET" : a.status} /> },
             { title: "Holder", render: (_, a) => a.assignedTo?.name || <span className="muted">–</span> },
             { title: "Section / location", render: (_, a) => <span>{a.department?.name}{a.location ? <div className="muted" style={{ fontSize: 12 }}>{a.location}</div> : null}</span> },
             { title: "Warranty", width: 120, render: (_, a) => a.warrantyUntil ? <span style={{ color: new Date(a.warrantyUntil) < new Date() ? "#9aa3b2" : undefined }}>{formatDate(a.warrantyUntil)}</span> : <span className="muted">–</span> },
@@ -96,7 +97,7 @@ function Assets() {
         {!detail ? <Skeleton active /> : (
           <>
             <Space wrap style={{ marginBottom: 12 }}>
-              <Tag color={ASSET_STATUS[detail.status]?.color}>{ASSET_STATUS[detail.status]?.label}</Tag>
+              <StatusTag status={detail.status === "ISSUED" ? "ISSUED_ASSET" : detail.status} />
               <b>{detail.category}</b> {[detail.make, detail.model].filter(Boolean).join(" ")}
             </Space>
             <Row gutter={[12, 6]} style={{ marginBottom: 12 }}>
@@ -121,7 +122,7 @@ function Assets() {
             )}
             {detail.cases.length > 0 && (
               <Card size="small" title="Faults and requests logged against this asset" style={{ marginBottom: 16 }}>
-                {detail.cases.map((k) => <div key={k.id}><Link href={`/app/cases?open=${k.id}`}><span className="mono">{k.referenceNo}</span> {k.title}</Link> <Tag style={{ marginLeft: 6 }}>{k.status.replace(/_/g, " ").toLowerCase()}</Tag></div>)}
+                {detail.cases.map((k) => <div key={k.id}><Link href={`/app/cases?open=${k.id}`}><span className="mono">{k.referenceNo}</span> {k.title}</Link> <span style={{ marginLeft: 6 }}><StatusTag status={k.status} /></span></div>)}
               </Card>
             )}
             <Typography.Title level={5}>History</Typography.Title>

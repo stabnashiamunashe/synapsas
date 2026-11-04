@@ -1,5 +1,7 @@
 "use client";
 
+import { PriorityTag } from "@/components/StatusTag";
+
 import { App, Avatar, Badge, Button, Card, Col, Dropdown, Empty, Input, Modal, Row, Segmented, Select, Space, Statistic, Switch, Table, Tag, Tooltip, Typography } from "antd";
 import { AppstoreOutlined, DownloadOutlined, FilterOutlined, PlusOutlined, ReloadOutlined, SaveOutlined, TableOutlined } from "@ant-design/icons";
 import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-pangea/dnd";
@@ -146,7 +148,7 @@ function CasesBoard() {
             { title: "Ref", dataIndex: "referenceNo", width: 130, render: (v) => <span className="mono">{v}</span> },
             { title: "Title", dataIndex: "title", ellipsis: true },
             { title: "Status", dataIndex: "status", width: 120, render: (s) => <StatusPill status={s} />, sorter: (a, b) => a.status.localeCompare(b.status) },
-            { title: "Priority", dataIndex: "priority", width: 100, render: (p: CasePriority) => <PriorityDot priority={p} withLabel />, sorter: (a, b) => CASE_PRIORITIES.indexOf(a.priority) - CASE_PRIORITIES.indexOf(b.priority) },
+            { title: "Priority", dataIndex: "priority", width: 100, render: (p: CasePriority) => <PriorityTag priority={p} />, sorter: (a, b) => CASE_PRIORITIES.indexOf(a.priority) - CASE_PRIORITIES.indexOf(b.priority) },
             { title: "Section", width: 150, render: (_, c) => c.department?.name || "–" },
             { title: "Category", width: 150, render: (_, c) => c.category?.name || "–" },
             { title: "Assignee", width: 150, render: (_, c) => c.assignee?.name || <span className="muted">Unassigned</span> },

@@ -4,7 +4,7 @@
  */
 import type { Role } from "./types";
 
-export type NavGroup = "Overview" | "Requests & approvals" | "Service desk" | "Staff & notices" | "Resources" | "Workflow design" | "Administration" | "Account" | "Public pages";
+export type NavGroup = "Overview" | "Requests & approvals" | "Licensing" | "Service desk" | "Staff & notices" | "Resources" | "Workflow design" | "Administration" | "Account" | "Public pages";
 
 export interface NavItem {
   /** route; also the stable key */
@@ -27,7 +27,7 @@ export interface NavItem {
   match?: string;
 }
 
-export const NAV_GROUP_ORDER: NavGroup[] = ["Overview", "Requests & approvals", "Service desk", "Staff & notices", "Resources", "Workflow design", "Administration", "Account", "Public pages"];
+export const NAV_GROUP_ORDER: NavGroup[] = ["Overview", "Requests & approvals", "Licensing", "Service desk", "Staff & notices", "Resources", "Workflow design", "Administration", "Account", "Public pages"];
 
 export const NAV: NavItem[] = [
   // Overview
@@ -37,10 +37,15 @@ export const NAV: NavItem[] = [
   { key: "/app/reports", label: "Reports", icon: "chart", group: "Overview", minRole: "MANAGER", description: "Volumes, approval rates, cycle times and spend by project", keywords: "analytics statistics kpi" },
 
   // Requests & approvals
-  { key: "/app/requests/new", label: "New request", icon: "plus", group: "Requests & approvals", description: "Start a T&S advance, claim, leave application, memo or vehicle request", keywords: "create submit form tsa tsc leave memo vehicle" },
+  { key: "/app/requests/new", label: "New request", icon: "plus", group: "Requests & approvals", description: "Start a T&S advance, claim, leave application, memo, payment or vehicle request", keywords: "create submit form tsa tsc leave memo vehicle" },
   { key: "/app/requests", label: "Requests", icon: "file", group: "Requests & approvals", description: "All requests you raised, approved or can see", keywords: "my requests list track status", match: "/app/requests(?!/new)" },
-  { key: "/app/projects", label: "Projects & surveys", icon: "folder", group: "Requests & approvals", description: "ZDHS, MICS, Census: budgets and spend per survey and funder", keywords: "survey budget cost centre donor" },
+  { key: "/app/projects", label: "Projects & votes", icon: "folder", group: "Requests & approvals", description: "Devolution projects and budget votes: budgets and spend per programme", keywords: "programme budget vote cost centre devolution" },
   { key: "/app/settings/delegations", label: "Out of office", icon: "calendar", group: "Requests & approvals", description: "Delegate your approvals while you are away", keywords: "delegation leave cover absence" },
+
+  // Licensing (local authority licences and permits)
+  { key: "/app/licences", label: "Licence register", icon: "licence", group: "Licensing", description: "Shop, liquor, hawker, health and building licences: applications, inspections, fees, certificates, renewals", keywords: "licensing permits shop liquor hawker trading business certificate renewal inspection expiry", match: "/app/licences(?!/new|/types)" },
+  { key: "/app/licences/new", label: "New licence application", icon: "plus", group: "Licensing", description: "Log an application received over the counter or by email", keywords: "apply licence permit application" },
+  { key: "/app/licences/types", label: "Licence types & fees", icon: "tags", group: "Licensing", minRole: "ADMIN", description: "Schedule of licences, fees, validity and required documents", keywords: "fees tariff schedule licence catalogue" },
 
   // Service desk
   { key: "/app/cases", label: "Cases", icon: "support", group: "Service desk", description: "Service desk board and table: tickets, complaints and data requests", keywords: "tickets issues board kanban helpdesk", match: "/app/cases(?!/new|/categories)" },
@@ -64,7 +69,7 @@ export const NAV: NavItem[] = [
 
   // Administration
   { key: "/app/users", label: "People", icon: "team", group: "Administration", minRole: "ADMIN", description: "Staff accounts, roles, line managers, invitations", keywords: "users staff accounts invite roles" },
-  { key: "/app/departments", label: "Sections & divisions", icon: "apartment", group: "Administration", minRole: "ADMIN", description: "Organisation structure and heads of section", keywords: "departments units heads" },
+  { key: "/app/departments", label: "Departments", icon: "apartment", group: "Administration", minRole: "ADMIN", description: "Council structure and heads of department", keywords: "departments sections units heads" },
   { key: "/app/audit", label: "Audit log", icon: "audit", group: "Administration", minRole: "ADMIN", description: "Immutable record of every action, sign-in and change", keywords: "security log trail compliance" },
   { key: "/app/settings/branding", label: "Settings", icon: "setting", group: "Administration", minRole: "ADMIN", description: "Branding, organisation, security, portal, WhatsApp, API", keywords: "configuration preferences", match: "/app/settings(?!/delegations|/whatsapp|/service-desk)" },
   { key: "/app/settings/organization", label: "Organisation & security", icon: "safety", group: "Administration", minRole: "ADMIN", sidebar: false, description: "Name, currency, password and session rules, leave entitlement, public holidays", keywords: "security policy holidays entitlement lockout 2fa" },
@@ -76,6 +81,7 @@ export const NAV: NavItem[] = [
 
   // Public pages
   { key: "/report", label: "Public portal: report an issue", icon: "global", group: "Public pages", sidebar: false, external: true, description: "What members of the public see when they log a case", keywords: "public form citizen portal" },
+  { key: "/verify", label: "Public portal: verify a licence", icon: "global", group: "Public pages", sidebar: false, external: true, description: "Anyone can check a licence number printed on a certificate", keywords: "public verify licence check" },
   { key: "/track", label: "Public portal: track a case", icon: "global", group: "Public pages", sidebar: false, external: true, description: "Reference lookup and rating for reporters", keywords: "public tracking reference" },
 ];
 

@@ -84,7 +84,7 @@ function Shell({ branding, orgName, session, children }: {
       <div className="side-team" style={{ justifyContent: showLabels ? "flex-start" : "center", margin: showLabels ? undefined : "12px 8px 8px", padding: showLabels ? undefined : 8 }}>
         {b.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={b.logoUrl} alt="" style={{ height: 28, maxWidth: showLabels ? 150 : 28, objectFit: "contain" }} />
+          <img src={b.logoUrl} alt="" style={{ height: 36, width: 36, objectFit: "contain", background: "#fff", flexShrink: 0 }} />
         ) : (
           <span style={{ width: 32, height: 32, background: dark ? "rgba(255,255,255,.08)" : tint(b.primaryColor, 0.88), display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <BrandMark size={18} color={dark ? SHELL_DARK.accent : b.primaryColor} />

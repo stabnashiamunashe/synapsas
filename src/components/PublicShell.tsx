@@ -13,7 +13,7 @@ export interface PortalConfig {
 }
 
 /** Frame for the public report/track pages: agency header, announcement, footer with contacts. */
-export function PublicShell({ children, onConfig, active }: { children: (cfg: PortalConfig | null) => React.ReactNode; onConfig?: (c: PortalConfig) => void; active: "report" | "track" }) {
+export function PublicShell({ children, onConfig, active }: { children: (cfg: PortalConfig | null) => React.ReactNode; onConfig?: (c: PortalConfig) => void; active: "report" | "track" | "verify" }) {
   const [cfg, setCfg] = useState<PortalConfig | null>(null);
   useEffect(() => { api<PortalConfig>("/api/public/portal").then((c) => { setCfg(c); onConfig?.(c); }).catch(() => setCfg(null)); }, [onConfig]);
   const b = { ...DEFAULT_BRANDING, ...(cfg?.branding || {}) };
@@ -24,12 +24,13 @@ export function PublicShell({ children, onConfig, active }: { children: (cfg: Po
           <div style={{ maxWidth: 960, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <Link href="/report" style={{ display: "flex", alignItems: "center", gap: 10, color: "inherit" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={b.logoUrl || "/brand/zimstat-logo.png"} alt="" style={{ height: 44 }} />
-              <div><div style={{ fontWeight: 700 }}>{cfg?.orgName || b.productName}</div><div className="muted" style={{ fontSize: 12 }}>Service requests and reports</div></div>
+              <img src={b.logoUrl || "/brand/ruwa-logo.jpg"} alt="" style={{ height: 44 }} />
+              <div><div style={{ fontWeight: 700 }}>{cfg?.orgName || b.productName}</div><div className="muted" style={{ fontSize: 12 }}>Service requests, reports and licence checks</div></div>
             </Link>
             <Space>
               <Link href="/report"><Button type={active === "report" ? "primary" : "default"}>Report an issue</Button></Link>
               <Link href="/track"><Button type={active === "track" ? "primary" : "default"}>Track a report</Button></Link>
+              <Link href="/verify"><Button type={active === "verify" ? "primary" : "default"}>Verify a licence</Button></Link>
               <Link href="/login"><Button type="text">Staff sign in</Button></Link>
             </Space>
           </div>

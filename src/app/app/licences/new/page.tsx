@@ -1,0 +1,118 @@
+"use client";
+
+import { App, Button, Card, Checkbox, Col, Descriptions, Form, Input, Row, Select, Space, Typography } from "antd";
+import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { api, formatMoney, useApi, useMe } from "@/lib/client";
+import { ROLE_RANK } from "@/lib/roles";
+import { PriorityTag } from "@/components/StatusTag";
+
+interface LType { id: string; code: string; name: string; category: string; description?: string | null; fee: number; currency: string; validityMonths: number; requiresInspection: boolean; requirements: string[]; department?: { name: string } | null }
+
+const WARDS = Array.from({ length: 12 }, (_, i) => String(i + 1));
+
+/** Log a licence application received over the counter, by post or by email. */
+export default function NewLicencePage() {
+  const { message } = App.useApp();
+  const router = useRouter();
+  const { data: me } = useMe();
+  const isManager = me ? ROLE_RANK[me.user.role] >= ROLE_RANK.MANAGER : false;
+  const { data: types } = useApi<LType[]>("/api/licence-types");
+  const { data: users } = useApi<{ id: string; name: string }[]>(isManager ? "/api/users?active=1" : null);
+  const [form] = Form.useForm();
+  const [typeId, setTypeId] = useState<string>();
+  const [received, setReceived] = useState<Record<string, boolean>>({});
+  const [saving, setSaving] = useState(false);
+  const type = (types || []).find((t) => t.id === typeId);
+
+  const submit = async (v: Record<string, unknown>) => {
+    setSaving(true);
+    try {
+      const documents = (type?.requirements || []).map((name) => ({ name, received: !!received[name] }));
+      const l = await api<{ id: string; referenceNo: string }>("/api/licences", { method: "POST", json: { ...v, documents } });
+      message.success(`Application ${l.referenceNo} logged`);
+      router.push(`/app/licences?open=${l.id}`);
+    } catch (e) { message.error((e as Error).message); } finally { setSaving(false); }
+  };
+
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <Link href="/app/licences" className="muted" style={{ fontSize: 13 }}><ArrowLeftOutlined /> Licensing</Link>
+          <Typography.Title level={3} className="page-title" style={{ marginTop: 4 }}>New licence application</Typography.Title>
+          <Typography.Text type="secondary">Capture the applicant, the premises and which supporting documents were handed in. The fee and validity come from the licence type.</Typography.Text>
+        </div>
+      </div>
+      <Row gutter={24}>
+        <Col xs={24} lg={16}>
+          <Card>
+            <Form form={form} layout="vertical" onFinish={submit} initialValues={{ priority: "MEDIUM" }}>
+              <Form.Item name="typeId" label="Licence type" rules={[{ required: true, message: "Choose the licence applied for" }]}>
+                <Select showSearch optionFilterProp="label" placeholder="Choose" onChange={(v) => { setTypeId(v); setReceived({}); }}
+                  options={Object.entries((types || []).reduce<Record<string, LType[]>>((acc, t) => { (acc[t.category] ||= []).push(t); return acc; }, {})).map(([cat, list]) => ({ label: cat, options: list.map((t) => ({ value: t.id, label: `${t.name} · ${formatMoney(t.fee, t.currency)} · ${t.validityMonths} months` })) }))} />
+              </Form.Item>
+              <Typography.Title level={5}>Applicant</Typography.Title>
+              <Row gutter={16}>
+                <Col xs={24} md={12}><Form.Item name="applicantName" label="Full name of applicant" rules={[{ required: true, min: 2 }]}><Input placeholder="As on the national ID or company registration" /></Form.Item></Col>
+                <Col xs={24} md={12}><Form.Item name="tradingName" label="Trading name (if different)"><Input placeholder="e.g. Ruwa Fresh Grocers" /></Form.Item></Col>
+                <Col xs={24} md={8}><Form.Item name="idNumber" label="National ID / company number"><Input /></Form.Item></Col>
+                <Col xs={24} md={8}><Form.Item name="phone" label="Phone" rules={[{ required: true, message: "A phone number is needed for follow-up" }]}><Input placeholder="07xx xxx xxx" /></Form.Item></Col>
+                <Col xs={24} md={8}><Form.Item name="email" label="Email" rules={[{ type: "email" }]}><Input /></Form.Item></Col>
+              </Row>
+              <Typography.Title level={5}>Premises</Typography.Title>
+              <Row gutter={16}>
+                <Col xs={24} md={8}><Form.Item name="standNumber" label="Stand number"><Input placeholder="e.g. 1234 Zimre Park" /></Form.Item></Col>
+                <Col xs={24} md={10}><Form.Item name="address" label="Physical address"><Input /></Form.Item></Col>
+                <Col xs={24} md={6}><Form.Item name="ward" label="Ward"><Select allowClear options={WARDS.map((w) => ({ value: w, label: `Ward ${w}` }))} /></Form.Item></Col>
+                <Col xs={24}><Form.Item name="activity" label="Nature of business / purpose" rules={[{ required: true, message: "Describe the activity to be licensed" }]}><Input.TextArea rows={3} placeholder="e.g. Retail of groceries and household goods; 2 employees; trading 07:00–20:00" /></Form.Item></Col>
+                <Col xs={24} md={8}><Form.Item name="priority" label="Priority" extra="Use High for enforcement cases or time-bound events"><Select options={["LOW", "MEDIUM", "HIGH", "CRITICAL"].map((p) => ({ value: p, label: <PriorityTag priority={p} /> }))} /></Form.Item></Col>
+                {isManager && <Col xs={24} md={8}><Form.Item name="officerId" label="Handling officer" initialValue={me?.user.id}><Select showSearch optionFilterProp="label" options={(users || []).map((u) => ({ value: u.id, label: u.name }))} /></Form.Item></Col>}
+              </Row>
+              {type && type.requirements.length > 0 && (
+                <>
+                  <Typography.Title level={5}>Documents handed in</Typography.Title>
+                  <div style={{ marginBottom: 16 }}>
+                    {type.requirements.map((r) => <div key={r} style={{ padding: "6px 0", borderBottom: "1px solid var(--border)" }}><Checkbox checked={!!received[r]} onChange={(e) => setReceived((x) => ({ ...x, [r]: e.target.checked }))}>{r}</Checkbox></div>)}
+                    <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Missing documents can be ticked off later from the licence record.</div>
+                  </div>
+                </>
+              )}
+              <Space>
+                <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={saving}>Log application</Button>
+                <Link href="/app/licences"><Button>Cancel</Button></Link>
+              </Space>
+            </Form>
+          </Card>
+        </Col>
+        <Col xs={24} lg={8}>
+          <Card title={type ? type.name : "Licence details"}>
+            {!type ? <Typography.Text type="secondary">Choose a licence type to see the fee, validity, inspection requirement and the documents the applicant must supply.</Typography.Text> : (
+              <>
+                {type.description && <Typography.Paragraph>{type.description}</Typography.Paragraph>}
+                <Descriptions column={1} size="small">
+                  <Descriptions.Item label="Code">{type.code}</Descriptions.Item>
+                  <Descriptions.Item label="Fee">{formatMoney(type.fee, type.currency)}</Descriptions.Item>
+                  <Descriptions.Item label="Validity">{type.validityMonths} months</Descriptions.Item>
+                  <Descriptions.Item label="Inspection">{type.requiresInspection ? "Required before approval" : "Not required"}</Descriptions.Item>
+                  {type.department && <Descriptions.Item label="Department">{type.department.name}</Descriptions.Item>}
+                </Descriptions>
+                <Typography.Text strong>Process</Typography.Text>
+                <ol style={{ paddingLeft: 18, margin: "6px 0 0", fontSize: 13 }}>
+                  <li>Application logged (this form)</li>
+                  <li>Review of documents</li>
+                  {type.requiresInspection && <li>Site inspection by the department</li>}
+                  <li>Approval by the head of department</li>
+                  <li>Fee receipted at the cashier</li>
+                  <li>Licence issued and certificate printed</li>
+                </ol>
+              </>
+            )}
+          </Card>
+        </Col>
+      </Row>
+    </div>
+  );
+}

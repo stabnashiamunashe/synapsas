@@ -5,13 +5,13 @@ import { DollarOutlined, ExclamationCircleOutlined, FileSearchOutlined, Hourglas
 import Link from "next/link";
 import { useState } from "react";
 import { StatCard } from "@/components/StatCard";
+import { StatusTag } from "@/components/StatusTag";
 import { api, formatDate, formatMoney, useApi } from "@/lib/client";
 
 interface Clearance { id: string; kind: string; amount: number; note?: string | null; createdAt: string; createdBy?: { name: string } | null; requestId?: string | null }
 interface Adv { id: string; referenceNo: string; amount: number; clearedAmount: number; outstanding: number; status: string; disbursedAt: string; travelEndsAt?: string | null; dueAt: string; clearedAt?: string | null; overdue: boolean; daysOverdue: number; officer: { id: string; name: string; department?: { name: string } | null }; request: { id: string; title: string; project?: { code: string } | null }; clearances: Clearance[] }
 interface Resp { items: Adv[]; summary: { openCount: number; outstanding: number; overdueCount: number; overdueAmount: number }; canClear: boolean }
 
-const STATUS: Record<string, { label: string; color: string }> = { OPEN: { label: "Open", color: "gold" }, PARTIALLY_CLEARED: { label: "Partly cleared", color: "blue" }, CLEARED: { label: "Cleared", color: "green" }, RECOVERED: { label: "Recovered from salary", color: "purple" }, WRITTEN_OFF: { label: "Written off", color: "default" } };
 const KIND: Record<string, string> = { CLAIM: "Claim form", CASH_REFUND: "Cash refund", SALARY_RECOVERY: "Salary recovery", WRITE_OFF: "Write-off" };
 
 export default function AdvancesPage() {
@@ -56,7 +56,7 @@ export default function AdvancesPage() {
                 { title: "Cleared", width: 110, align: "right", render: (_, a) => formatMoney(a.clearedAmount) },
                 { title: "Outstanding", width: 120, align: "right", render: (_, a) => <b style={{ color: a.outstanding > 0 ? "#b45309" : undefined }}>{formatMoney(a.outstanding)}</b> },
                 { title: "Clear by", width: 170, render: (_, a) => a.overdue ? <Tag color="red">{formatDate(a.dueAt)} · {a.daysOverdue}d late</Tag> : <span>{formatDate(a.dueAt)}</span> },
-                { title: "Status", width: 150, render: (_, a) => <Tag color={STATUS[a.status]?.color}>{STATUS[a.status]?.label || a.status}</Tag> },
+                { title: "Status", width: 150, render: (_, a) => <StatusTag status={a.status} /> },
                 { title: "", width: 130, render: (_, a) => <Space><a onClick={() => setViewing(a)}>History</a>{data.canClear && a.outstanding > 0 && <a onClick={() => { setClearing(a); form.setFieldsValue({ kind: "CASH_REFUND", amount: a.outstanding, note: "" }); }}>Clear</a>}</Space> },
               ]} />
             )}
@@ -77,7 +77,7 @@ export default function AdvancesPage() {
         {viewing && (
           <>
             <Space wrap style={{ marginBottom: 12 }}>
-              <Tag color={STATUS[viewing.status]?.color}>{STATUS[viewing.status]?.label}</Tag>
+              <StatusTag status={viewing.status} />
               <span>Disbursed {formatDate(viewing.disbursedAt)}</span>
               {viewing.travelEndsAt && <span>· travel ended {formatDate(viewing.travelEndsAt)}</span>}
               <span>· clear by {formatDate(viewing.dueAt)}</span>

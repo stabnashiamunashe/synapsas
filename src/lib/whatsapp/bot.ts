@@ -44,7 +44,7 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
   const phone = normalizePhone(rawPhone);
   const settings = await caseSettings(orgId);
   const wa = settings.whatsapp || {};
-  const greeting = wa.greeting || "Welcome to ZimStat. How can we help you today?";
+  const greeting = wa.greeting || "Welcome to Ruwa Local Board. How can we help you today?";
   const replies: WaOutgoing[] = [];
   const say = (m: WaOutgoing) => replies.push(m);
   try {

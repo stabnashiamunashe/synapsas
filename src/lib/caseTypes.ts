@@ -15,7 +15,7 @@ export const CASE_STATUS_COLORS: Record<CaseStatus, string> = {
   NEW: "#7A8B99", TRIAGED: "#5B5FC7", ASSIGNED: "#2F6FED", IN_PROGRESS: "#E2A33D", ON_HOLD: "#C97B36",
   RESOLVED: "#2E9E6D", CLOSED: "#4B5563", REOPENED: "#D65A5A", REJECTED: "#C6433B",
 };
-export const CASE_PRIORITY_COLORS: Record<CasePriority, string> = { LOW: "#2E9E6D", MEDIUM: "#E2A33D", HIGH: "#E0672B", CRITICAL: "#C6433B" };
+export const CASE_PRIORITY_COLORS: Record<CasePriority, string> = { LOW: "#24a148", MEDIUM: "#0f62fe", HIGH: "#ff832b", CRITICAL: "#da1e28" };
 export const CASE_PRIORITY_LABELS: Record<CasePriority, string> = { LOW: "Low", MEDIUM: "Medium", HIGH: "High", CRITICAL: "Critical" };
 export const CASE_SOURCE_LABELS: Record<CaseSource, string> = { STAFF: "Staff", PUBLIC: "Public portal", PHONE: "Phone", WALK_IN: "Walk-in", EMAIL: "Email", WHATSAPP: "WhatsApp" };
 
@@ -39,7 +39,7 @@ export const CASE_TRANSITIONS: Record<CaseStatus, CaseStatus[]> = {
 };
 
 export interface CaseSettings {
-  /** reference prefix, e.g. ZS → ZS-2026-0001 */
+  /** reference prefix, e.g. RLB → RLB-2026-0001 */
   prefix?: string;
   autoAssign?: boolean;
   requireTriage?: boolean;
@@ -60,7 +60,7 @@ export interface CaseSettings {
 }
 
 export const DEFAULT_CASE_SETTINGS: Required<Pick<CaseSettings, "prefix" | "autoAssign" | "requireTriage" | "requireTransitionReason" | "slaWarningHours" | "publicPortal" | "defaultView" | "boardColumns">> = {
-  prefix: "ZS",
+  prefix: "RLB",
   autoAssign: true,
   requireTriage: false,
   requireTransitionReason: false,

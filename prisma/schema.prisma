@@ -50,6 +50,8 @@ model Organization {
   cases          Case[]
   assets         Asset[]
   vehicles       Vehicle[]
+  licenceTypes   LicenceType[]
+  licences       Licence[]
 
   savedViews SavedView[]
   advances   Advance[]
@@ -117,6 +119,9 @@ model User {
   assetEvents       AssetEvent[]       @relation("AssetActor")
   tripsDriven       VehicleTrip[]      @relation("TripDriver")
   tripsRequested    VehicleTrip[]      @relation("TripRequester")
+  licencesHandled   Licence[]          @relation("LicenceOfficer")
+  licenceInspections Licence[]         @relation("LicenceInspector")
+  licenceEvents     LicenceEvent[]     @relation("LicenceActor")
 
   @@unique([orgId, email])
   @@index([orgId])
@@ -142,6 +147,7 @@ model Department {
   cases           Case[]
   assets          Asset[]
   vehicles        Vehicle[]
+  licenceTypes    LicenceType[]
 
   @@unique([orgId, name])
   @@index([headUserId])
@@ -846,4 +852,98 @@ model VehicleTrip {
 
   @@index([orgId, startsAt])
   @@index([vehicleId, startsAt])
+}
+
+// ==================== Licensing (local authority) ====================
+model LicenceType {
+  id               String   @id @default(cuid())
+  orgId            String
+  code             String   @db.VarChar(16) // SHP, LIQ, HWK, BLD, ...
+  name             String   @db.VarChar(120)
+  category         String   @db.VarChar(64) // Trading, Liquor, Health, Building, Transport, Land, Other
+  description      String?  @db.Text
+  fee              Decimal  @db.Decimal(18, 2)
+  currency         String   @default("USD") @db.VarChar(8)
+  validityMonths   Int      @default(12)
+  requiresInspection Boolean @default(true)
+  requirements     Json     // string[] documents the applicant must supply
+  departmentId     String?  // owning department (inspections / approval)
+  isActive         Boolean  @default(true)
+  counter          Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  department Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  licences   Licence[]
+
+  @@unique([orgId, code])
+  @@index([orgId, isActive])
+}
+
+model Licence {
+  id             String    @id @default(cuid())
+  orgId          String
+  typeId         String
+  referenceNo    String    @db.VarChar(40) // application reference, e.g. LA-2026-0001
+  licenceNo      String?   @db.VarChar(40) // issued number, e.g. RLB/SHP/2026/0001
+  status         String    @default("SUBMITTED") // DRAFT | SUBMITTED | UNDER_REVIEW | INSPECTION | APPROVED | ISSUED | REJECTED | EXPIRED | SUSPENDED | REVOKED | CANCELLED
+  applicantName  String    @db.VarChar(160)
+  tradingName    String?   @db.VarChar(160)
+  idNumber       String?   @db.VarChar(40)
+  phone          String?   @db.VarChar(40)
+  email          String?   @db.VarChar(160)
+  standNumber    String?   @db.VarChar(60)
+  address        String?   @db.VarChar(255)
+  ward           String?   @db.VarChar(40)
+  activity       String?   @db.Text // nature of business / purpose
+  priority       String    @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  feeAmount      Decimal   @db.Decimal(18, 2)
+  currency       String    @default("USD") @db.VarChar(8)
+  paidAt         DateTime?
+  receiptNo      String?   @db.VarChar(60)
+  officerId      String?   // licensing officer handling it
+  inspectorId    String?
+  inspectionDue  DateTime?
+  inspectedAt    DateTime?
+  inspectionOutcome String? @db.VarChar(16) // PASS | FAIL | CONDITIONAL
+  inspectionNotes String?  @db.Text
+  conditions     String?   @db.Text // conditions attached to the licence
+  decisionNote   String?   @db.Text
+  issuedAt       DateTime?
+  expiresAt      DateTime?
+  renewedFromId  String?
+  documents      Json      // {name, received: boolean}[] checklist
+  submittedAt    DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  org         Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  type        LicenceType    @relation(fields: [typeId], references: [id])
+  officer     User?          @relation("LicenceOfficer", fields: [officerId], references: [id], onDelete: SetNull)
+  inspector   User?          @relation("LicenceInspector", fields: [inspectorId], references: [id], onDelete: SetNull)
+  renewedFrom Licence?       @relation("LicenceRenewal", fields: [renewedFromId], references: [id], onDelete: SetNull)
+  renewals    Licence[]      @relation("LicenceRenewal")
+  events      LicenceEvent[]
+
+  @@unique([orgId, referenceNo])
+  @@index([orgId, status])
+  @@index([orgId, expiresAt])
+  @@index([orgId, licenceNo])
+}
+
+model LicenceEvent {
+  id         String   @id @default(cuid())
+  licenceId  String
+  kind       String   @db.VarChar(32) // SUBMITTED | REVIEW | INSPECTION_SCHEDULED | INSPECTED | APPROVED | REJECTED | PAID | ISSUED | RENEWED | SUSPENDED | REINSTATED | REVOKED | EXPIRED | CANCELLED | NOTE | DOCUMENT
+  fromStatus String?  @db.VarChar(24)
+  toStatus   String?  @db.VarChar(24)
+  actorId    String?
+  note       String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  licence Licence @relation(fields: [licenceId], references: [id], onDelete: Cascade)
+  actor   User?   @relation("LicenceActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([licenceId, createdAt])
 }
