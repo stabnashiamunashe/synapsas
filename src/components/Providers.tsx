@@ -31,7 +31,8 @@ export const UI = {
   textMuted: "#6f6f6f",
   tableHeaderBg: "#f4f4f4",
   hover: "#e8e8e8",
-  focus: "#0f62fe",
+  focus: "#1E7B34", // focus ring in the brand green
+  info: "#0f62fe",
 };
 
 /** Mix a hex colour with white for tinted backgrounds. */
@@ -71,7 +72,7 @@ export function BrandProvider({ branding, children }: { branding?: BrandingSetti
         algorithm: antTheme.defaultAlgorithm,
         token: {
           colorPrimary: b.primaryColor,
-          colorInfo: UI.focus, // informational blue stays distinct from the brand green (alerts, info tags)
+          colorInfo: UI.info, // informational blue stays distinct from the brand green (alerts, info tags)
           colorLink: b.primaryColor,
           borderRadius: radius,
           borderRadiusLG: radius,
@@ -130,7 +131,7 @@ export function BrandProvider({ branding, children }: { branding?: BrandingSetti
             defaultBg: UI.surface, defaultBorderColor: UI.text, defaultColor: UI.text, defaultHoverBg: UI.hover, defaultHoverBorderColor: UI.text, defaultHoverColor: UI.text, defaultActiveBg: "#c6c6c6",
             textHoverBg: UI.hover, contentFontSizeSM: 14, onlyIconSize: 16,
           },
-          Input: { borderRadius: radius, borderRadiusLG: radius, borderRadiusSM: radius, activeShadow: `inset 0 0 0 1px ${UI.focus}`, activeBorderColor: UI.focus, hoverBorderColor: UI.borderStrong, paddingInline: 16, colorBgContainer: UI.surface },
+          Input: { borderRadius: radius, borderRadiusLG: radius, borderRadiusSM: radius, activeShadow: "none", activeBorderColor: UI.focus, hoverBorderColor: UI.borderStrong, paddingInline: 16, colorBgContainer: UI.surface },
           InputNumber: { borderRadius: radius, hoverBorderColor: UI.borderStrong, activeBorderColor: UI.focus },
           Select: { borderRadius: radius, borderRadiusLG: radius, optionSelectedBg: "#e0e0e0", optionSelectedFontWeight: 600, hoverBorderColor: UI.borderStrong, activeBorderColor: UI.focus, optionPadding: "9px 16px" },
           DatePicker: { borderRadius: radius, hoverBorderColor: UI.borderStrong, activeBorderColor: UI.focus },

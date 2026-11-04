@@ -14,7 +14,7 @@ This branch (`local-authority`) is the council edition of the approvals platform
 
 The crest is `public/brand/ruwa-logo.jpg`. Defaults live in `src/components/Providers.tsx` (`DEFAULT_BRANDING`, `SHELL_DARK`, `BRAND`) and `src/app/globals.css` (`--brand-color`, `.stat-*` accents). Everything can still be overridden per organisation under **Settings → Branding**.
 
-Informational blue (`#0f62fe`) is kept for info alerts and focus rings so that green always means *approved / valid / available*.
+Informational blue (`#0f62fe`) is kept for info alerts so that green in a status always means *approved / valid / available*. Focus rings are a single 1px line in the brand green (`--focus` in `globals.css`, `UI.focus` in `Providers.tsx`); inputs inside an affix wrapper (search boxes, fields with icons) never draw a second inner ring.
 
 ## Colour-coded statuses and priorities
 

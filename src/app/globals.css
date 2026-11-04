@@ -16,7 +16,7 @@
   --text: #161616;
   --text-secondary: #525252;
   --text-muted: #6f6f6f;
-  --focus: #0f62fe;
+  --focus: #1E7B34;
   --support-error: #da1e28;
   --support-success: #24a148;
   --support-warning: #f1c21b;
@@ -340,11 +340,12 @@ h4.ant-typography, h5.ant-typography { font-weight: 600 !important; }
   width: 32px;
   height: 32px;
 }
-/* Carbon: focus rings are 2px, square */
-.ant-btn:focus-visible, .ant-input:focus-visible, .ant-select-focused .ant-select-selector, a:focus-visible {
-  outline: 2px solid var(--focus) !important;
-  outline-offset: 1px;
+/* Focus rings: a single 1px square line (inputs inside an affix wrapper rely on the wrapper's ring, never both) */
+.ant-btn:focus-visible, .ant-input:not(.ant-input-affix-wrapper > .ant-input):focus-visible, a:focus-visible {
+  outline: 1px solid var(--focus) !important;
+  outline-offset: 0;
 }
+.ant-input-affix-wrapper > .ant-input:focus, .ant-input-affix-wrapper > .ant-input:focus-visible { outline: none !important; box-shadow: none !important; }
 /* Danger (tertiary) buttons: outlined in support-error */
 .ant-btn-dangerous:not(.ant-btn-primary):not(.ant-btn-text):not(.ant-btn-link) {
   background: transparent !important;
@@ -423,12 +424,12 @@ h4.ant-typography, h5.ant-typography { font-weight: 600 !important; }
 }
 .ant-input-outlined:hover, .ant-input-affix-wrapper:hover, .ant-select-outlined:not(.ant-select-disabled):hover .ant-select-selector { background: #e8e8e8 !important; }
 .ant-input-outlined:focus, .ant-input-outlined:focus-within, .ant-input-affix-wrapper:focus-within, .ant-select-focused.ant-select-outlined .ant-select-selector, .ant-picker-focused.ant-picker-outlined, .ant-input-number-focused {
-  outline: 2px solid var(--focus) !important;
-  outline-offset: -2px;
+  outline: 1px solid var(--focus) !important;
+  outline-offset: -1px;
   box-shadow: none !important;
   border-color: transparent !important;
 }
-.ant-input-outlined.ant-input-status-error, .ant-input-affix-wrapper.ant-input-affix-wrapper-status-error { outline: 2px solid var(--support-error) !important; outline-offset: -2px; }
+.ant-input-outlined.ant-input-status-error, .ant-input-affix-wrapper.ant-input-affix-wrapper-status-error { outline: 1px solid var(--support-error) !important; outline-offset: -1px; }
 .ant-input-affix-wrapper > .ant-input { background: transparent !important; }
 .ant-card .ant-input-outlined, .ant-card .ant-select-outlined:not(.ant-select-customize-input) .ant-select-selector, .ant-card .ant-picker-outlined, .ant-card .ant-input-affix-wrapper, .ant-modal .ant-input-outlined, .ant-modal .ant-select-outlined:not(.ant-select-customize-input) .ant-select-selector, .ant-modal .ant-picker-outlined, .ant-modal .ant-input-affix-wrapper, .ant-drawer .ant-input-outlined, .ant-drawer .ant-select-outlined:not(.ant-select-customize-input) .ant-select-selector, .ant-drawer .ant-input-affix-wrapper { background: var(--layer) !important; }
 /* Tabs: underline sits on the card border */
