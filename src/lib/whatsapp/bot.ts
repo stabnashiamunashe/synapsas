@@ -6,7 +6,8 @@ import { parseJson, toJson } from "../json";
 import { caseSettings, createCase } from "../cases";
 import { CASE_STATUS_LABELS, type CaseStatus } from "../caseTypes";
 import { LICENCE_STATUS_LABELS, type LicenceStatus } from "../licenceTypes";
-import { createLicenceApplication, phoneTail } from "../licensing";
+import { createLicenceApplication, notifyApplicant, paymentState, phoneTail, recordLicencePayment } from "../licensing";
+import { PAYMENT_METHOD_LABELS, type PaymentMethod } from "../licenceTypes";
 import { describe, logMessage, normalizePhone, sendWhatsApp, type WaOutgoing } from "./client";
 
 export type Inbound =
@@ -17,17 +18,17 @@ export type Inbound =
   | { kind: "other" };
 
 type Step = "IDLE" | "MENU" | "CATEGORY" | "DESCRIBE" | "LOCATION" | "NAME" | "CONFIRM" | "TRACK" | "RATE"
-  | "LIC_TYPE" | "LIC_NAME" | "LIC_TRADING" | "LIC_PREMISES" | "LIC_WARD" | "LIC_ACTIVITY" | "LIC_CONFIRM" | "LIC_TRACK";
+  | "LIC_TYPE" | "LIC_NAME" | "LIC_TRADING" | "LIC_PREMISES" | "LIC_WARD" | "LIC_ACTIVITY" | "LIC_CONFIRM" | "LIC_TRACK" | "LIC_PAY_METHOD" | "LIC_PAY_REF";
 type Data = {
   categoryId?: string; categoryName?: string; description?: string; latitude?: number; longitude?: number; locationAddress?: string; name?: string; trackCaseId?: string; rateCaseId?: string; page?: number;
-  licTypeId?: string; licTypeName?: string; licFee?: string; licRequirements?: string[]; licRequiresInspection?: boolean; applicant?: string; trading?: string; premises?: string; ward?: string; activity?: string;
+  licTypeId?: string; licTypeName?: string; licFee?: string; licRequirements?: string[]; licRequiresInspection?: boolean; applicant?: string; trading?: string; premises?: string; ward?: string; activity?: string; payLicId?: string; payMethod?: string; payAmount?: number;
 };
 
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000;
 const B = {
   REPORT: "menu_report", TRACK: "menu_track", HELP: "menu_help", MENU: "go_menu", CANCEL: "go_cancel", APPLY: "menu_apply", LIC_TRACK: "menu_lictrack",
   LOC_SKIP: "loc_skip", NAME_OK: "name_ok", NAME_ANON: "name_anon", CONFIRM: "confirm_yes", MORE: "cat_more", RATE: "rate_", BACK: "track_back",
-  TRADING_SKIP: "trading_skip", WARD_SKIP: "ward_skip", LIC_CONFIRM: "lic_confirm",
+  TRADING_SKIP: "trading_skip", WARD_SKIP: "ward_skip", LIC_CONFIRM: "lic_confirm", PAY: "licpay_",
 };
 
 const menu = (greeting: string): WaOutgoing => ({
@@ -61,11 +62,16 @@ async function licenceTypeList(orgId: string, page: number): Promise<WaOutgoing>
 const statusLine = (c: { referenceNo: string; title: string; status: string; slaDueAt: Date | null; resolvedAt: Date | null }) =>
   `*${c.referenceNo}* · ${CASE_STATUS_LABELS[c.status as CaseStatus] || c.status}\n${c.title}${c.resolvedAt ? `\nResolved ${c.resolvedAt.toDateString()}` : c.slaDueAt ? `\nTarget ${c.slaDueAt.toDateString()}` : ""}`;
 
-const licenceLine = (l: { referenceNo: string; licenceNo: string | null; status: string; feeAmount: unknown; currency: string; paidAt: Date | null; expiresAt: Date | null; inspectionDue: Date | null; decisionNote: string | null; type: { name: string }; documents: unknown }) => {
+type LicForBot = { id: string; referenceNo: string; licenceNo: string | null; status: string; feeAmount: unknown; currency: string; paidAt: Date | null; expiresAt: Date | null; inspectionDue: Date | null; decisionNote: string | null; type: { name: string }; documents: unknown; payments: { amount: unknown; status: string }[] };
+const feeDue = (l: LicForBot) => { const p = paymentState({ feeAmount: Number(l.feeAmount), payments: l.payments.map((x) => ({ amount: Number(x.amount), status: x.status })) }); return { ...p, canPay: l.status === "APPROVED" && !p.settled && p.pending === 0 }; };
+const licenceLine = (l: LicForBot) => {
   const docs = (l.documents as { name: string; received: boolean }[]) || [];
   const missing = docs.filter((d) => !d.received).map((d) => d.name);
   const lines = [`*${l.licenceNo || l.referenceNo}* · ${LICENCE_STATUS_LABELS[l.status as LicenceStatus] || l.status}`, l.type.name];
-  if (l.status === "APPROVED" && !l.paidAt) lines.push(`Fee due: ${l.currency} ${Number(l.feeAmount).toFixed(2)} — pay at the council cashier quoting ${l.referenceNo}.`);
+  const pay = feeDue(l);
+  if (l.status === "APPROVED" && pay.settled) lines.push("Payment confirmed. The licence is being issued.");
+  else if (l.status === "APPROVED" && pay.pending > 0) lines.push(`Payment of ${l.currency} ${pay.pending.toFixed(2)} reported, awaiting confirmation by Finance.`);
+  else if (l.status === "APPROVED") lines.push(`Fee due: ${l.currency} ${pay.outstanding.toFixed(2)} — pay at the council cashier, by EcoCash or bank transfer quoting ${l.referenceNo}, then tap *I have paid* to send the reference.`);
   if (l.status === "INSPECTION" && l.inspectionDue) lines.push(`Inspection due by ${l.inspectionDue.toDateString()}.`);
   if (l.status === "ISSUED" && l.expiresAt) lines.push(`Valid until ${l.expiresAt.toDateString()}.`);
   if (l.status === "REJECTED" && l.decisionNote) lines.push(`Reason: ${l.decisionNote.slice(0, 300)}`);
@@ -263,15 +269,37 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
         break;
 
       case "LIC_TRACK":
-        if (id.startsWith("lic_")) {
-          const l = await prisma.licence.findFirst({ where: { id: id.slice(4), orgId }, include: { type: { select: { name: true } } } });
+        if (id.startsWith(B.PAY)) {
+          const l = await prisma.licence.findFirst({ where: { id: id.slice(B.PAY.length), orgId }, include: { type: { select: { name: true } }, payments: { select: { amount: true, status: true } } } });
+          if (!l || phoneTail(l.phone) !== phone.slice(-9) || !feeDue(l).canPay) { say(await licenceList(orgId, phone)); break; }
+          await save("LIC_PAY_METHOD", { payLicId: l.id, payAmount: feeDue(l).outstanding });
+          say({ type: "list", header: "How did you pay?", body: `${l.referenceNo}: fee ${l.currency} ${feeDue(l).outstanding.toFixed(2)}. Choose the payment method.`, button: "Method", sections: [{ rows: (["ECOCASH", "BANK_TRANSFER", "CASH", "POS", "OTHER"] as PaymentMethod[]).map((m) => ({ id: `pm_${m}`, title: PAYMENT_METHOD_LABELS[m].slice(0, 24) })) }], footer: "Reply Cancel to go back" });
+        } else if (id.startsWith("lic_")) {
+          const l = await prisma.licence.findFirst({ where: { id: id.slice(4), orgId }, include: { type: { select: { name: true } }, payments: { select: { amount: true, status: true } } } });
           if (!l || phoneTail(l.phone) !== phone.slice(-9)) { say(await licenceList(orgId, phone)); break; }
-          say({ type: "buttons", body: licenceLine(l), buttons: [{ id: B.LIC_TRACK, title: "My applications" }, { id: B.APPLY, title: "Apply for another" }, backToMenu] });
+          say({ type: "buttons", body: licenceLine(l), buttons: [...(feeDue(l).canPay ? [{ id: `${B.PAY}${l.id}`, title: "I have paid" }] : []), { id: B.LIC_TRACK, title: "My applications" }, backToMenu] });
         } else if (/^(LA-\d{4}-\d{4,6}|[A-Z]{2,6}\/[A-Z0-9]{2,8}\/\d{4}\/\d{4,6})$/i.test(text)) {
-          const l = await prisma.licence.findFirst({ where: { orgId, OR: [{ referenceNo: text.toUpperCase() }, { licenceNo: text.toUpperCase() }] }, include: { type: { select: { name: true } } } });
-          say(l && phoneTail(l.phone) === phone.slice(-9) ? { type: "buttons", body: licenceLine(l), buttons: [{ id: B.LIC_TRACK, title: "My applications" }, backToMenu] } : { type: "buttons", body: "No application from this number with that reference.", buttons: [{ id: B.LIC_TRACK, title: "My applications" }, backToMenu] });
+          const l = await prisma.licence.findFirst({ where: { orgId, OR: [{ referenceNo: text.toUpperCase() }, { licenceNo: text.toUpperCase() }] }, include: { type: { select: { name: true } }, payments: { select: { amount: true, status: true } } } });
+          say(l && phoneTail(l.phone) === phone.slice(-9) ? { type: "buttons", body: licenceLine(l), buttons: [...(feeDue(l).canPay ? [{ id: `${B.PAY}${l.id}`, title: "I have paid" }] : []), { id: B.LIC_TRACK, title: "My applications" }, backToMenu] } : { type: "buttons", body: "No application from this number with that reference.", buttons: [{ id: B.LIC_TRACK, title: "My applications" }, backToMenu] });
         } else say(await licenceList(orgId, phone));
         break;
+
+      case "LIC_PAY_METHOD":
+        if (!id.startsWith("pm_")) { say({ type: "buttons", body: "Choose the payment method from the list, or cancel.", buttons: [{ id: B.CANCEL, title: "Cancel" }] }); break; }
+        await save("LIC_PAY_REF", { ...data, payMethod: id.slice(3) });
+        say({ type: "buttons", body: data.payMethod === "CASH" || id === "pm_CASH" ? "Type the receipt number from the cashier." : "Type the transaction reference (for EcoCash, the confirmation code in the SMS; for a bank transfer, the reference on the proof of payment).", buttons: [{ id: B.CANCEL, title: "Cancel" }] });
+        break;
+
+      case "LIC_PAY_REF": {
+        if (text.length < 3) { say({ type: "buttons", body: "Please type the receipt number or transaction reference.", buttons: [{ id: B.CANCEL, title: "Cancel" }] }); break; }
+        const l = await prisma.licence.findFirst({ where: { id: data.payLicId || "", orgId }, include: { type: { select: { name: true, departmentId: true } }, payments: { select: { amount: true, status: true } } } });
+        if (!l || phoneTail(l.phone) !== phone.slice(-9)) { await save("MENU", {}); say(menu(greeting)); break; }
+        await recordLicencePayment(l, { amount: data.payAmount || feeDue(l).outstanding, method: (data.payMethod || "OTHER") as PaymentMethod, reference: text.slice(0, 80), payerName: l.applicantName }, { id: null, name: l.applicantName });
+        await save("MENU", {});
+        say({ type: "buttons", header: "Payment details received", body: `Thank you. Finance will match reference *${text.slice(0, 80)}* against the cashbook and confirm. We will message you here, and the licence is then issued.`, buttons: [{ id: B.LIC_TRACK, title: "My applications" }, backToMenu] });
+        void notifyApplicant(l, "payment_received");
+        break;
+      }
     }
   } catch (e) {
     console.error("[whatsapp] bot error", e);

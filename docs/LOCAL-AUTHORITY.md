@@ -71,13 +71,36 @@ Applications arrive three ways and all go through one creation path (`createLice
 
 Switch the portal off with `settings.licensing.portal = false` on the organisation; the WhatsApp licensing flow follows the *Accept reports on WhatsApp* switch.
 
+### Application forms (per licence type)
+
+Each licence type carries its own **application form** and a **"for office use only" section**, edited under *Licensing → Licence types, fees & forms* (administrators). Forms use the same field designer as workflow templates: short text, paragraph, number, currency, date, dropdown, multi-select, checkbox, line-item table, section headings, help text, required flags and *show only when* conditions (for example rural premises details only when the premises are rural). The applicant always gives name, ID, phone, email, stand, address, ward and a description of the business; the form adds the questions specific to that licence. The same form is rendered on the counter page, the public portal and the record drawer; office-use questions are never shown to the public and are filled in by officers from the drawer (*Office use*).
+
+The seed transcribes the council's paper forms (`prisma/licence-forms.ts`, applied by `npx tsx prisma/seed-licence-forms.ts`, also safe on an existing database):
+
+| Licence type | Paper form | Sections |
+| --- | --- | --- |
+| Shop licence (SHP) | Shop Licence Act [Chapter 14:17], *Application for a new licence* | Type of application (new, extension, removal, alteration), particulars of applicant, person in effective control, convictions, description of the trade (goods, class, method of sale, wholesale/retail), sequestration, situation of premises (urban/rural), premises not yet erected, vending machines, other authorities, advertisement; notes on fees, attachments and penalties. Office use: NA / R / C of O, registration reference, year ending, town planning report, EHO report. |
+| Registration of business premises (REG) | Ruwa Local Board (Registration of Premises) By-laws, 1991 | Type of licence, year ending 31 December, postal address. Office use: NA / R / C of O, ref, town planning report request, EHO report and date. |
+| General application (GA) | General Application Form | Application for, details of applicant (date of birth, marital status, spouse and employer, addresses, previous employer, telephones, source of income), trade references (table), bankers, directors, lease. Office use: date received, application fee, receipt number, application number GA/nn/year, allocation reference. |
+| Liquor licence (LIQ), Food handling (FHP) | council practice | Short forms (kind of licence, trading hours, Liquor Licensing Board reference; type of food business, handlers, water supply). |
+
+Each type also lists the **types of application** it offers (new, renewal, extension, removal, alteration, change of ownership); the applicant picks one at the top of the form and it is shown on the register.
+
+### Payment confirmation
+
+Fees are tracked in a **payment ledger** per application (`LicencePayment`), not as a single receipt field:
+
+1. Once an application is **approved**, the applicant is told the fee and how to pay (cashier, EcoCash, bank transfer). The portal tracking page and the WhatsApp bot (*I have paid*) let the applicant report the payment: method, transaction reference or receipt number, amount, date and an optional proof-of-payment upload. The cashier records counter payments from the record drawer (*Record payment*).
+2. Every payment starts as **awaiting confirmation**. The register's *Payments* scope and the *Payments to confirm* tile list them; Finance (members of the Finance department) or a manager **confirms** it against the cashbook or **rejects** it with a reason. The person who recorded a payment cannot confirm it unless they are a manager; a manager or Finance officer recording a counter receipt can tick *confirm immediately*.
+3. The licence can be **issued only when confirmed payments cover the fee**. Confirmation stamps the licence as paid (receipt = the payment reference), notifies the applicant ("payment confirmed"), and *Fees confirmed this year* on the register counts only confirmed money. Rejections notify the applicant with the reason so they can correct the reference.
+
 ### Screens
 
 | Route | Who | Purpose |
 | --- | --- | --- |
 | `/app/licences` | everyone | Register with KPI tiles (awaiting action, inspections, issued, expiring, fees collected this year, suspended/revoked), scopes (*Needs action, Issued, Expiring, Mine, All*), search and filters, CSV export, and the record drawer with actions, document checklist and history. |
 | `/app/licences/new` | everyone | Log an application; fee, validity and checklist come from the chosen type. |
-| `/app/licences/types` | administrators | Fee schedule: add or edit licence types; deleting a type with history deactivates it. |
+| `/app/licences/types` | administrators | Fee schedule and form designer: add or edit licence types, their application form, office-use section and application kinds; deleting a type with history deactivates it. |
 | `/apply` | public | Citizen self-service application with document upload. |
 | `/verify` | public | Track an application (reference + phone) or check a licence number printed on a certificate. |
 | `/api/licences/:id/certificate` | signed-in | Printable certificate. |
@@ -92,9 +115,9 @@ The dashboard shows a licensing strip (applications awaiting action, items assig
 | `GET /api/licences?status=&open=1&typeId=&category=&ward=&mine=1&expiring=30&q=&format=csv` | Returns items, counts per status, expiring count, fees receipted this year. |
 | `POST /api/licences` | Log an application. |
 | `GET/PATCH /api/licences/:id` | Detail with events and renewals; edit applicant details, priority, officer, documents. |
-| `POST /api/licences/:id` | `{ action }` = `review`, `schedule_inspection`, `record_inspection`, `approve`, `reject`, `pay`, `issue`, `renew`, `suspend`, `reinstate`, `revoke`, `cancel`, `note`, `document` with the fields each needs (inspectorId/inspectionDue, outcome/conditions, receiptNo/amount/paidAt, issuedAt/validityMonths, note, documents). |
+| `POST /api/licences/:id` | `{ action }` = `review`, `schedule_inspection`, `record_inspection`, `approve`, `reject`, `pay` (method, reference, amount, paidAt, payerName, confirm), `confirm_payment` / `reject_payment` (paymentId, note), `issue`, `renew`, `suspend`, `reinstate`, `revoke`, `cancel`, `note`, `document`, `office` (officeData). |
 | `GET /api/public/licence-verify?no=` | Public licence check. |
-| `GET /api/public/licensing` · `POST /api/public/licences` · `GET /api/public/licences/:ref?phone=` · `POST /api/public/licences/:ref/attachments` | Public catalogue, citizen application, tracking and document upload (upload token in `x-upload-token`). |
+| `GET /api/public/licensing` · `POST /api/public/licences` · `GET /api/public/licences/:ref?phone=` · `POST /api/public/licences/:ref/attachments` · `POST /api/public/licences/:ref/payments` | Public catalogue (with each type's form), citizen application (standard fields + `data` answers), tracking, document upload and payment reporting (token in `x-upload-token`). |
 
 ## Sample data
 

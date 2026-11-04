@@ -4,9 +4,11 @@ import { ApiError, ok, parseBody, withPublic } from "@/lib/api";
 import { parseJson } from "@/lib/json";
 import { clientInfo, rateLimit } from "@/lib/security";
 import { createLicenceApplication, licenceUploadToken, serializeLicence } from "@/lib/licensing";
+import { APPLICATION_KINDS } from "@/lib/licenceTypes";
 
 export const publicLicenceSchema = z.object({
   typeId: z.string().min(1),
+  applicationKind: z.enum(APPLICATION_KINDS).optional(),
   applicantName: z.string().min(2).max(160),
   tradingName: z.string().max(160).optional().nullable(),
   idNumber: z.string().max(40).optional().nullable(),
@@ -16,6 +18,7 @@ export const publicLicenceSchema = z.object({
   address: z.string().max(255).optional().nullable(),
   ward: z.string().max(40).optional().nullable(),
   activity: z.string().min(5).max(5000),
+  data: z.record(z.string(), z.unknown()).optional(),
   declaration: z.literal(true),
   website: z.string().max(0).optional(), // honeypot
 });
@@ -35,7 +38,10 @@ export const POST = withPublic(async (req) => {
   if (parseJson<{ licensing?: { portal?: boolean } }>(org.settings, {}).licensing?.portal === false) throw new ApiError(403, "Online applications are switched off");
   const type = await prisma.licenceType.findFirst({ where: { id: body.typeId, orgId: org.id, isActive: true } });
   if (!type) throw new ApiError(400, "Choose a valid licence type");
-  const l = await createLicenceApplication(org.id, { ...body, email: body.email || null, priority: "MEDIUM" }, { actorId: null, source: "PUBLIC" });
+  // keep only answers to the fields the type actually has (office-use answers are never accepted from the public)
+  const allowed = new Set(((type.fields as { key: string }[]) || []).map((f) => f.key));
+  const data = Object.fromEntries(Object.entries(body.data || {}).filter(([k]) => allowed.has(k) || k.endsWith("Total")));
+  const l = await createLicenceApplication(org.id, { ...body, data, email: body.email || null, priority: "MEDIUM" }, { actorId: null, source: "PUBLIC" });
   const s = serializeLicence(l);
   return ok({ id: s.id, referenceNo: s.referenceNo, status: s.status, fee: s.feeAmount, currency: s.currency, requirements: (type.requirements as string[]) || [], requiresInspection: type.requiresInspection, trackUrl: `/verify?ref=${encodeURIComponent(s.referenceNo)}`, uploadToken: licenceUploadToken(s.id, s.createdAt) }, { status: 201 });
 });

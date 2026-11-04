@@ -10,6 +10,7 @@
  */
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { applyLicenceForms } from "./seed-licence-forms";
 
 const prisma = new PrismaClient();
 const j = (v: unknown) => JSON.stringify(v);
@@ -480,6 +481,7 @@ async function main() {
   const ltBill = await lt("ADV", "Billboard / signage permit", "Land & property", 300, 12, true, surveys.id, ["Site plan and artwork", "Structural certificate for free-standing boards", "Landowner consent"], "Advertising boards, shop signs and banners on or visible from public land.");
   const ltCreche = await lt("ECD", "Crèche / early childhood centre registration", "Health & food", 100, 12, true, health.id, [...ID_DOCS, "Ministry of Primary & Secondary Education registration", "Fire certificate", "Police clearance for staff"], "Registration of crèches and ECD centres; annual health and safety inspection.");
   void ltKombi; void ltBill; void ltCreche;
+  await applyLicenceForms(org.id); // paper forms: Shop Licence Act, Registration of Premises, General Application
 
   type LicSeed = { ref: number; type: { id: string; fee: unknown; validityMonths: number }; status: string; applicant: string; trading?: string; idNo?: string; phone: string; stand: string; address: string; ward: string; activity: string; priority?: string; officerId?: string; inspectorId?: string; docsReceived?: number; docsTotal?: number; ageDays: number; issuedDaysAgo?: number; validityMonths?: number; paid?: boolean; receipt?: string; outcome?: string; conditions?: string; decision?: string; licenceNo?: string; source?: string };
   const mkLic = async (d: LicSeed) => {

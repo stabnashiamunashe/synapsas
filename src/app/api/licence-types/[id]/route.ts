@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { badRequest, notFound, ok, parseBody, withAuth } from "@/lib/api";
 import { audit } from "@/lib/notify";
@@ -8,7 +9,19 @@ export const PATCH = withAuth(async (req, { params, user }) => {
   if (!t) throw notFound();
   const body = await parseBody(req, licenceTypeSchema.partial());
   if (body.code && body.code !== t.code && (await prisma.licenceType.findUnique({ where: { orgId_code: { orgId: user.orgId, code: body.code } } }))) throw badRequest("A licence type with that code already exists");
-  const updated = await prisma.licenceType.update({ where: { id: t.id }, data: { ...body, departmentId: body.departmentId === undefined ? undefined : body.departmentId || null, requirements: body.requirements === undefined ? undefined : body.requirements }, include: typeInclude });
+  const { fields, officeFields, kinds, requirements, departmentId, ...rest } = body;
+  const updated = await prisma.licenceType.update({
+    where: { id: t.id },
+    data: {
+      ...rest,
+      departmentId: departmentId === undefined ? undefined : departmentId || null,
+      requirements: requirements === undefined ? undefined : requirements,
+      fields: fields === undefined ? undefined : (fields as Prisma.InputJsonValue),
+      officeFields: officeFields === undefined ? undefined : (officeFields as Prisma.InputJsonValue),
+      kinds: kinds === undefined ? undefined : kinds,
+    },
+    include: typeInclude,
+  });
   await audit(user.orgId, user.id, "licenceType.updated", "LicenceType", t.id, { fields: Object.keys(body) });
   return ok(serializeType(updated));
 }, "ADMIN");
