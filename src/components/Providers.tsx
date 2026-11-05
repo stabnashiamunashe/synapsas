@@ -31,7 +31,7 @@ export const UI = {
   textMuted: "#6f6f6f",
   tableHeaderBg: "#f4f4f4",
   hover: "#e8e8e8",
-  focus: "#0f62fe",
+  focus: "#1414D2", // default focus colour; the theme uses the tenant primary colour at runtime
 };
 
 /** Mix a hex colour with white for tinted backgrounds. */
@@ -130,10 +130,10 @@ export function BrandProvider({ branding, children }: { branding?: BrandingSetti
             defaultBg: UI.surface, defaultBorderColor: UI.text, defaultColor: UI.text, defaultHoverBg: UI.hover, defaultHoverBorderColor: UI.text, defaultHoverColor: UI.text, defaultActiveBg: "#c6c6c6",
             textHoverBg: UI.hover, contentFontSizeSM: 14, onlyIconSize: 16,
           },
-          Input: { borderRadius: radius, borderRadiusLG: radius, borderRadiusSM: radius, activeShadow: `inset 0 0 0 1px ${UI.focus}`, activeBorderColor: UI.focus, hoverBorderColor: UI.borderStrong, paddingInline: 16, colorBgContainer: UI.surface },
-          InputNumber: { borderRadius: radius, hoverBorderColor: UI.borderStrong, activeBorderColor: UI.focus },
-          Select: { borderRadius: radius, borderRadiusLG: radius, optionSelectedBg: "#e0e0e0", optionSelectedFontWeight: 600, hoverBorderColor: UI.borderStrong, activeBorderColor: UI.focus, optionPadding: "9px 16px" },
-          DatePicker: { borderRadius: radius, hoverBorderColor: UI.borderStrong, activeBorderColor: UI.focus },
+          Input: { borderRadius: radius, borderRadiusLG: radius, borderRadiusSM: radius, activeShadow: "none", activeBorderColor: b.primaryColor, hoverBorderColor: UI.borderStrong, paddingInline: 16, colorBgContainer: UI.surface },
+          InputNumber: { borderRadius: radius, hoverBorderColor: UI.borderStrong, activeBorderColor: b.primaryColor },
+          Select: { borderRadius: radius, borderRadiusLG: radius, optionSelectedBg: "#e0e0e0", optionSelectedFontWeight: 600, hoverBorderColor: UI.borderStrong, activeBorderColor: b.primaryColor, optionPadding: "9px 16px" },
+          DatePicker: { borderRadius: radius, hoverBorderColor: UI.borderStrong, activeBorderColor: b.primaryColor },
           Tag: { borderRadiusSM: 24, defaultBg: "#e0e0e0", defaultColor: UI.text, fontSizeSM: 12 },
           Modal: { titleFontSize: 20, borderRadiusLG: radius, paddingContentHorizontalLG: 24 },
           Drawer: { paddingLG: 24 },
