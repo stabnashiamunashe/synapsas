@@ -29,7 +29,11 @@ type WaWebhook = {
  */
 export async function POST(req: Request) {
   const raw = await req.text();
-  if (!verifyWebhookSignature(raw, req.headers.get("x-hub-signature-256"))) return new Response("Invalid signature", { status: 401 });
+  if (!verifyWebhookSignature(raw, req.headers.get("x-hub-signature-256"))) {
+    console.warn(`[whatsapp] webhook rejected: ${req.headers.get("x-hub-signature-256") ? "signature does not match WHATSAPP_APP_SECRET" : "no X-Hub-Signature-256 header"} (${raw.length} bytes)`);
+    return new Response("Invalid signature", { status: 401 });
+  }
+  console.info(`[whatsapp] webhook received (${raw.length} bytes)`);
   let payload: WaWebhook;
   try { payload = JSON.parse(raw); } catch { return NextResponse.json({ ok: true }); }
   const cfg = waConfig();
