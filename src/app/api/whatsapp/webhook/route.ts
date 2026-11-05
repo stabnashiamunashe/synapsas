@@ -15,7 +15,7 @@ export async function GET(req: Request) {
 }
 
 type WaWebhook = {
-  entry?: { changes?: { value?: {
+  entry?: { changes?: { field?: string; value?: {
     metadata?: { phone_number_id?: string };
     contacts?: { wa_id: string; profile?: { name?: string } }[];
     messages?: { id: string; from: string; type: string; timestamp?: string; text?: { body: string }; interactive?: { type: string; button_reply?: { id: string; title: string }; list_reply?: { id: string; title: string } }; button?: { payload?: string; text?: string }; location?: { latitude: number; longitude: number; name?: string; address?: string } }[];
@@ -40,11 +40,16 @@ export async function POST(req: Request) {
       for (const change of entry.changes || []) {
         const v = change.value;
         if (!v) continue;
-        if (cfg.phoneNumberId && v.metadata?.phone_number_id && v.metadata.phone_number_id !== cfg.phoneNumberId) continue;
+        if (cfg.phoneNumberId && v.metadata?.phone_number_id && v.metadata.phone_number_id !== cfg.phoneNumberId) {
+          console.warn(`[whatsapp] webhook ignored: event is for phone number id …${v.metadata.phone_number_id.slice(-4)} but WHATSAPP_PHONE_NUMBER_ID ends …${cfg.phoneNumberId.slice(-4)}`);
+          continue;
+        }
+        if (!v.messages?.length && !v.statuses?.length) { console.info(`[whatsapp] webhook event "${change.field || "unknown"}" carried no messages (is the "messages" field subscribed in Meta?)`); continue; }
         for (const s of v.statuses || []) await recordStatus(s.id, s.status, s.errors?.[0]?.message);
         for (const m of v.messages || []) {
           const phone = normalizePhone(m.from);
-          if (!rateLimit(`wa:${phone}`, 40, 10 * 60_000).ok) continue;
+          console.info(`[whatsapp] inbound ${m.type} from …${phone.slice(-4)}`);
+          if (!rateLimit(`wa:${phone}`, 40, 10 * 60_000).ok) { console.warn(`[whatsapp] rate limit hit for …${phone.slice(-4)}`); continue; }
           const dup = await prisma.whatsAppMessage.findUnique({ where: { waMessageId: m.id }, select: { id: true } });
           if (dup) continue;
           const name = v.contacts?.find((c) => c.wa_id === m.from)?.profile?.name || null;
