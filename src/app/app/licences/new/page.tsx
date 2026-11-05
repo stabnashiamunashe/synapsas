@@ -80,14 +80,14 @@ export default function NewLicencePage() {
               <Typography.Title level={5}>Particulars of applicant</Typography.Title>
               <Row gutter={16}>
                 <Col xs={24} md={12}><Form.Item name="applicantName" label="Full name of applicant" rules={[{ required: true, min: 2 }]} extra="As on the national ID or company registration. For a company, co-operative or partnership attach the schedule of directors, committee members or partners."><Input /></Form.Item></Col>
-                <Col xs={24} md={12}><Form.Item name="tradingName" label="Name under which the trade or business is or will be conducted"><Input placeholder="e.g. Ruwa Fresh Grocers" /></Form.Item></Col>
+                <Col xs={24} md={12}><Form.Item name="tradingName" label="Name under which the trade or business is or will be conducted"><Input placeholder="e.g. Zengeza Fresh Grocers" /></Form.Item></Col>
                 <Col xs={24} md={8}><Form.Item name="idNumber" label="National ID / company number"><Input /></Form.Item></Col>
                 <Col xs={24} md={8}><Form.Item name="phone" label="Telephone" rules={[{ required: true, message: "A phone number is needed for follow-up" }]}><Input placeholder="07xx xxx xxx" /></Form.Item></Col>
                 <Col xs={24} md={8}><Form.Item name="email" label="Email" rules={[{ type: "email" }]}><Input /></Form.Item></Col>
               </Row>
               <Typography.Title level={5}>Situation of the premises</Typography.Title>
               <Row gutter={16}>
-                <Col xs={24} md={8}><Form.Item name="standNumber" label="Stand number"><Input placeholder="e.g. 1234 Zimre Park" /></Form.Item></Col>
+                <Col xs={24} md={8}><Form.Item name="standNumber" label="Stand number"><Input placeholder="e.g. 1234 Zengeza 4" /></Form.Item></Col>
                 <Col xs={24} md={10}><Form.Item name="address" label="Street / physical address"><Input /></Form.Item></Col>
                 <Col xs={24} md={6}><Form.Item name="ward" label="Ward"><Select allowClear options={WARDS.map((w) => ({ value: w, label: `Ward ${w}` }))} /></Form.Item></Col>
                 <Col xs={24}><Form.Item name="activity" label="Describe the trade, business or purpose" rules={[{ required: true, message: "Describe the activity to be licensed" }]}><Input.TextArea rows={3} placeholder="e.g. Retail of groceries and household goods; 2 employees; trading 07:00–20:00" /></Form.Item></Col>

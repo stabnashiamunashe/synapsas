@@ -1,6 +1,6 @@
-# Ruwa Local Board · Approvals, Licensing & Service Desk
+# Municipality of Chitungwiza · Approvals, Licensing & Service Desk
 
-> **Local authority edition (`local-authority` branch).** Branded for **Ruwa Local Board** (crest green `#1E7B34`, deep-green shell, gold accent) and extended with a **licensing module**: a licence schedule with fees, validity and document checklists; applications → review → inspection → approval → fee receipt → issue, with printable certificates, renewals, suspension/revocation, a 30-day expiry sweep, and citizen self-service: a public *Apply for a licence* portal with document upload and tracking (`/apply`, `/verify`) and a WhatsApp flow (*Apply for a licence*, *My licence applications*, *I have paid*), with applicant notices at every step. Each licence type has its own customisable application form and office-use section (the Shop Licence Act, Registration of Premises and General Application paper forms are seeded), and fees go through a payment ledger with Finance confirmation before a licence is issued. Every status and priority in the system is colour-coded through one registry (`src/components/StatusTag.tsx`). Demo accounts: `docs/TEST-ACCOUNTS.md`; module guide: `docs/LOCAL-AUTHORITY.md`.
+> **Local authority edition (`chitungwiza` branch, from `local-authority`).** Branded for the **Municipality of Chitungwiza** (crest rust `#B5491A`, deep-brown shell, gold accent; motto *Pamberi Nemushandira Pamwe*) and extended with a **licensing module**: a licence schedule with fees, validity and document checklists; applications → review → inspection → approval → fee receipt → issue, with printable certificates, renewals, suspension/revocation, a 30-day expiry sweep, and citizen self-service: a public *Apply for a licence* portal with document upload and tracking (`/apply`, `/verify`) and a WhatsApp flow (*Apply for a licence*, *My licence applications*, *I have paid*), with applicant notices at every step. Each licence type has its own customisable application form and office-use section (the Shop Licence Act, Registration of Premises and General Application paper forms are seeded), and fees go through a payment ledger with Finance confirmation before a licence is issued. Every status and priority in the system is colour-coded through one registry (`src/components/StatusTag.tsx`). Demo accounts: `docs/TEST-ACCOUNTS.md`; module guide: `docs/LOCAL-AUTHORITY.md`.
 
 Internal approval system for the **Zimbabwe National Statistics Agency**: travelling & subsistence advances and expense claims, leave applications and internal memos, routed through the same signatures as the paper forms (Head of Section → Finance → Director General, Supervisor → Head of Office → Registry, and so on).
 
@@ -27,7 +27,7 @@ Next.js 16 (App Router) + Ant Design + Prisma on **MariaDB/MySQL**. The API live
    npm run dev        # http://localhost:3000
    ```
 
-Sign in as `ict.admin@zimstat.co.zw` / `Password123!` (full list in docs/TEST-ACCOUNTS.md).
+Sign in as `ict.admin@chitungwiza.co.zw` / `Password123!` (full list in docs/TEST-ACCOUNTS.md).
 
 ## Deploying with Docker (recommended)
 
@@ -40,21 +40,21 @@ docker compose up -d --build
 docker compose --profile seed run --rm seed              # Agency, sections, demo officers and the four workflows
 ```
 
-nginx + certificate (replace the hostname in `deploy/nginx/approvals.zimstat.co.zw.conf` with yours):
+nginx + certificate (replace the hostname in `deploy/nginx/approvals.chitungwiza.co.zw.conf` with yours):
 
 ```bash
 sudo apt install -y nginx certbot python3-certbot-nginx
-sudo cp deploy/nginx/approvals.zimstat.co.zw.conf /etc/nginx/sites-available/approvals
+sudo cp deploy/nginx/approvals.chitungwiza.co.zw.conf /etc/nginx/sites-available/approvals
 sudo ln -s /etc/nginx/sites-available/approvals /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
-sudo certbot --nginx -d approvals.zimstat.co.zw
+sudo certbot --nginx -d approvals.chitungwiza.co.zw
 ```
 
 Every later release: `bash scripts/deploy-docker.sh` (pulls, rebuilds, restarts). Schedule the maintenance jobs on the host:
 
 ```
-*/5 * * * *  curl -s -H "Authorization: Bearer $CRON_SECRET" https://approvals.zimstat.co.zw/api/cron/email    # email retries + digests
-0   * * * *  curl -s -H "Authorization: Bearer $CRON_SECRET" https://approvals.zimstat.co.zw/api/cron/escalate # SLA escalation
+*/5 * * * *  curl -s -H "Authorization: Bearer $CRON_SECRET" https://approvals.chitungwiza.co.zw/api/cron/email    # email retries + digests
+0   * * * *  curl -s -H "Authorization: Bearer $CRON_SECRET" https://approvals.chitungwiza.co.zw/api/cron/escalate # SLA escalation
 ```
 
 The app refuses to start in production with a default `AUTH_SECRET`, a non-HTTPS `APP_URL` or a weak `CRON_SECRET` (`src/instrumentation.ts`).

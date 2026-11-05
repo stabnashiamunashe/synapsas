@@ -160,7 +160,7 @@ export const POST = withAuth(async (req, { params, user }) => {
       const pay = paymentState(l);
       if (!pay.settled) throw badRequest(pay.pending > 0 ? "A payment is still awaiting confirmation by Finance" : `The fee has not been paid (${l.currency} ${pay.outstanding.toFixed(2)} outstanding). Record and confirm the payment first`);
       const org = await prisma.organization.findUnique({ where: { id: user.orgId }, select: { settings: true } });
-      const prefix = parseJson<{ licensing?: { prefix?: string } }>(org?.settings, {}).licensing?.prefix || "RLB";
+      const prefix = parseJson<{ licensing?: { prefix?: string } }>(org?.settings, {}).licensing?.prefix || "CMC";
       const issuedAt = body.issuedAt ? new Date(body.issuedAt) : new Date();
       const months = body.validityMonths || l.type.validityMonths;
       kind = "ISSUED"; toStatus = "ISSUED";

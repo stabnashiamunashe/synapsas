@@ -37,7 +37,7 @@ export async function nextLicenceReference(orgId: string) {
   return `${p}${String(seq).padStart(4, "0")}`;
 }
 
-/** Issued licence number RLB/SHP/2026/0001: council prefix, type code, year, sequence per type. */
+/** Issued licence number CMC/SHP/2026/0001: council prefix, type code, year, sequence per type. */
 export async function nextLicenceNumber(typeId: string, prefix: string) {
   const t = await prisma.licenceType.update({ where: { id: typeId }, data: { counter: { increment: 1 } }, select: { code: true, counter: true } });
   return `${prefix}/${t.code}/${new Date().getFullYear()}/${String(t.counter).padStart(4, "0")}`;

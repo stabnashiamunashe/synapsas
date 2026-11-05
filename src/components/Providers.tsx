@@ -5,19 +5,19 @@ import { useNonce } from "./AntdRegistry";
 import { useEffect } from "react";
 import type { BrandingSettings } from "@/lib/types";
 
-/** Defaults: Ruwa Local Board green on IBM Carbon surfaces (IBM Plex, square corners, gray-10 canvas). Overridable under Settings → Branding. */
+/** Defaults: Municipality of Chitungwiza rust orange on IBM Carbon surfaces (IBM Plex, square corners, gray-10 canvas). Overridable under Settings → Branding. */
 export const DEFAULT_BRANDING: Required<Pick<BrandingSettings, "productName" | "primaryColor" | "sidebarTheme" | "borderRadius">> = {
-  productName: process.env.NEXT_PUBLIC_APP_NAME || "Ruwa Local Board",
-  primaryColor: "#1E7B34", // crest green
+  productName: process.env.NEXT_PUBLIC_APP_NAME || "Municipality of Chitungwiza",
+  primaryColor: "#B5491A", // crest rust (shield orange darkened for contrast on white)
   sidebarTheme: "dark",
   borderRadius: 0,
 };
 
-/** Dark UI shell in the deep green of the crest with the crest gold as the selection accent (Carbon gray-100 layout rules). */
-export const SHELL_DARK = { bg: "#0E3B1F", layer: "#154A28", hover: "#1B5A31", selected: "#1F6638", border: "#1F6638", text: "#f4f4f4", textSecondary: "#cfe3d4", accent: "#F2B705" };
+/** Dark UI shell in the deep brown of the crest ribbon with the crest gold as the selection accent (Carbon gray-100 layout rules). */
+export const SHELL_DARK = { bg: "#3A1708", layer: "#4C220E", hover: "#5B2B14", selected: "#6B341A", border: "#6B341A", text: "#f4f4f4", textSecondary: "#ead7c9", accent: "#D9A441" };
 
-/** Ruwa Local Board palette from the crest: council green, deep green, leaf green, gold band, cream. */
-export const BRAND = { green: "#1E7B34", greenDeep: "#0E3B1F", leaf: "#3FA34D", gold: "#F2B705", goldDeep: "#C9950A", black: "#161616", white: "#FFFFFF", cream: "#FFF8E1" };
+/** Municipality of Chitungwiza palette from the crest: rust (primary), shield orange, deep brown ribbon, field green, gold, wordmark blue, cream. */
+export const BRAND = { rust: "#B5491A", orange: "#E8731A", brown: "#8A3B14", brownDeep: "#3A1708", green: "#3C7D2C", gold: "#D9A441", goldDeep: "#B8862E", blue: "#2238A4", black: "#161616", white: "#FFFFFF", cream: "#FFF4E6" };
 
 /** IBM Carbon "white" theme neutrals (gray 10 canvas, gray 20 borders, gray 100 text). */
 export const UI = {
@@ -31,7 +31,7 @@ export const UI = {
   textMuted: "#6f6f6f",
   tableHeaderBg: "#f4f4f4",
   hover: "#e8e8e8",
-  focus: "#1E7B34", // focus ring in the brand green
+  focus: "#B5491A", // focus ring in the brand rust
   info: "#0f62fe",
 };
 

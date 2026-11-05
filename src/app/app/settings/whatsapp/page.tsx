@@ -92,7 +92,7 @@ export default function WhatsAppSettingsPage() {
                 <span><Switch checked={wa.enabled !== false} onChange={(v) => saveWa({ enabled: v })} /> Accept reports on WhatsApp</span>
                 <span><Switch checked={!!wa.notifyAllReporters} onChange={(v) => saveWa({ notifyAllReporters: v })} /> Also message reporters who used the website or phone</span>
               </Space>
-              <Form.Item name="greeting" label="Greeting (main menu text)"><Input placeholder="Welcome to Ruwa Local Board. How can we help you today?" /></Form.Item>
+              <Form.Item name="greeting" label="Greeting (main menu text)"><Input placeholder="Welcome to the Municipality of Chitungwiza. How can we help you today?" /></Form.Item>
               <Form.Item name="helpText" label="Help text"><Input.TextArea autoSize={{ minRows: 2 }} placeholder="Shown when the user taps Help" /></Form.Item>
               <Button htmlType="submit">Save texts</Button>
             </Form>

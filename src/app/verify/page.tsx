@@ -76,10 +76,10 @@ function VerifyInner() {
           {mode === "verify" ? (
             <>
               <Typography.Title level={3} className="page-title" style={{ marginBottom: 4 }}>Verify a licence</Typography.Title>
-              <Typography.Paragraph type="secondary">Enter the licence number shown on the certificate (for example RLB/SHP/{new Date().getFullYear()}/0001) to confirm it was issued by the council and is still valid.</Typography.Paragraph>
+              <Typography.Paragraph type="secondary">Enter the licence number shown on the certificate (for example CMC/SHP/{new Date().getFullYear()}/0001) to confirm it was issued by the council and is still valid.</Typography.Paragraph>
               <Card>
                 <Form layout="inline" onFinish={lookup} style={{ gap: 8 }}>
-                  <Form.Item name="no" rules={[{ required: true, message: "Enter the licence number" }]} style={{ flex: 1, minWidth: 240 }}><Input size="large" placeholder="RLB/SHP/2026/0001" prefix={<SafetyCertificateOutlined />} /></Form.Item>
+                  <Form.Item name="no" rules={[{ required: true, message: "Enter the licence number" }]} style={{ flex: 1, minWidth: 240 }}><Input size="large" placeholder="CMC/SHP/2026/0001" prefix={<SafetyCertificateOutlined />} /></Form.Item>
                   <Button size="large" type="primary" htmlType="submit" icon={<SearchOutlined />} loading={loading}>Check</Button>
                 </Form>
               </Card>

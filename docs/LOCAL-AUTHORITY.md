@@ -1,20 +1,21 @@
-# Local authority edition (Ruwa Local Board)
+# Local authority edition (Municipality of Chitungwiza)
 
-This branch (`local-authority`) is the council edition of the approvals platform. It keeps every module of the ZimStat edition (approval workflows, service desk with public portal and WhatsApp, advances ledger, leave calendar, notice board, asset register, fleet) and adds a **licensing module**, council-flavoured sample data and **Ruwa Local Board** branding.
+This branch (`chitungwiza`, cut from `local-authority`) is the council edition of the approvals platform. It keeps every module of the ZimStat edition (approval workflows, service desk with public portal and WhatsApp, advances ledger, leave calendar, notice board, asset register, fleet) and adds a **licensing module**, council-flavoured sample data and **Municipality of Chitungwiza** branding.
 
 ## Branding
 
 | Token | Value | Where it comes from |
 | --- | --- | --- |
-| Primary (council green) | `#1E7B34` | Crest shield and ribbon |
-| Deep green (navigation shell) | `#0E3B1F` | Darkened crest green; IBM Carbon gray-100 layout rules |
-| Leaf green (secondary KPI accent) | `#3FA34D` | Crest leaves |
-| Gold (selection bar, warning KPI accent) | `#F2B705` | Crest banner "RUWA" |
+| Primary (council rust) | `#B5491A` | Shield orange `#E8731A` darkened for 4.5:1 contrast on white; buttons, links, focus ring |
+| Deep brown (navigation shell) | `#3A1708` | Crest ribbon, darkened; IBM Carbon gray-100 layout rules |
+| Field green (secondary KPI accent) | `#3C7D2C` | Green field with the tree |
+| Gold (selection bar, warning KPI accent) | `#D9A441` | Mural crown and spear |
+| Wordmark blue | `#2238A4` | "CHITUNGWIZA" wordmark; reserved, not used in the UI so that blue keeps meaning *information* |
 | Surfaces | Carbon gray-10 `#f4f4f4`, gray-20 borders | IBM style guide |
 
-The crest is `public/brand/ruwa-logo.jpg`. Defaults live in `src/components/Providers.tsx` (`DEFAULT_BRANDING`, `SHELL_DARK`, `BRAND`) and `src/app/globals.css` (`--brand-color`, `.stat-*` accents). Everything can still be overridden per organisation under **Settings → Branding**.
+The crest is `public/brand/chitungwiza-logo.png`. Defaults live in `src/components/Providers.tsx` (`DEFAULT_BRANDING`, `SHELL_DARK`, `BRAND`) and `src/app/globals.css` (`--brand-color`, `.stat-*` accents). Everything can still be overridden per organisation under **Settings → Branding**.
 
-Informational blue (`#0f62fe`) is kept for info alerts so that green in a status always means *approved / valid / available*. Focus rings are a single 1px line in the brand green (`--focus` in `globals.css`, `UI.focus` in `Providers.tsx`); inputs inside an affix wrapper (search boxes, fields with icons) never draw a second inner ring.
+Informational blue (`#0f62fe`) is kept for info alerts so that green in a status always means *approved / valid / available*. Focus rings are a single 1px line in the brand rust (`--focus` in `globals.css`, `UI.focus` in `Providers.tsx`); inputs inside an affix wrapper (search boxes, fields with icons) never draw a second inner ring.
 
 ## Colour-coded statuses and priorities
 
@@ -38,7 +39,7 @@ Priorities use one scale for all modules: **Low** green, **Normal/Medium** blue,
 ### Data
 
 - **Licence types** (`LicenceType`): code (`SHP`, `LIQ`, `HWK`, `FHP`, `BLD`, `TPT`, `ADV`, `ECD` seeded), category, fee and currency, validity in months, whether an inspection is required, the owning department (its head is notified and approves), and the list of required documents.
-- **Licences** (`Licence`): one row per application. Reference `LA-<year>-nnnn`; once issued also a licence number `RLB/<code>/<year>/nnnn` (prefix from organisation settings `licensing.prefix`). Holds applicant, trading name, ID, contact, stand/address/ward, activity, priority, fee and receipt, officer, inspector and inspection outcome, conditions, decision note, validity dates, the document checklist and a link to the licence it renews.
+- **Licences** (`Licence`): one row per application. Reference `LA-<year>-nnnn`; once issued also a licence number `CMC/<code>/<year>/nnnn` (prefix from organisation settings `licensing.prefix`). Holds applicant, trading name, ID, contact, stand/address/ward, activity, priority, fee and receipt, officer, inspector and inspection outcome, conditions, decision note, validity dates, the document checklist and a link to the licence it renews.
 - **Events** (`LicenceEvent`): full timeline (submitted, review, inspection scheduled/recorded, approved, rejected, paid, issued, renewed, suspended, reinstated, revoked, expired, cancelled, notes, document updates).
 
 ### Lifecycle
@@ -80,7 +81,7 @@ The seed transcribes the council's paper forms (`prisma/licence-forms.ts`, appli
 | Licence type | Paper form | Sections |
 | --- | --- | --- |
 | Shop licence (SHP) | Shop Licence Act [Chapter 14:17], *Application for a new licence* | Type of application (new, extension, removal, alteration), particulars of applicant, person in effective control, convictions, description of the trade (goods, class, method of sale, wholesale/retail), sequestration, situation of premises (urban/rural), premises not yet erected, vending machines, other authorities, advertisement; notes on fees, attachments and penalties. Office use: NA / R / C of O, registration reference, year ending, town planning report, EHO report. |
-| Registration of business premises (REG) | Ruwa Local Board (Registration of Premises) By-laws, 1991 | Type of licence, year ending 31 December, postal address. Office use: NA / R / C of O, ref, town planning report request, EHO report and date. |
+| Registration of business premises (REG) | Municipality of Chitungwiza (Registration of Premises) By-laws | Type of licence, year ending 31 December, postal address. Office use: NA / R / C of O, ref, town planning report request, EHO report and date. |
 | General application (GA) | General Application Form | Application for, details of applicant (date of birth, marital status, spouse and employer, addresses, previous employer, telephones, source of income), trade references (table), bankers, directors, lease. Office use: date received, application fee, receipt number, application number GA/nn/year, allocation reference. |
 | Liquor licence (LIQ), Food handling (FHP) | council practice | Short forms (kind of licence, trading hours, Liquor Licensing Board reference; type of food business, handlers, water supply). |
 
@@ -121,7 +122,7 @@ The dashboard shows a licensing strip (applications awaiting action, items assig
 
 ## Sample data
 
-`npm run db:seed` creates the council (slug `ruwa`), seven departments, 16 officers (`docs/TEST-ACCOUNTS.md`), devolution and recurrent budget votes, the T&S, leave, memo and vehicle workflows, council service-desk categories (water & sewer, roads & lighting, refuse, licensing queries, rates & billing), the eight licence types and 12 licences covering every status (issued, expiring within 30 days, expired, suspended, approved awaiting payment, at inspection, under review after a failed inspection, submitted, rejected).
+`npm run db:seed` creates the council (slug `chitungwiza`), seven departments, 16 officers (`docs/TEST-ACCOUNTS.md`), devolution and recurrent budget votes, the T&S, leave, memo and vehicle workflows, council service-desk categories (water & sewer, roads & lighting, refuse, licensing queries, rates & billing), the eight licence types and 12 licences covering every status (issued, expiring within 30 days, expired, suspended, approved awaiting payment, at inspection, under review after a failed inspection, submitted, rejected).
 
 ## Deployment
 

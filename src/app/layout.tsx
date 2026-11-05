@@ -12,7 +12,7 @@ import "./globals.css";
 // IBM Plex is self-hosted from @fontsource, so no external stylesheet or font download is needed under the strict CSP.
 
 export const metadata: Metadata = {
-  title: process.env.NEXT_PUBLIC_APP_NAME || "Ruwa Local Board",
+  title: process.env.NEXT_PUBLIC_APP_NAME || "Municipality of Chitungwiza",
   description: "Zimbabwe National Statistics Agency: travel and subsistence advances and claims, leave applications and internal approvals.",
   icons: { icon: "/favicon.png" },
 };

@@ -1,7 +1,7 @@
 /**
- * Application forms for the licence types, transcribed from Ruwa Local Board's paper forms:
+ * Application forms for the licence types, transcribed from local-authority paper forms (originally Municipality of Chitungwiza's; wording is standard across councils):
  *   - Shop Licence Act [Chapter 14:17] "Application for a new licence" (4 pages)
- *   - Ruwa Local Board (Registration of Premises) By-laws, 1991
+ *   - Municipality of Chitungwiza (Registration of Premises) By-laws
  *   - General Application Form (allocation of stands and other applications)
  * The applicant's name, ID, phone, email, stand, address, ward and description of the business are standard fields on
  * every application, so they are not repeated here. Field definitions use the same schema as workflow templates
@@ -74,7 +74,7 @@ export const SHOP_LICENCE_FORM: LicenceForm = {
     { key: "advertised", label: "Intention to apply has been advertised (attach copies of the advertisements)", type: "checkbox", width: "full" },
   ],
   officeFields: [
-    { key: "registrationClass", label: "Registration of premises", type: "select", options: ["NA", "R", "C of O"], width: "third", helpText: "Ruwa Local Board (Registration of Premises) By-laws, 1991" },
+    { key: "registrationClass", label: "Registration of premises", type: "select", options: ["NA", "R", "C of O"], width: "third", helpText: "Municipality of Chitungwiza (Registration of Premises) By-laws" },
     { key: "registrationRef", label: "Registration reference", type: "text", width: "third" },
     { key: "yearEnding", label: "Licence year ending 31 December", type: "number", width: "third" },
     { key: "townPlanningReport", label: "Town planning report (new applications and change of ownership)", type: "textarea", width: "full" },
@@ -85,9 +85,9 @@ export const SHOP_LICENCE_FORM: LicenceForm = {
 
 export const PREMISES_REGISTRATION_FORM: LicenceForm = {
   formTitle: "Application for registration of premises",
-  legalBasis: "Ruwa Local Board (Registration of Premises) By-laws, 1991",
+  legalBasis: "Municipality of Chitungwiza (Registration of Premises) By-laws",
   kinds: ["NEW", "RENEWAL", "CHANGE_OF_OWNERSHIP"],
-  instructions: "Addressed to The Secretary, Ruwa Local Board, P.O. Box 153, Ruwa. Registration runs to 31 December of the licence year. New applications and changes of ownership are referred for a town planning report and a report by the Environmental Health Officer.",
+  instructions: "Addressed to The Town Clerk, Municipality of Chitungwiza, Town House, Zengeza, Chitungwiza. Registration runs to 31 December of the licence year. New applications and changes of ownership are referred for a town planning report and a report by the Environmental Health Officer.",
   fields: [
     { key: "licenceType", label: "Type of licence the premises are registered for", type: "text", required: true, width: "half", placeholder: "e.g. General dealer, bottle store, butchery" },
     { key: "yearEnding", label: "Year ending 31 December", type: "number", required: true, width: "third", defaultValue: new Date().getFullYear() },
@@ -104,7 +104,7 @@ export const PREMISES_REGISTRATION_FORM: LicenceForm = {
 
 export const GENERAL_APPLICATION_FORM: LicenceForm = {
   formTitle: "General application form",
-  legalBasis: "Ruwa Local Board",
+  legalBasis: "Municipality of Chitungwiza",
   kinds: ["NEW"],
   instructions: "Excluding residential stands. For further details use the back of the sheet or attach a project proposal. Companies must attach the names of directors and a copy of the certificate of incorporation. The application fee is non-refundable. I certify that the information given is true and correct and that I have not withheld any information that may affect my application.",
   fields: [

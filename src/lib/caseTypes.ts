@@ -39,7 +39,7 @@ export const CASE_TRANSITIONS: Record<CaseStatus, CaseStatus[]> = {
 };
 
 export interface CaseSettings {
-  /** reference prefix, e.g. RLB → RLB-2026-0001 */
+  /** reference prefix, e.g. CMC → CMC-2026-0001 */
   prefix?: string;
   autoAssign?: boolean;
   requireTriage?: boolean;
@@ -60,7 +60,7 @@ export interface CaseSettings {
 }
 
 export const DEFAULT_CASE_SETTINGS: Required<Pick<CaseSettings, "prefix" | "autoAssign" | "requireTriage" | "requireTransitionReason" | "slaWarningHours" | "publicPortal" | "defaultView" | "boardColumns">> = {
-  prefix: "RLB",
+  prefix: "CMC",
   autoAssign: true,
   requireTriage: false,
   requireTransitionReason: false,

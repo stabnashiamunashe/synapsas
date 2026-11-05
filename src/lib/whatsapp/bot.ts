@@ -87,7 +87,7 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
   const phone = normalizePhone(rawPhone);
   const settings = await caseSettings(orgId);
   const wa = settings.whatsapp || {};
-  const greeting = wa.greeting || "Welcome to Ruwa Local Board. How can we help you today?";
+  const greeting = wa.greeting || "Welcome to the Municipality of Chitungwiza. How can we help you today?";
   const replies: WaOutgoing[] = [];
   const say = (m: WaOutgoing) => replies.push(m);
   try {
@@ -229,7 +229,7 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
         else if (text) data = { ...data, trading: text.slice(0, 160) };
         else { say({ type: "buttons", body: "Type the trading name or tap Skip.", buttons: [{ id: B.TRADING_SKIP, title: "Skip" }, { id: B.CANCEL, title: "Cancel" }] }); break; }
         await save("LIC_PREMISES", data);
-        say({ type: "buttons", body: "Where are the premises? Give the stand number and address (e.g. Stand 1120 Zimre Park, Shop 3).", buttons: [{ id: B.CANCEL, title: "Cancel" }] });
+        say({ type: "buttons", body: "Where are the premises? Give the stand number and address (e.g. Stand 1120 Zengeza 4, Shop 3).", buttons: [{ id: B.CANCEL, title: "Cancel" }] });
         break;
 
       case "LIC_PREMISES":
@@ -264,7 +264,7 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
           const fee = data.licFee;
           const inspected = !!data.licRequiresInspection;
           await save("MENU", {});
-          say({ type: "buttons", header: "Application received", body: `Your reference is *${l.referenceNo}*.${reqs.length ? `\n\nPlease bring these documents to the licensing office at the Civic Centre, or upload them at ${process.env.APP_URL || ""}/verify using this reference and your phone number:\n${reqs.map((r) => `• ${r}`).join("\n")}` : ""}${inspected ? "\n\nAn officer will contact you to inspect the premises." : ""}\n\nThe fee of ${fee} is payable at the cashier once the application is approved. We will message you here at each step.`, buttons: [{ id: B.LIC_TRACK, title: "My applications" }, backToMenu] });
+          say({ type: "buttons", header: "Application received", body: `Your reference is *${l.referenceNo}*.${reqs.length ? `\n\nPlease bring these documents to the licensing office at the Town House, or upload them at ${process.env.APP_URL || ""}/verify using this reference and your phone number:\n${reqs.map((r) => `• ${r}`).join("\n")}` : ""}${inspected ? "\n\nAn officer will contact you to inspect the premises." : ""}\n\nThe fee of ${fee} is payable at the cashier once the application is approved. We will message you here at each step.`, buttons: [{ id: B.LIC_TRACK, title: "My applications" }, backToMenu] });
         }
         break;
 
@@ -322,7 +322,7 @@ async function setStep(phone: string, step: Step, data: Data, profileName?: stri
 
 async function trackList(orgId: string, phone: string): Promise<WaOutgoing> {
   const cases = await prisma.case.findMany({ where: { orgId, reporterPhone: { endsWith: phone.slice(-9) } }, orderBy: { createdAt: "desc" }, take: 9, select: { id: true, referenceNo: true, title: true, status: true } });
-  if (!cases.length) return { type: "buttons", body: "We have no reports from this number yet. You can also type a reference number (e.g. RLB-2026-0001).", buttons: [{ id: B.REPORT, title: "Report an issue" }, backToMenu] };
+  if (!cases.length) return { type: "buttons", body: "We have no reports from this number yet. You can also type a reference number (e.g. CMC-2026-0001).", buttons: [{ id: B.REPORT, title: "Report an issue" }, backToMenu] };
   return { type: "list", header: "Your reports", body: "Choose a report to see its progress, or type a reference number.", button: "My reports", sections: [{ rows: cases.map((c) => ({ id: `case_${c.id}`, title: c.referenceNo, description: `${CASE_STATUS_LABELS[c.status as CaseStatus] || c.status} · ${c.title}`.slice(0, 72) })) }] };
 }
 

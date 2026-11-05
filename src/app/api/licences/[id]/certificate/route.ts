@@ -11,7 +11,7 @@ export const GET = withAuth(async (_req, { params, user }) => {
   const l = await prisma.licence.findFirst({ where: { id: params.id, orgId: user.orgId }, include: { type: true, org: { select: { name: true, branding: true } } } });
   if (!l || !l.licenceNo) throw notFound("This application has not been issued a licence yet");
   const b = parseJson<BrandingSettings>(l.org.branding, {});
-  const colour = b.primaryColor || "#1E7B34";
+  const colour = b.primaryColor || "#B5491A";
   const logo = b.logoUrl ? `<img src="${escapeHtml(b.logoUrl)}" alt="" style="height:96px">` : "";
   const status = l.status === "ISSUED" ? (l.expiresAt && l.expiresAt < new Date() ? "EXPIRED" : "VALID") : l.status;
   const e = (v: unknown) => escapeHtml(String(v ?? ""));
@@ -45,7 +45,7 @@ export const GET = withAuth(async (_req, { params, user }) => {
     ${l.conditions ? `<tr><td>Conditions</td><td>${e(l.conditions).replace(/\n/g, "<br>")}</td></tr>` : ""}
     <tr><td>Application reference</td><td>${e(l.referenceNo)}</td></tr>
   </table>
-  <div class="sig"><div>Licensing officer</div><div>Town Secretary / authorised officer</div><div>Official stamp</div></div>
+  <div class="sig"><div>Licensing officer</div><div>Town Clerk / authorised officer</div><div>Official stamp</div></div>
   <div class="foot">This licence is not transferable and must be displayed at the licensed premises. It may be suspended or revoked for breach of its conditions or of council by-laws. Verify this licence at ${e(process.env.NEXT_PUBLIC_APP_URL || "")}/verify using the licence number.${b.footerText ? ` ${e(b.footerText)}` : ""}</div>
 </div></body></html>`;
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });

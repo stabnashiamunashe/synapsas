@@ -24,7 +24,7 @@ export function PublicShell({ children, onConfig, active }: { children: (cfg: Po
           <div style={{ maxWidth: 960, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <Link href="/report" style={{ display: "flex", alignItems: "center", gap: 10, color: "inherit" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={b.logoUrl || "/brand/ruwa-logo.jpg"} alt="" style={{ height: 44 }} />
+              <img src={b.logoUrl || "/brand/chitungwiza-logo.png"} alt="" style={{ height: 44 }} />
               <div><div style={{ fontWeight: 700 }}>{cfg?.orgName || b.productName}</div><div className="muted" style={{ fontSize: 12 }}>Service requests, licences and permits</div></div>
             </Link>
             <Space>
