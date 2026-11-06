@@ -49,7 +49,7 @@ jobs:
       - name: Build image
         run: docker build -t synapsas/app:ci .
       - name: Scan image for known vulnerabilities
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: synapsas/app:ci
           severity: CRITICAL,HIGH
