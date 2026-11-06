@@ -34,13 +34,13 @@ Sign in as `ict.admin@chitungwiza.co.zw` / `Password123!` (full list in docs/TES
 `docker-compose.yml` runs two containers: the app (UI + API, published on host port **3443**, bound to localhost) and MariaDB 11. nginx on the host serves the domain over HTTPS and proxies to port 3443.
 
 ```bash
-git clone https://github.com/stabnashiamunashe/synapsas.git zimstat-approvals && cd zimstat-approvals
+git clone -b chitungwiza https://github.com/stabnashiamunashe/synapsas.git chitungwiza && cd chitungwiza
 cp .env.docker.example .env && nano .env   # DB passwords, AUTH_SECRET, APP_URL, SMTP settings
 docker compose up -d --build
-docker compose --profile seed run --rm seed              # Agency, sections, demo officers and the four workflows
+docker compose --profile seed run --rm seed              # council, departments, demo officers, workflows, licence types and forms
 ```
 
-nginx + certificate (replace the hostname in `deploy/nginx/approvals.chitungwiza.co.zw.conf` with yours):
+nginx + certificate (replace `approvals.chitungwiza.co.zw` in `deploy/nginx/approvals.chitungwiza.co.zw.conf` with your hostname):
 
 ```bash
 sudo apt install -y nginx certbot python3-certbot-nginx
