@@ -120,9 +120,50 @@ The dashboard shows a licensing strip (applications awaiting action, items assig
 | `GET /api/public/licence-verify?no=` | Public licence check. |
 | `GET /api/public/licensing` · `POST /api/public/licences` · `GET /api/public/licences/:ref?phone=` · `POST /api/public/licences/:ref/attachments` · `POST /api/public/licences/:ref/payments` | Public catalogue (with each type's form), citizen application (standard fields + `data` answers), tracking, document upload and payment reporting (token in `x-upload-token`). |
 
+## Records management (registry): correspondence register and file plan
+
+Councils run a registry: every external letter, email, invoice, court paper or tender that comes in is stamped with a registry number, minuted to a department or action officer, answered, and placed on a numbered file; everything that goes out is numbered and recorded the same way. The module is the electronic version of the inward and outward registers and the file plan.
+
+### Data
+
+| Model | Purpose |
+| --- | --- |
+| `RecordFile` | A file in the file plan: `fileNo` (e.g. `FIN/2/1`), title, series (Administration, Finance, Legal, ...), scope note, custodian department, physical location, retention years, confidential flag, OPEN/CLOSED. |
+| `Correspondence` | One register entry: registry number `CMC/IN/2026/0001` or `CMC/OUT/2026/0001`, direction, document type, subject, the external party and contact, their reference, date on the document, date received or dispatched, method (hand, post, registered post, email, courier, fax, WhatsApp), priority, confidential flag, pages and enclosures, action required and action date, file, department and action officer, the incoming item a reply answers (`replyToId`), related case/licence reference, signatory, messenger/courier and tracking number. |
+| `CorrespondenceEvent` | Timeline: registered, routed, reassigned, started, replied, dispatched, acknowledged, filed, reopened, note, document, edited. |
+| `CorrespondenceAttachment` | Scans of the original and enclosures (same upload allowlist and magic-byte checks as every other attachment). |
+
+### Lifecycle
+
+Incoming: **Received** (at registry) -> **Routed** (to a department and/or action officer; the officer and the head of department are notified) -> **Being actioned** -> **Replied** (set automatically when an outgoing item registered *in reply to* it is dispatched) -> **Filed**. Outgoing: **Awaiting dispatch** (signed letter waiting for the messenger) -> **Dispatched** -> **Acknowledged** -> **Filed**. Registry can re-route, move the action date and reopen; anyone who can see an item can add a note. Every incoming item gets an action date (default 7 days, *Registry settings*); the daily cron sweep (`/api/cron/escalate`) reminds the action officer and head once an item is overdue, and the dashboard shows a registry strip.
+
+### Who sees what
+
+Managers, administrators and the configured **registry clerks** (Correspondence register -> gear icon *Registry settings*, administrators only) see the whole register and may register incoming mail, route, file and remove scans. Other officers see what is routed to them, what they registered, and the non-confidential mail of their own department; they may register outgoing mail from their department and attach scans to their own items. **Confidential** items are visible only to registry clerks, administrators, the action officer and the head of the receiving department.
+
+### Screens
+
+| Route | Who | Purpose |
+| --- | --- | --- |
+| `/app/records` | everyone | Register with tiles (awaiting routing, with action officers, replies overdue, awaiting dispatch), scopes (All, Incoming, Outgoing, My action), search and filters, CSV export, register incoming / outgoing, drawer with details, actions, replies, scans and timeline. `?open=<id>` opens an item. |
+| `/app/records/files` | everyone (edits: registry / managers) | File plan grouped by series: open, edit, close and reopen files; each file lists the correspondence placed on it. |
+
+### API
+
+| Method & path | Notes |
+| --- | --- |
+| `GET /api/records?direction=&status=&scope=mine|dept|open|overdue&q=&fileId=&departmentId=&assignedToId=&docType=&from=&to=&format=csv` | Items (within the caller's visibility), counts for the tiles and the caller's access. |
+| `POST /api/records` | Register. `direction`, `subject`, `party` required; incoming defaults to Received or Routed; outgoing `dispatched: false` registers a draft awaiting dispatch; `replyToId` links a reply. |
+| `GET/PATCH /api/records/:id` | Detail with events, attachments and replies; edit the entry. |
+| `POST /api/records/:id` | `{ action }` = `route` (departmentId, assignedToId, actionRequired, actionDue), `start`, `extend` (actionDue), `dispatch` (dateLogged, dispatchedById, trackingNo), `acknowledge`, `file` (fileId), `reopen`, `note`. |
+| `POST /api/records/:id/attachments` and `GET/DELETE /api/record-attachments/:id` | Scans (multipart `file`, optional `label`); `?inline=1` previews PDFs and images. |
+| `GET /api/record-files[?all=1&q=&series=]`, `POST`, `GET/PATCH/DELETE /api/record-files/:id` | File plan; PATCH `status: CLOSED` closes a file (refused while items on it are still open). |
+
+Seed: `prisma/seed-records.ts` (also run by the main seed) opens eleven files and registers seventeen items covering every status, and makes the Registry Clerk account a registry clerk. Run it on an existing database with `npx tsx prisma/seed-records.ts`.
+
 ## Sample data
 
-`npm run db:seed` creates the council (slug `chitungwiza`), seven departments, 16 officers (`docs/TEST-ACCOUNTS.md`), devolution and recurrent budget votes, the T&S, leave, memo and vehicle workflows, council service-desk categories (water & sewer, roads & lighting, refuse, licensing queries, rates & billing), the eight licence types and 12 licences covering every status (issued, expiring within 30 days, expired, suspended, approved awaiting payment, at inspection, under review after a failed inspection, submitted, rejected).
+`npm run db:seed` creates the council (slug `chitungwiza`), seven departments, 16 officers (`docs/TEST-ACCOUNTS.md`), devolution and recurrent budget votes, a file plan and correspondence register, the T&S, leave, memo and vehicle workflows, council service-desk categories (water & sewer, roads & lighting, refuse, licensing queries, rates & billing), the eight licence types and 12 licences covering every status (issued, expiring within 30 days, expired, suspended, approved awaiting payment, at inspection, under review after a failed inspection, submitted, rejected).
 
 ## Deployment
 

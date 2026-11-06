@@ -219,6 +219,9 @@ export const brandingSchema = z.object({
 
 export const orgSettingsSchema = z.object({
   cases: z.lazy(() => caseSettingsSchema).optional(),
+  // licensing and records settings are kept as-is so that saving another settings page does not drop them
+  licensing: z.object({ prefix: z.string().max(12).optional(), portal: z.boolean().optional(), intro: z.string().max(2000).optional(), paymentInstructions: z.string().max(2000).optional() }).passthrough().optional(),
+  records: z.object({ prefix: z.string().max(12).optional(), clerkIds: z.array(z.string()).max(50).optional(), replyDays: z.number().int().min(1).max(90).optional() }).optional(),
   timezone: z.string().optional(),
   currency: z.string().max(5).optional(),
   dateFormat: z.string().optional(),

@@ -192,6 +192,8 @@ export interface BrandingSettings {
 export interface OrgSettings {
   /** service desk (cases) module settings, see src/lib/caseTypes.ts */
   cases?: import("./caseTypes").CaseSettings;
+  /** records management (registry) module settings, see src/lib/recordTypes.ts */
+  records?: import("./recordTypes").RecordsSettings;
   /** annual leave entitlement per officer per calendar year (ZimStat: 12 days) */
   annualLeaveDays?: number;
   /** public holidays shown on the leave calendar (YYYY-MM-DD) */

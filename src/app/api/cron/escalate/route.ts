@@ -3,6 +3,7 @@ import { escalateOverdue } from "@/lib/engine";
 import { caseSlaSweep } from "@/lib/cases";
 import { advanceReminderSweep } from "@/lib/advances";
 import { licenceExpirySweep } from "@/lib/licensing";
+import { recordsOverdueSweep } from "@/lib/records";
 
 /**
  * SLA escalation job. Call from a scheduler (Vercel Cron, GitHub Actions, cron) with
@@ -19,7 +20,8 @@ async function run(req: Request) {
   const cases = await caseSlaSweep();
   const advances = await advanceReminderSweep();
   const licences = await licenceExpirySweep();
-  return NextResponse.json({ ok: true, data: { ...result, cases, advances, licences } });
+  const records = await recordsOverdueSweep();
+  return NextResponse.json({ ok: true, data: { ...result, cases, advances, licences, records } });
 }
 
 export const GET = run;

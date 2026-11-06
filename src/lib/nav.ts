@@ -4,7 +4,7 @@
  */
 import type { Role } from "./types";
 
-export type NavGroup = "Overview" | "Requests & approvals" | "Licensing" | "Service desk" | "Staff & notices" | "Resources" | "Workflow design" | "Administration" | "Account" | "Public pages";
+export type NavGroup = "Overview" | "Requests & approvals" | "Licensing" | "Records & registry" | "Service desk" | "Staff & notices" | "Resources" | "Workflow design" | "Administration" | "Account" | "Public pages";
 
 export interface NavItem {
   /** route; also the stable key */
@@ -27,7 +27,7 @@ export interface NavItem {
   match?: string;
 }
 
-export const NAV_GROUP_ORDER: NavGroup[] = ["Overview", "Requests & approvals", "Licensing", "Service desk", "Staff & notices", "Resources", "Workflow design", "Administration", "Account", "Public pages"];
+export const NAV_GROUP_ORDER: NavGroup[] = ["Overview", "Requests & approvals", "Licensing", "Records & registry", "Service desk", "Staff & notices", "Resources", "Workflow design", "Administration", "Account", "Public pages"];
 
 export const NAV: NavItem[] = [
   // Overview
@@ -46,6 +46,10 @@ export const NAV: NavItem[] = [
   { key: "/app/licences", label: "Licence register", icon: "licence", group: "Licensing", description: "Shop, liquor, hawker, health and building licences: applications, inspections, fees, certificates, renewals", keywords: "licensing permits shop liquor hawker trading business certificate renewal inspection expiry", match: "/app/licences(?!/new|/types)" },
   { key: "/app/licences/new", label: "New licence application", icon: "plus", group: "Licensing", description: "Log an application received over the counter or by email", keywords: "apply licence permit application" },
   { key: "/app/licences/types", label: "Licence types & fees", icon: "tags", group: "Licensing", minRole: "ADMIN", description: "Schedule of licences, fees, validity and required documents", keywords: "fees tariff schedule licence catalogue" },
+
+  // Records & registry (file plan and the register of external incoming / outgoing correspondence)
+  { key: "/app/records", label: "Correspondence register", icon: "mail", group: "Records & registry", description: "Incoming and outgoing letters, emails, invoices and legal papers: registry numbers, routing, replies, scans and filing", keywords: "registry mail inward outward incoming outgoing letters correspondence erecords records dispatch route reply filing", match: "/app/records(?!/files)" },
+  { key: "/app/records/files", label: "File plan", icon: "archive", group: "Records & registry", description: "Classification scheme: file numbers, series, custodian departments, retention and location of the paper files", keywords: "file plan classification file number series retention archive registry" },
 
   // Service desk
   { key: "/app/cases", label: "Cases", icon: "support", group: "Service desk", description: "Service desk board and table: tickets, complaints and data requests", keywords: "tickets issues board kanban helpdesk", match: "/app/cases(?!/new|/categories)" },
