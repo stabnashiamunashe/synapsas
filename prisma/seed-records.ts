@@ -31,7 +31,7 @@ export async function applyRecordsSeed(orgId: string) {
   const hr = by("admin.officer") || townClerk;
   const auditor = by("internal.audit") || townClerk;
   const ictHead = by("ict.head") || townClerk;
-  const legalDept = dept("TC") || depts[0];
+  const secCode = dept("TC") ? "TC" : dept("TS") ? "TS" : depts[0]?.code || null;
 
   if (!settings.records?.clerkIds?.length) {
     await prisma.organization.update({ where: { id: orgId }, data: { settings: JSON.stringify({ ...settings, records: { ...(settings.records || {}), clerkIds: [clerk.id], replyDays: 7 } }) } });
@@ -40,12 +40,12 @@ export async function applyRecordsSeed(orgId: string) {
   // --- file plan ---
   const file = (fileNo: string, series: string, title: string, description: string, deptCode: string | null, location: string, retentionYears: number, confidential = false) =>
     prisma.recordFile.create({ data: { orgId, fileNo, series, title, description, departmentId: deptCode ? dept(deptCode)?.id || null : null, location, retentionYears, confidential, openedAt: daysAgo(400) } });
-  const fMinistry = await file("ADM/1/1", "Administration", "Ministry of Local Government and Public Works: general correspondence", "Circulars, directives and returns to and from the parent ministry. Budget approvals go on FIN/2/1.", "TC", "Registry, cabinet 1, shelf A", 10);
-  const fResidents = await file("ADM/4/2", "Administration", "Residents' associations and petitions", "Correspondence with residents' associations, ratepayers and petitions addressed to Council.", "TC", "Registry, cabinet 1, shelf C", 7);
+  const fMinistry = await file("ADM/1/1", "Administration", "Ministry of Local Government and Public Works: general correspondence", "Circulars, directives and returns to and from the parent ministry. Budget approvals go on FIN/2/1.", secCode, "Registry, cabinet 1, shelf A", 10);
+  const fResidents = await file("ADM/4/2", "Administration", "Residents' associations and petitions", "Correspondence with residents' associations, ratepayers and petitions addressed to Council.", secCode, "Registry, cabinet 1, shelf C", 7);
   const fBudget = await file("FIN/2/1", "Finance", "Budget: approvals, supplementary budgets and returns", "Annual and supplementary budget submissions, ministry approvals and quarterly returns.", "FIN", "Finance, strongroom cabinet 2", 20);
   const fCreditors = await file("FIN/5/3", "Finance", "Creditors: utilities (ZESA, ZINWA, TelOne)", "Invoices, statements and payment plans with utility providers.", "FIN", "Finance, cabinet 6, shelf B", 7);
   const fAudit = await file("AUD/1/1", "Audit", "Office of the Auditor-General: management letters and responses", "Audit queries, management letters and the council's responses.", "AUD", "Internal Audit office, cabinet 1", 15, true);
-  const fLegal = await file("LEG/3/1", "Legal", "Litigation and legal opinions", "Summonses, court orders, letters of demand and opinions from council's lawyers.", "TC", "Town Clerk's office, safe", 20, true);
+  const fLegal = await file("LEG/3/1", "Legal", "Litigation and legal opinions", "Summonses, court orders, letters of demand and opinions from council's lawyers.", secCode, "Town Clerk's office, safe", 20, true);
   const fWater = await file("ENG/2/4", "Engineering & Works", "Water and sewer: ZINWA and Harare bulk supply", "Bulk water supply agreements, pumping schedules and sewer reticulation correspondence.", "ENG", "Engineering, cabinet 3, shelf A", 15);
   const fHealth = await file("HLT/1/2", "Health & Environment", "Ministry of Health and Child Care: clinics and public health", "Clinic staffing, drug supplies, outbreak notices and public health directives.", "HHS", "Health office, cabinet 2", 10);
   const fTenders = await file("PRC/1/1", "Procurement", "Tenders and quotations received", "Bid documents, PRAZ correspondence and award letters.", "FIN", "Procurement office, cabinet 1", 10);
@@ -90,7 +90,7 @@ export async function applyRecordsSeed(orgId: string) {
     events: [reg(2, "RECEIVED", "Received registered post from Ministry of Local Government and Public Works"), routed(2, treasurer.id, "Table the conditions before Finance Committee and prepare the ministry return")] });
   const inAudit = await mk({ direction: "IN", docType: "LETTER", ageDays: 16, letterAgeDays: 5, method: "COURIER", status: "ROUTED", priority: "CRITICAL", confidential: true, pages: 11, enclosures: "Draft management letter", subject: "Draft management letter: 2025 financial statements audit", party: "Office of the Auditor-General", contactName: "Director of Audits (Local Authorities)", contactDetails: "oag@auditorgeneral.gov.zw", theirRef: "OAG/LA/CHIT/2025/ML", fileId: fAudit.id, deptCode: "AUD", assignedToId: auditor.id, actionRequired: "Coordinate management responses from Finance and Engineering; reply within 14 days", dueInDays: -2,
     events: [reg(16, "RECEIVED", "Received by courier from Office of the Auditor-General"), routed(16, auditor.id, "Coordinate management responses from Finance and Engineering; reply within 14 days"), { kind: "NOTE", note: "Finance responses received; Engineering responses on fleet and fuel still outstanding", daysAgo: 6, actorId: auditor.id }] });
-  await mk({ direction: "IN", docType: "COURT", ageDays: 4, letterAgeDays: 1, method: "HAND", status: "ROUTED", priority: "CRITICAL", confidential: true, pages: 6, subject: "Summons: Chikwanha v Municipality of Chitungwiza (pothole damage claim, HC 2231/26)", party: "Mutamangira & Associates, Legal Practitioners", contactName: "T. Mutamangira", contactDetails: "+263 242 700 123", theirRef: "TM/CH/0412", fileId: fLegal.id, deptCode: "TC", assignedToId: townClerk.id, actionRequired: "Instruct council's lawyers to enter appearance to defend; obtain Engineering report on the road section", dueInDays: 6,
+  await mk({ direction: "IN", docType: "COURT", ageDays: 4, letterAgeDays: 1, method: "HAND", status: "ROUTED", priority: "CRITICAL", confidential: true, pages: 6, subject: "Summons: Chikwanha v Municipality of Chitungwiza (pothole damage claim, HC 2231/26)", party: "Mutamangira & Associates, Legal Practitioners", contactName: "T. Mutamangira", contactDetails: "+263 242 700 123", theirRef: "TM/CH/0412", fileId: fLegal.id, deptCode: secCode, assignedToId: townClerk.id, actionRequired: "Instruct council's lawyers to enter appearance to defend; obtain Engineering report on the road section", dueInDays: 6,
     events: [reg(4, "RECEIVED", "Served by hand by Mutamangira & Associates, Legal Practitioners"), routed(4, townClerk.id, "Instruct council's lawyers to enter appearance to defend")] });
 
   // Incoming: being actioned
@@ -114,7 +114,7 @@ export async function applyRecordsSeed(orgId: string) {
     events: [reg(3, "RECEIVED", "Received by post from the Provincial Medical Director"), routed(3, health.id, "Compile readiness report for all four clinics")] });
 
   // Outgoing: awaiting dispatch, dispatched, acknowledged, filed
-  await mk({ direction: "OUT", docType: "LETTER", ageDays: 1, method: "HAND", status: "DRAFT", priority: "HIGH", pages: 2, subject: "Response to summons HC 2231/26: instruction to enter appearance to defend", party: "Gill, Godlonton & Gerrans, Legal Practitioners", contactName: "Council's lawyers", confidential: true, fileId: fLegal.id, deptCode: "TC", signedBy: "Town Clerk",
+  await mk({ direction: "OUT", docType: "LETTER", ageDays: 1, method: "HAND", status: "DRAFT", priority: "HIGH", pages: 2, subject: "Response to summons HC 2231/26: instruction to enter appearance to defend", party: "Gill, Godlonton & Gerrans, Legal Practitioners", contactName: "Council's lawyers", confidential: true, fileId: fLegal.id, deptCode: secCode, signedBy: "Town Clerk",
     events: [reg(1, "DRAFT", "Registered for dispatch to Gill, Godlonton & Gerrans, Legal Practitioners; awaiting the Town Clerk's signature")] });
   await mk({ direction: "OUT", docType: "LETTER", ageDays: 6, method: "EMAIL", status: "DISPATCHED", pages: 1, subject: "Nomination of council representatives to the Manyame catchment council", party: "Zimbabwe National Water Authority (ZINWA)", theirRef: "ZINWA/MAN/CC/3", fileId: fWater.id, deptCode: "ENG", signedBy: "Town Clerk",
     events: [reg(6, "DISPATCHED", "Dispatched by email to Zimbabwe National Water Authority (ZINWA)")] });
@@ -124,7 +124,7 @@ export async function applyRecordsSeed(orgId: string) {
     events: [reg(35, "DISPATCHED", "Dispatched by post to Ministry of Local Government and Public Works"), { kind: "FILED", fromStatus: "DISPATCHED", toStatus: "FILED", note: "Placed on file FIN/2/1 Budget: approvals, supplementary budgets and returns", daysAgo: 30 }] });
   await mk({ direction: "OUT", docType: "LETTER", ageDays: 8, method: "HAND", status: "DISPATCHED", pages: 1, subject: "Confirmation of pension contributions remitted, July to September", party: "Local Authorities Pension Fund (LAPF)", contactName: "Contributions Section", fileId: fHr.id, deptCode: "ADM", signedBy: "Administration & Human Resources Officer", dispatchedById: "Council messenger",
     events: [reg(8, "DISPATCHED", "Dispatched by hand to Local Authorities Pension Fund (LAPF)", )] });
-  void hr; void ictHead; void legalDept;
+  void hr; void ictHead;
 
   // a notification so the Treasurer's inbox shows the routed letter
   await prisma.notification.create({ data: { orgId, userId: treasurer.id, title: `Correspondence routed to you: ${prefix}/IN/${year}/0003`, body: "Approval of the 2026 supplementary budget: conditions (from Ministry of Local Government and Public Works). Action: Table the conditions before Finance Committee and prepare the ministry return.", link: "/app/records", type: "APPROVAL" } });
