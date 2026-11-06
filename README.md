@@ -40,21 +40,21 @@ docker compose up -d --build
 docker compose --profile seed run --rm seed              # council, departments, demo officers, workflows, licence types and forms
 ```
 
-nginx + certificate (replace `approvals.chitungwiza.co.zw` in `deploy/nginx/approvals.chitungwiza.co.zw.conf` with your hostname):
+nginx + certificate (replace `chitungwiza.synapsas.tech` in `deploy/nginx/chitungwiza.synapsas.tech.conf` with your hostname):
 
 ```bash
 sudo apt install -y nginx certbot python3-certbot-nginx
-sudo cp deploy/nginx/approvals.chitungwiza.co.zw.conf /etc/nginx/sites-available/approvals
+sudo cp deploy/nginx/chitungwiza.synapsas.tech.conf /etc/nginx/sites-available/approvals
 sudo ln -s /etc/nginx/sites-available/approvals /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
-sudo certbot --nginx -d approvals.chitungwiza.co.zw
+sudo certbot --nginx -d chitungwiza.synapsas.tech
 ```
 
 Every later release: `bash scripts/deploy-docker.sh` (pulls, rebuilds, restarts). Schedule the maintenance jobs on the host:
 
 ```
-*/5 * * * *  curl -s -H "Authorization: Bearer $CRON_SECRET" https://approvals.chitungwiza.co.zw/api/cron/email    # email retries + digests
-0   * * * *  curl -s -H "Authorization: Bearer $CRON_SECRET" https://approvals.chitungwiza.co.zw/api/cron/escalate # SLA escalation
+*/5 * * * *  curl -s -H "Authorization: Bearer $CRON_SECRET" https://chitungwiza.synapsas.tech/api/cron/email    # email retries + digests
+0   * * * *  curl -s -H "Authorization: Bearer $CRON_SECRET" https://chitungwiza.synapsas.tech/api/cron/escalate # SLA escalation
 ```
 
 The app refuses to start in production with a default `AUTH_SECRET`, a non-HTTPS `APP_URL` or a weak `CRON_SECRET` (`src/instrumentation.ts`).
