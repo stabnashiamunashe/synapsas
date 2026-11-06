@@ -11,6 +11,7 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { applyLicenceForms } from "./seed-licence-forms";
+import { applyRecordsSeed } from "./seed-records";
 
 const prisma = new PrismaClient();
 const j = (v: unknown) => JSON.stringify(v);
@@ -482,6 +483,7 @@ async function main() {
   const ltCreche = await lt("ECD", "Crèche / early childhood centre registration", "Health & food", 100, 12, true, health.id, [...ID_DOCS, "Ministry of Primary & Secondary Education registration", "Fire certificate", "Police clearance for staff"], "Registration of crèches and ECD centres; annual health and safety inspection.");
   void ltKombi; void ltBill; void ltCreche;
   await applyLicenceForms(org.id); // paper forms: Shop Licence Act, Registration of Premises, General Application
+  await applyRecordsSeed(org.id); // registry: file plan and the correspondence register (registry clerk = Registry Clerk account)
 
   type LicSeed = { ref: number; type: { id: string; fee: unknown; validityMonths: number }; status: string; applicant: string; trading?: string; idNo?: string; phone: string; stand: string; address: string; ward: string; activity: string; priority?: string; officerId?: string; inspectorId?: string; docsReceived?: number; docsTotal?: number; ageDays: number; issuedDaysAgo?: number; validityMonths?: number; paid?: boolean; receipt?: string; outcome?: string; conditions?: string; decision?: string; licenceNo?: string; source?: string };
   const mkLic = async (d: LicSeed) => {

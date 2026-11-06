@@ -28,6 +28,8 @@ export const STATUS_PILL: Record<string, { tone: Tone; label: string }> = {
   PUBLISHED: { tone: "green", label: "Published" }, ACTIVE: { tone: "green", label: "Active" }, INACTIVE: { tone: "grey", label: "Inactive" }, ARCHIVED: { tone: "grey", label: "Archived" }, PAID: { tone: "green", label: "Paid" }, UNPAID: { tone: "amber", label: "Unpaid" },
   FAILED: { tone: "red", label: "Failed" }, VOID: { tone: "grey", label: "Void" }, VALID: { tone: "green", label: "Valid" }, EXPIRED: { tone: "amber", label: "Expired" }, SUSPENDED: { tone: "orange", label: "Suspended" }, REVOKED: { tone: "red", label: "Revoked" },
   TRIALING: { tone: "blue", label: "Trial" }, PAST_DUE: { tone: "red", label: "Past due" },
+  // records / correspondence register (RECEIVED, ROUTED, REPLIED, DISPATCHED, ACKNOWLEDGED, FILED; DRAFT and IN_PROGRESS reuse the pills above)
+  RECEIVED: { tone: "grey", label: "Received" }, ROUTED: { tone: "blue", label: "Routed" }, REPLIED: { tone: "green", label: "Replied" }, DISPATCHED: { tone: "teal", label: "Dispatched" }, ACKNOWLEDGED: { tone: "green", label: "Acknowledged" }, FILED: { tone: "grey", label: "Filed" },
   // inspections
   PASS: { tone: "green", label: "Passed" }, FAIL: { tone: "red", label: "Failed" }, CONDITIONAL: { tone: "amber", label: "Passed with conditions" },
 };

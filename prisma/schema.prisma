@@ -53,10 +53,12 @@ model Organization {
   licenceTypes   LicenceType[]
   licences       Licence[]
 
-  savedViews SavedView[]
-  advances   Advance[]
-  notices    Notice[]
-  trips      VehicleTrip[]
+  savedViews     SavedView[]
+  advances       Advance[]
+  notices        Notice[]
+  trips          VehicleTrip[]
+  recordFiles    RecordFile[]
+  correspondence Correspondence[]
 }
 
 model User {
@@ -94,37 +96,41 @@ model User {
   manager        User?           @relation("Manager", fields: [managerId], references: [id], onDelete: SetNull)
   reports        User[]          @relation("Manager")
 
-  requests          Request[]          @relation("Requester")
-  ownedProjects     Project[]          @relation("ProjectOwner")
-  approvals         RequestApproval[]  @relation("Approver")
-  comments          Comment[]
-  attachments       Attachment[]
-  notifications     Notification[]
-  auditLogs         AuditLog[]
-  headOf            Department[]       @relation("DeptHead")
-  delegationsFrom   Delegation[]       @relation("DelegFrom")
-  delegationsTo     Delegation[]       @relation("DelegTo")
-  assignedCases     Case[]             @relation("CaseAssignee")
-  reportedCases     Case[]             @relation("CaseReporter")
-  caseComments      CaseComment[]
-  caseEvents        CaseEvent[]
-  caseAttachments   CaseAttachment[]
-  savedViews        SavedView[]
-  defaultForDepts   Department[]       @relation("DeptDefaultAssignee")
-  advances          Advance[]          @relation("AdvanceOfficer")
-  advanceClearances AdvanceClearance[]
-  noticesCreated    Notice[]
-  noticeAcks        NoticeAck[]
-  assetsHeld        Asset[]            @relation("AssetHolder")
-  assetEvents       AssetEvent[]       @relation("AssetActor")
-  tripsDriven       VehicleTrip[]      @relation("TripDriver")
-  tripsRequested    VehicleTrip[]      @relation("TripRequester")
-  licencesHandled   Licence[]          @relation("LicenceOfficer")
-  licenceInspections Licence[]         @relation("LicenceInspector")
-  licenceEvents     LicenceEvent[]     @relation("LicenceActor")
-  licenceUploads    LicenceAttachment[] @relation("LicenceUploader")
-  licencePaymentsRecorded  LicencePayment[] @relation("PaymentRecorder")
-  licencePaymentsConfirmed LicencePayment[] @relation("PaymentConfirmer")
+  requests                 Request[]                  @relation("Requester")
+  ownedProjects            Project[]                  @relation("ProjectOwner")
+  approvals                RequestApproval[]          @relation("Approver")
+  comments                 Comment[]
+  attachments              Attachment[]
+  notifications            Notification[]
+  auditLogs                AuditLog[]
+  headOf                   Department[]               @relation("DeptHead")
+  delegationsFrom          Delegation[]               @relation("DelegFrom")
+  delegationsTo            Delegation[]               @relation("DelegTo")
+  assignedCases            Case[]                     @relation("CaseAssignee")
+  reportedCases            Case[]                     @relation("CaseReporter")
+  caseComments             CaseComment[]
+  caseEvents               CaseEvent[]
+  caseAttachments          CaseAttachment[]
+  savedViews               SavedView[]
+  defaultForDepts          Department[]               @relation("DeptDefaultAssignee")
+  advances                 Advance[]                  @relation("AdvanceOfficer")
+  advanceClearances        AdvanceClearance[]
+  noticesCreated           Notice[]
+  noticeAcks               NoticeAck[]
+  assetsHeld               Asset[]                    @relation("AssetHolder")
+  assetEvents              AssetEvent[]               @relation("AssetActor")
+  tripsDriven              VehicleTrip[]              @relation("TripDriver")
+  tripsRequested           VehicleTrip[]              @relation("TripRequester")
+  licencesHandled          Licence[]                  @relation("LicenceOfficer")
+  licenceInspections       Licence[]                  @relation("LicenceInspector")
+  licenceEvents            LicenceEvent[]             @relation("LicenceActor")
+  licenceUploads           LicenceAttachment[]        @relation("LicenceUploader")
+  licencePaymentsRecorded  LicencePayment[]           @relation("PaymentRecorder")
+  licencePaymentsConfirmed LicencePayment[]           @relation("PaymentConfirmer")
+  recordsRegistered        Correspondence[]           @relation("RecordRegistrar")
+  recordsAssigned          Correspondence[]           @relation("RecordAssignee")
+  recordEvents             CorrespondenceEvent[]      @relation("RecordActor")
+  recordUploads            CorrespondenceAttachment[] @relation("RecordUploader")
 
   @@unique([orgId, email])
   @@index([orgId])
@@ -142,15 +148,17 @@ model Department {
   defaultAssigneeId String?
   createdAt         DateTime @default(now())
 
-  org             Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  head            User?          @relation("DeptHead", fields: [headUserId], references: [id], onDelete: SetNull)
-  defaultAssignee User?          @relation("DeptDefaultAssignee", fields: [defaultAssigneeId], references: [id], onDelete: SetNull)
-  members         User[]         @relation("DeptMembers")
+  org             Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  head            User?            @relation("DeptHead", fields: [headUserId], references: [id], onDelete: SetNull)
+  defaultAssignee User?            @relation("DeptDefaultAssignee", fields: [defaultAssigneeId], references: [id], onDelete: SetNull)
+  members         User[]           @relation("DeptMembers")
   caseCategories  CaseCategory[]
   cases           Case[]
   assets          Asset[]
   vehicles        Vehicle[]
   licenceTypes    LicenceType[]
+  recordFiles     RecordFile[]
+  correspondence  Correspondence[]
 
   @@unique([orgId, name])
   @@index([headUserId])
@@ -859,28 +867,28 @@ model VehicleTrip {
 
 // ==================== Licensing (local authority) ====================
 model LicenceType {
-  id               String   @id @default(cuid())
-  orgId            String
-  code             String   @db.VarChar(16) // SHP, LIQ, HWK, BLD, ...
-  name             String   @db.VarChar(120)
-  category         String   @db.VarChar(64) // Trading, Liquor, Health, Building, Transport, Land, Other
-  description      String?  @db.Text
-  fee              Decimal  @db.Decimal(18, 2)
-  currency         String   @default("USD") @db.VarChar(8)
-  validityMonths   Int      @default(12)
-  requiresInspection Boolean @default(true)
-  requirements     Json     // string[] documents the applicant must supply
-  formTitle        String?  @db.VarChar(200) // e.g. "Application for a new licence"
-  legalBasis       String?  @db.VarChar(200) // e.g. "Shop Licence Act [Chapter 14:17]"
-  instructions     String?  @db.Text // notes printed under the form for the applicant
-  fields           Json     @default("[]") // FieldDef[] applicant form (same schema as workflow templates)
-  officeFields     Json     @default("[]") // FieldDef[] "for office use only" section
-  kinds            Json     @default("[\"NEW\",\"RENEWAL\"]") // allowed application kinds
-  departmentId     String?  // owning department (inspections / approval)
-  isActive         Boolean  @default(true)
-  counter          Int      @default(0)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  orgId              String
+  code               String   @db.VarChar(16) // SHP, LIQ, HWK, BLD, ...
+  name               String   @db.VarChar(120)
+  category           String   @db.VarChar(64) // Trading, Liquor, Health, Building, Transport, Land, Other
+  description        String?  @db.Text
+  fee                Decimal  @db.Decimal(18, 2)
+  currency           String   @default("USD") @db.VarChar(8)
+  validityMonths     Int      @default(12)
+  requiresInspection Boolean  @default(true)
+  requirements       Json // string[] documents the applicant must supply
+  formTitle          String?  @db.VarChar(200) // e.g. "Application for a new licence"
+  legalBasis         String?  @db.VarChar(200) // e.g. "Shop Licence Act [Chapter 14:17]"
+  instructions       String?  @db.Text // notes printed under the form for the applicant
+  fields             Json     @default("[]") // FieldDef[] applicant form (same schema as workflow templates)
+  officeFields       Json     @default("[]") // FieldDef[] "for office use only" section
+  kinds              Json     @default("[\"NEW\",\"RENEWAL\"]") // allowed application kinds
+  departmentId       String? // owning department (inspections / approval)
+  isActive           Boolean  @default(true)
+  counter            Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   department Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
@@ -891,52 +899,52 @@ model LicenceType {
 }
 
 model Licence {
-  id             String    @id @default(cuid())
-  orgId          String
-  typeId         String
-  referenceNo    String    @db.VarChar(40) // application reference, e.g. LA-2026-0001
-  licenceNo      String?   @db.VarChar(40) // issued number, e.g. RLB/SHP/2026/0001
-  status         String    @default("SUBMITTED") // DRAFT | SUBMITTED | UNDER_REVIEW | INSPECTION | APPROVED | ISSUED | REJECTED | EXPIRED | SUSPENDED | REVOKED | CANCELLED
-  applicantName  String    @db.VarChar(160)
-  tradingName    String?   @db.VarChar(160)
-  idNumber       String?   @db.VarChar(40)
-  phone          String?   @db.VarChar(40)
-  email          String?   @db.VarChar(160)
-  standNumber    String?   @db.VarChar(60)
-  address        String?   @db.VarChar(255)
-  ward           String?   @db.VarChar(40)
-  activity       String?   @db.Text // nature of business / purpose
-  priority       String    @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
-  source         String    @default("STAFF") // STAFF (counter) | PUBLIC (portal) | WHATSAPP
-  applicationKind String   @default("NEW") // NEW | RENEWAL | EXTENSION | REMOVAL | ALTERATION | CHANGE_OF_OWNERSHIP
-  data           Json      @default("{}") // answers to the type's applicant form
-  officeData     Json      @default("{}") // answers to the office-use section
-  feeAmount      Decimal   @db.Decimal(18, 2)
-  currency       String    @default("USD") @db.VarChar(8)
-  paidAt         DateTime?
-  receiptNo      String?   @db.VarChar(60)
-  officerId      String?   // licensing officer handling it
-  inspectorId    String?
-  inspectionDue  DateTime?
-  inspectedAt    DateTime?
-  inspectionOutcome String? @db.VarChar(16) // PASS | FAIL | CONDITIONAL
-  inspectionNotes String?  @db.Text
-  conditions     String?   @db.Text // conditions attached to the licence
-  decisionNote   String?   @db.Text
-  issuedAt       DateTime?
-  expiresAt      DateTime?
-  renewedFromId  String?
-  documents      Json      // {name, received: boolean}[] checklist
-  submittedAt    DateTime  @default(now())
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id                String    @id @default(cuid())
+  orgId             String
+  typeId            String
+  referenceNo       String    @db.VarChar(40) // application reference, e.g. LA-2026-0001
+  licenceNo         String?   @db.VarChar(40) // issued number, e.g. RLB/SHP/2026/0001
+  status            String    @default("SUBMITTED") // DRAFT | SUBMITTED | UNDER_REVIEW | INSPECTION | APPROVED | ISSUED | REJECTED | EXPIRED | SUSPENDED | REVOKED | CANCELLED
+  applicantName     String    @db.VarChar(160)
+  tradingName       String?   @db.VarChar(160)
+  idNumber          String?   @db.VarChar(40)
+  phone             String?   @db.VarChar(40)
+  email             String?   @db.VarChar(160)
+  standNumber       String?   @db.VarChar(60)
+  address           String?   @db.VarChar(255)
+  ward              String?   @db.VarChar(40)
+  activity          String?   @db.Text // nature of business / purpose
+  priority          String    @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  source            String    @default("STAFF") // STAFF (counter) | PUBLIC (portal) | WHATSAPP
+  applicationKind   String    @default("NEW") // NEW | RENEWAL | EXTENSION | REMOVAL | ALTERATION | CHANGE_OF_OWNERSHIP
+  data              Json      @default("{}") // answers to the type's applicant form
+  officeData        Json      @default("{}") // answers to the office-use section
+  feeAmount         Decimal   @db.Decimal(18, 2)
+  currency          String    @default("USD") @db.VarChar(8)
+  paidAt            DateTime?
+  receiptNo         String?   @db.VarChar(60)
+  officerId         String? // licensing officer handling it
+  inspectorId       String?
+  inspectionDue     DateTime?
+  inspectedAt       DateTime?
+  inspectionOutcome String?   @db.VarChar(16) // PASS | FAIL | CONDITIONAL
+  inspectionNotes   String?   @db.Text
+  conditions        String?   @db.Text // conditions attached to the licence
+  decisionNote      String?   @db.Text
+  issuedAt          DateTime?
+  expiresAt         DateTime?
+  renewedFromId     String?
+  documents         Json // {name, received: boolean}[] checklist
+  submittedAt       DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  org         Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  type        LicenceType    @relation(fields: [typeId], references: [id])
-  officer     User?          @relation("LicenceOfficer", fields: [officerId], references: [id], onDelete: SetNull)
-  inspector   User?          @relation("LicenceInspector", fields: [inspectorId], references: [id], onDelete: SetNull)
-  renewedFrom Licence?       @relation("LicenceRenewal", fields: [renewedFromId], references: [id], onDelete: SetNull)
-  renewals    Licence[]      @relation("LicenceRenewal")
+  org         Organization        @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  type        LicenceType         @relation(fields: [typeId], references: [id])
+  officer     User?               @relation("LicenceOfficer", fields: [officerId], references: [id], onDelete: SetNull)
+  inspector   User?               @relation("LicenceInspector", fields: [inspectorId], references: [id], onDelete: SetNull)
+  renewedFrom Licence?            @relation("LicenceRenewal", fields: [renewedFromId], references: [id], onDelete: SetNull)
+  renewals    Licence[]           @relation("LicenceRenewal")
   events      LicenceEvent[]
   attachments LicenceAttachment[]
   payments    LicencePayment[]
@@ -1003,4 +1011,124 @@ model LicencePayment {
   confirmer User?   @relation("PaymentConfirmer", fields: [confirmedById], references: [id], onDelete: SetNull)
 
   @@index([licenceId, status])
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Records management (registry): the file plan and the register of external incoming and outgoing correspondence
+// ---------------------------------------------------------------------------------------------------------------
+
+/// A file in the council's file plan (classification scheme), e.g. ADM/3/2 "Correspondence with Ministry of Local Government".
+model RecordFile {
+  id             String    @id @default(cuid())
+  orgId          String
+  fileNo         String    @db.VarChar(40)
+  title          String    @db.VarChar(200)
+  series         String    @db.VarChar(80) // top-level class: Administration, Finance, Legal, Engineering, Health, Housing, Human Resources, Council & Committees, Procurement, Licensing
+  description    String?   @db.Text
+  departmentId   String? // custodian department
+  status         String    @default("OPEN") // OPEN | CLOSED
+  openedAt       DateTime  @default(now())
+  closedAt       DateTime?
+  retentionYears Int? // keep for this many years after closure
+  location       String?   @db.VarChar(120) // physical location of the paper file (room, cabinet, shelf)
+  confidential   Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  org        Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  department Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  records    Correspondence[]
+
+  @@unique([orgId, fileNo])
+  @@index([orgId, series])
+}
+
+/// One registered item of external correspondence: a letter, email, memo, invoice, court paper or tender received by or sent out of the council.
+model Correspondence {
+  id             String    @id @default(cuid())
+  orgId          String
+  referenceNo    String    @db.VarChar(40) // registry number CMC/IN/2026/0001 or CMC/OUT/2026/0001
+  direction      String    @db.VarChar(3) // IN | OUT
+  docType        String    @default("LETTER") @db.VarChar(24) // LETTER | EMAIL | MEMO | INVOICE | NOTICE | COURT | TENDER | REPORT | APPLICATION | OTHER
+  subject        String    @db.VarChar(255)
+  summary        String?   @db.Text
+  party          String    @db.VarChar(200) // sender (IN) or addressee (OUT): the external organisation or person
+  contactName    String?   @db.VarChar(120)
+  contactDetails String?   @db.VarChar(200) // phone, email or postal address
+  theirRef       String?   @db.VarChar(80) // the correspondent's own reference
+  letterDate     DateTime? // date on the document
+  dateLogged     DateTime  @default(now()) // received (IN) or dispatched (OUT); for drafts the date registered
+  method         String    @default("HAND") @db.VarChar(16) // HAND | POST | EMAIL | COURIER | FAX | WHATSAPP | REGISTERED_POST
+  status         String    @default("RECEIVED") @db.VarChar(16) // IN: RECEIVED | ROUTED | IN_PROGRESS | REPLIED | FILED   OUT: DRAFT | DISPATCHED | ACKNOWLEDGED | FILED
+  priority       String    @default("MEDIUM") @db.VarChar(12) // LOW | MEDIUM | HIGH | CRITICAL
+  confidential   Boolean   @default(false)
+  pages          Int? // number of pages / enclosures
+  enclosures     String?   @db.VarChar(255)
+  actionRequired String?   @db.VarChar(255) // what the action officer must do
+  actionDue      DateTime? // reply / action deadline
+  fileId         String?
+  departmentId   String? // routed to
+  assignedToId   String? // action officer
+  registeredById String?
+  replyToId      String? // OUT records: the incoming item this answers
+  relatedRef     String?   @db.VarChar(60) // case / licence / request reference this relates to
+  dispatchedById String?   @db.VarChar(120) // OUT: who carried / posted it (free text, e.g. messenger or courier waybill)
+  trackingNo     String?   @db.VarChar(80) // courier / registered post number
+  signedBy       String?   @db.VarChar(120) // OUT: officer who signed the letter
+  filedAt        DateTime?
+  repliedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  org          Organization               @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  file         RecordFile?                @relation(fields: [fileId], references: [id], onDelete: SetNull)
+  department   Department?                @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  assignedTo   User?                      @relation("RecordAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  registeredBy User?                      @relation("RecordRegistrar", fields: [registeredById], references: [id], onDelete: SetNull)
+  replyTo      Correspondence?            @relation("RecordReply", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies      Correspondence[]           @relation("RecordReply")
+  events       CorrespondenceEvent[]
+  attachments  CorrespondenceAttachment[]
+
+  @@unique([orgId, referenceNo])
+  @@index([orgId, direction, status])
+  @@index([orgId, actionDue])
+  @@index([fileId])
+  @@index([assignedToId])
+  @@index([departmentId])
+}
+
+model CorrespondenceEvent {
+  id         String   @id @default(cuid())
+  recordId   String
+  kind       String   @db.VarChar(24) // REGISTERED | ROUTED | REASSIGNED | STARTED | REPLIED | DISPATCHED | ACKNOWLEDGED | FILED | REOPENED | NOTE | DOCUMENT | EDITED
+  fromStatus String?  @db.VarChar(16)
+  toStatus   String?  @db.VarChar(16)
+  actorId    String?
+  toUserId   String?
+  note       String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  record Correspondence @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  actor  User?          @relation("RecordActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([recordId, createdAt])
+}
+
+/// Scanned copy of the document (and any enclosures) kept with the register entry.
+model CorrespondenceAttachment {
+  id           String   @id @default(cuid())
+  recordId     String
+  uploadedById String?
+  label        String?  @db.VarChar(120) // Original, Enclosure, Reply, Delivery note ...
+  fileName     String   @db.VarChar(255)
+  mimeType     String
+  size         Int
+  storagePath  String   @db.VarChar(500)
+  createdAt    DateTime @default(now())
+
+  record   Correspondence @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  uploader User?          @relation("RecordUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([recordId])
 }
