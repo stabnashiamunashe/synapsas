@@ -36,7 +36,7 @@ const menu = (greeting: string): WaOutgoing => ({
   sections: [
     { title: "Service desk", rows: [{ id: B.REPORT, title: "Report an issue", description: "Water, roads, refuse, complaints" }, { id: B.TRACK, title: "Track a report", description: "Progress of your reports" }] },
     { title: "Licences & permits", rows: [{ id: B.APPLY, title: "Apply for a licence", description: "Shop, liquor, hawker, food, building and more" }, { id: B.LIC_TRACK, title: "My licence applications", description: "Status, fees due, licence numbers" }] },
-    { title: "", rows: [{ id: B.HELP, title: "Help", description: "Contact details" }] },
+    { title: "More", rows: [{ id: B.HELP, title: "Help", description: "Contact details and office hours" }] },
   ],
 });
 const backToMenu = { id: B.MENU, title: "Main menu" };

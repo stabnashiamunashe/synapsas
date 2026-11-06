@@ -79,7 +79,8 @@ export function toPayload(to: string, m: WaOutgoing): Record<string, unknown> {
           ...(m.header ? { header: { type: "text", text: m.header.slice(0, 60) } } : {}),
           body: { text: m.body.slice(0, 1024) },
           ...(m.footer ? { footer: { text: m.footer.slice(0, 60) } } : {}),
-          action: { button: m.button.slice(0, 20), sections: m.sections.slice(0, 10).map((s) => ({ ...(s.title ? { title: s.title.slice(0, 24) } : {}), rows: s.rows.slice(0, 10).map((r) => ({ id: r.id.slice(0, 200), title: r.title.slice(0, 24), ...(r.description ? { description: r.description.slice(0, 72) } : {}) })) })) },
+          // Meta rejects the message (131009) when a list has several sections and any of them lacks a title.
+          action: { button: m.button.slice(0, 20), sections: m.sections.slice(0, 10).map((s, i) => ({ ...(s.title || m.sections.length > 1 ? { title: (s.title || `Options ${i + 1}`).slice(0, 24) } : {}), rows: s.rows.slice(0, 10).map((r) => ({ id: r.id.slice(0, 200), title: r.title.slice(0, 24), ...(r.description ? { description: r.description.slice(0, 72) } : {}) })) })) },
         },
       };
     case "location_request":
