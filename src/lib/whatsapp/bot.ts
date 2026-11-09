@@ -96,7 +96,7 @@ const FLOWS: Record<FlowKey, Flow> = {
         reporterName: String(a.name).slice(0, 120), reporterPhone: `+${c.phone}`, reporterEmail: String(a.email).trim(), customFields: { channel: "whatsapp", ...a, document: undefined }, referencePrefix: "DR",
       }, null);
       await attachMedia(c, cs.id, cs.referenceNo, [a.document as Media | undefined]);
-      return [{ type: "buttons", header: "ZIMSTAT", body: t(c.lang, "dr_done", { ref: cs.referenceNo }), buttons: [{ id: B.TRACK, title: t(c.lang, "m_track").slice(0, 20) }, { id: B.MENU, title: t(c.lang, "btn_menu") }] }];
+      return [{ type: "buttons", header: "ZIMSTAT", body: t(c.lang, "dr_done", { ref: cs.referenceNo }), buttons: [{ id: B.TRACK, title: t(c.lang, "m_track") }, { id: B.MENU, title: t(c.lang, "btn_menu") }] }];
     },
   },
   VR: {
@@ -117,7 +117,7 @@ const FLOWS: Record<FlowKey, Flow> = {
         customFields: { channel: "whatsapp", badge: a.badge, date, officerFound: !!a.officerFound }, referencePrefix: "VR",
       }, null);
       await attachMedia(c, cs.id, cs.referenceNo, [a.photo as Media | undefined]);
-      return [{ type: "buttons", header: "ZIMSTAT", body: t(c.lang, "vr_done", { ref: cs.referenceNo }), buttons: [{ id: B.TRACK, title: t(c.lang, "m_track").slice(0, 20) }, { id: B.MENU, title: t(c.lang, "btn_menu") }] }];
+      return [{ type: "buttons", header: "ZIMSTAT", body: t(c.lang, "vr_done", { ref: cs.referenceNo }), buttons: [{ id: B.TRACK, title: t(c.lang, "m_track") }, { id: B.MENU, title: t(c.lang, "btn_menu") }] }];
     },
   },
   TK: {
@@ -138,7 +138,7 @@ const FLOWS: Record<FlowKey, Flow> = {
         reporterName: a.name ? String(a.name).slice(0, 120) : "Anonymous (WhatsApp)", reporterPhone: `+${c.phone}`, reporterEmail: a.email ? String(a.email).trim() : null, customFields: { channel: "whatsapp" }, referencePrefix: "TK",
       }, null);
       await attachMedia(c, cs.id, cs.referenceNo, [a.attachment as Media | undefined]);
-      return [{ type: "buttons", header: "ZIMSTAT", body: t(c.lang, "tk_done", { ref: cs.referenceNo, dept: cat?.department.name || "the service desk" }), buttons: [{ id: B.TRACK, title: t(c.lang, "m_track").slice(0, 20) }, { id: B.MENU, title: t(c.lang, "btn_menu") }] }];
+      return [{ type: "buttons", header: "ZIMSTAT", body: t(c.lang, "tk_done", { ref: cs.referenceNo, dept: cat?.department.name || "the service desk" }), buttons: [{ id: B.TRACK, title: t(c.lang, "m_track") }, { id: B.MENU, title: t(c.lang, "btn_menu") }] }];
     },
   },
 };
@@ -354,9 +354,9 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
         if (id === B.VR_OFFICER) { await save("VR_BADGE", data); say({ type: "buttons", header: t(c.lang, "vr_officer"), body: t(c.lang, "vr_badge"), buttons: nav(c) }); }
         else if (id === B.VR_SURVEY) {
           const surveys = await prisma.survey.findMany({ where: { orgId, isActive: true }, orderBy: { name: "asc" }, take: 9 });
-          if (!surveys.length) { say({ type: "buttons", body: t(c.lang, "vr_no_surveys"), buttons: [{ id: B.VR_OFFICER, title: t(c.lang, "vr_officer").slice(0, 20) }, { id: B.MENU, title: t(c.lang, "btn_menu") }] }); break; }
+          if (!surveys.length) { say({ type: "buttons", body: t(c.lang, "vr_no_surveys"), buttons: [{ id: B.VR_OFFICER, title: t(c.lang, "vr_officer") }, { id: B.MENU, title: t(c.lang, "btn_menu") }] }); break; }
           await save("VR_SURVEY", data);
-          say({ type: "list", header: t(c.lang, "vr_surveys"), body: t(c.lang, "vr_survey_d"), button: t(c.lang, "menu_button"), sections: [{ rows: [...surveys.map((s) => ({ id: `survey_${s.id}`, title: s.name.slice(0, 24), description: `${s.code}${s.areas ? ` · ${s.areas}` : ""}`.slice(0, 72) })), { id: B.BACK, title: t(c.lang, "btn_back") }] }] });
+          say({ type: "list", header: t(c.lang, "vr_surveys"), body: t(c.lang, "vr_survey_d"), button: t(c.lang, "menu_button"), sections: [{ rows: [...surveys.map((s) => ({ id: `survey_${s.id}`, title: s.name, description: `${s.code}${s.areas ? ` · ${s.areas}` : ""}`.slice(0, 72) })), { id: B.BACK, title: t(c.lang, "btn_back") }] }] });
         } else if (id === B.BACK) await toMenu();
         else say(mainMenu(c));
         break;
@@ -382,7 +382,7 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
         const s = id.startsWith("survey_") ? await prisma.survey.findFirst({ where: { id: id.slice(7), orgId } }) : null;
         if (!s) { say(mainMenu(c)); await save("MENU", data); break; }
         const period = [s.startsOn?.toISOString().slice(0, 10), s.endsOn?.toISOString().slice(0, 10)].filter(Boolean).join(" to ") || "—";
-        say({ type: "buttons", body: t(c.lang, "vr_survey_info", { name: s.name, code: s.code, period, areas: s.areas || "—", description: s.description || "" }).slice(0, 1024), buttons: [{ id: B.VR_OFFICER, title: t(c.lang, "vr_officer").slice(0, 20) }, { id: B.MENU, title: t(c.lang, "btn_menu") }] });
+        say({ type: "buttons", body: t(c.lang, "vr_survey_info", { name: s.name, code: s.code, period, areas: s.areas || "—", description: s.description || "" }).slice(0, 1024), buttons: [{ id: B.VR_OFFICER, title: t(c.lang, "vr_officer") }, { id: B.MENU, title: t(c.lang, "btn_menu") }] });
         await save("VR_KIND", data);
         break;
       }
@@ -487,11 +487,11 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
     if (!q) { await setStepCtx(c, "FLOW_SUMMARY", c.data); return [await summary(c)]; }
     const body = `${q.ask(c)}${c.data.tries ? "" : ""}`;
     if (q.kind === "list") {
-      const options = (await q.options!(c)).slice(0, 9).map((o) => ({ id: `ans_${o.id}`, title: o.title.slice(0, 24), description: o.description }));
+      const options = (await q.options!(c)).slice(0, 9).map((o) => ({ id: `ans_${o.id}`, title: o.title, description: o.description }));
       return [{ type: "list", body, button: t(c.lang, "menu_button"), footer: t(c.lang, "menu_footer"), sections: [{ rows: [...options, { id: B.BACK, title: t(c.lang, "btn_back") }] }] }];
     }
-    if (q.kind === "buttons") { const options = (await q.options!(c)).slice(0, 2).map((o) => ({ id: `ans_${o.id}`, title: o.title.slice(0, 20) })); return [{ type: "buttons", body, buttons: [...options, { id: B.BACK, title: t(c.lang, "btn_back") }] }]; }
-    const extra = q.optional ? [{ id: B.SKIP, title: t(c.lang, q.skipLabel || "btn_skip").slice(0, 20) }] : [];
+    if (q.kind === "buttons") { const options = (await q.options!(c)).slice(0, 2).map((o) => ({ id: `ans_${o.id}`, title: o.title })); return [{ type: "buttons", body, buttons: [...options, { id: B.BACK, title: t(c.lang, "btn_back") }] }]; }
+    const extra = q.optional ? [{ id: B.SKIP, title: t(c.lang, q.skipLabel || "btn_skip") }] : [];
     const msgs: WaOutgoing[] = [];
     if (q.kind === "place") msgs.push({ type: "location_request", body });
     msgs.push({ type: "buttons", body: q.kind === "place" ? t(c.lang, "or_type_place") : body, buttons: nav(c, extra) });
@@ -553,7 +553,7 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
   }
   function editPicker(c: Ctx): WaOutgoing {
     const a = c.data.answers || {};
-    const rows = applicable(c).filter((q) => q.key !== "consent").slice(0, 9).map((q) => ({ id: `edit_${q.key}`, title: t(c.lang, q.label).slice(0, 24), description: String(a[q.key] && typeof a[q.key] === "object" ? (a[q.key] as Media).fileName : a[q.key] ?? "—").slice(0, 72) }));
+    const rows = applicable(c).filter((q) => q.key !== "consent").slice(0, 9).map((q) => ({ id: `edit_${q.key}`, title: t(c.lang, q.label), description: String(a[q.key] && typeof a[q.key] === "object" ? (a[q.key] as Media).fileName : a[q.key] ?? "—").slice(0, 72) }));
     return { type: "list", body: t(c.lang, "summary_edit"), button: t(c.lang, "menu_button"), sections: [{ rows: [...rows, { id: B.BACK, title: t(c.lang, "btn_back") }] }] };
   }
 
@@ -561,13 +561,13 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
   async function statsTopics(c: Ctx): Promise<WaOutgoing> {
     const have = await prisma.statIndicator.groupBy({ by: ["topic"], where: { orgId: c.orgId, isActive: true } });
     const keys = new Set(have.map((h) => h.topic));
-    const rows = STAT_TOPICS.filter((x) => keys.size === 0 || keys.has(x.key)).map((x) => ({ id: `topic_${x.key}`, title: (x[c.lang] || x.en).slice(0, 24) }));
+    const rows = STAT_TOPICS.filter((x) => keys.size === 0 || keys.has(x.key)).map((x) => ({ id: `topic_${x.key}`, title: x[c.lang] || x.en }));
     return { type: "list", header: t(c.lang, "stats_header"), body: t(c.lang, "stats_topic"), button: t(c.lang, "menu_button"), sections: [{ rows: [...rows, { id: B.BACK, title: t(c.lang, "btn_back") }] }] };
   }
   async function indicatorList(c: Ctx, topic: string): Promise<WaOutgoing> {
     const list = await prisma.statIndicator.findMany({ where: { orgId: c.orgId, topic, isActive: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }], take: 9 });
     if (!list.length) return { type: "buttons", body: t(c.lang, "stats_none"), buttons: [{ id: B.BACK, title: t(c.lang, "btn_back") }, { id: B.OFFICER, title: t(c.lang, "btn_officer") }, { id: B.MENU, title: t(c.lang, "btn_menu") }] };
-    return { type: "list", header: topicLabel(topic, c.lang).slice(0, 60), body: t(c.lang, "stats_ind"), button: t(c.lang, "menu_button"), sections: [{ rows: [...list.map((i) => ({ id: `ind_${i.id}`, title: i.name.slice(0, 24), description: `${i.value}${i.period ? ` · ${i.period}` : ""}`.slice(0, 72) })), { id: B.BACK, title: t(c.lang, "btn_back") }] }] };
+    return { type: "list", header: topicLabel(topic, c.lang).slice(0, 60), body: t(c.lang, "stats_ind"), button: t(c.lang, "menu_button"), sections: [{ rows: [...list.map((i) => ({ id: `ind_${i.id}`, title: i.name, description: `${i.value}${i.period ? ` · ${i.period}` : ""}`.slice(0, 72) })), { id: B.BACK, title: t(c.lang, "btn_back") }] }] };
   }
   async function releaseCalendar(c: Ctx): Promise<WaOutgoing> {
     const next = await prisma.statRelease.findMany({ where: { orgId: c.orgId, publishedAt: null, scheduledAt: { gte: new Date(Date.now() - 86400_000) } }, orderBy: { scheduledAt: "asc" }, take: 5 });
@@ -575,7 +575,7 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
     return { type: "text", text: body };
   }
   function topicsPicker(c: Ctx, chosen: string[]): WaOutgoing {
-    const rows = STAT_TOPICS.map((x) => ({ id: `topic_${x.key}`, title: `${chosen.includes(x.key) ? "✅ " : ""}${x[c.lang] || x.en}`.slice(0, 24) }));
+    const rows = STAT_TOPICS.map((x) => ({ id: `topic_${x.key}`, title: `${chosen.includes(x.key) ? "✅ " : ""}${x[c.lang] || x.en}` }));
     return { type: "list", header: t(c.lang, "m_alerts").slice(0, 60), body: `${t(c.lang, "rel_topics")}${chosen.length ? `\n\n${t(c.lang, "rel_selected", { topics: chosen.map((k) => topicLabel(k, c.lang)).join(", ") })}` : ""}`, button: t(c.lang, "menu_button"), sections: [{ rows: [...rows, { id: B.REL_DONE, title: `✔ ${t(c.lang, "btn_done")}` }, { id: B.CANCEL, title: t(c.lang, "btn_cancel") }] }] };
   }
   async function subscribe(c: Ctx, topics: string[], frequency: string | undefined) {
@@ -586,7 +586,7 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
   }
   async function categoryPrompt(c: Ctx, bodyKey: string): Promise<WaOutgoing> {
     const cats = await publicCategories(c);
-    return { type: "list", header: t(c.lang, "m_chat").slice(0, 60), body: t(c.lang, bodyKey), button: t(c.lang, "menu_button"), sections: [{ rows: [...cats.map((x) => ({ id: `cat_${x.id}`, title: x.title.slice(0, 24), description: x.description })), { id: B.BACK, title: t(c.lang, "btn_back") }] }] };
+    return { type: "list", header: t(c.lang, "m_chat").slice(0, 60), body: t(c.lang, bodyKey), button: t(c.lang, "menu_button"), sections: [{ rows: [...cats.map((x) => ({ id: `cat_${x.id}`, title: x.title, description: x.description })), { id: B.BACK, title: t(c.lang, "btn_back") }] }] };
   }
 }
 

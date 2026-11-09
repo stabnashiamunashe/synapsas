@@ -55,8 +55,21 @@ export type WaOutgoing =
   | { type: "location_request"; body: string }
   | { type: "template"; name: string; language: string; bodyParams: string[]; urlButtonParam?: string };
 
-/** Serialise to the Graph API payload. Titles are clipped to WhatsApp's limits (buttons 20 chars, rows 24/72). */
-export function toPayload(to: string, m: WaOutgoing): Record<string, unknown> {
+/** WhatsApp's interactive-message limits: headers/footers 60, body 1024, button labels 20, list rows 24 (title) / 72 (description), 3 buttons, 10 rows. The sandbox applies the same clipping so what you see is what WhatsApp shows. */
+const fit = (s: string, max: number) => (s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s);
+export function clipForWhatsApp(m: WaOutgoing): WaOutgoing {
+  switch (m.type) {
+    case "text": return { ...m, text: m.text.slice(0, 4096) };
+    case "buttons": return { ...m, header: m.header?.slice(0, 60), footer: m.footer?.slice(0, 60), body: m.body.slice(0, 1024), buttons: m.buttons.slice(0, 3).map((b) => ({ id: b.id.slice(0, 256), title: fit(b.title, 20) })) };
+    case "list": return { ...m, header: m.header?.slice(0, 60), footer: m.footer?.slice(0, 60), body: m.body.slice(0, 1024), button: fit(m.button, 20), sections: m.sections.slice(0, 10).map((s) => ({ ...(s.title ? { title: fit(s.title, 24) } : {}), rows: s.rows.slice(0, 10).map((r) => ({ id: r.id.slice(0, 200), title: fit(r.title, 24), ...(r.description ? { description: fit(r.description, 72) } : {}) })) })) };
+    case "location_request": return { ...m, body: m.body.slice(0, 1024) };
+    default: return m;
+  }
+}
+
+/** Serialise to the Graph API payload (clipped to WhatsApp's limits). */
+export function toPayload(to: string, raw: WaOutgoing): Record<string, unknown> {
+  const m = clipForWhatsApp(raw);
   const base = { messaging_product: "whatsapp", recipient_type: "individual", to };
   switch (m.type) {
     case "text":

@@ -21,10 +21,15 @@ export async function applyChatbotSeed(orgId: string) {
   const cats: [string, string, number, string, string, string][] = [
     ["General enquiry", "DG", 48, "LOW", "info", "Questions about ZIMSTAT, its publications and services."],
     ["Data quality concern", "PCS", 120, "MEDIUM", "data", "A figure or table that looks wrong, inconsistent or out of date."],
-    ["Website or ODP 2.0 problem", "ICT", 24, "HIGH", "laptop", "The website or Open Data Portal is down, broken or missing a dataset."],
+    ["Website or ODP problem", "ICT", 24, "HIGH", "laptop", "The website or Open Data Portal is down, broken or missing a dataset."],
     ["Compliment or suggestion", "DG", 72, "LOW", "megaphone", "Feedback and ideas to improve ZIMSTAT services."],
-    ["Field officer verification concern", "PCS", 24, "HIGH", "shield", "Someone claiming to be a ZIMSTAT enumerator who is not on the register or behaved improperly."],
+    ["Field officer concern", "PCS", 24, "HIGH", "shield", "Someone claiming to be a ZIMSTAT enumerator who is not on the register or behaved improperly."],
   ];
+  // earlier names were longer than a WhatsApp list row (24 characters)
+  for (const [from, to] of [["Website or ODP 2.0 problem", "Website or ODP problem"], ["Field officer verification concern", "Field officer concern"]]) {
+    const old = await prisma.caseCategory.findFirst({ where: { orgId, name: from } });
+    if (old && !(await prisma.caseCategory.findFirst({ where: { orgId, name: to } }))) await prisma.caseCategory.update({ where: { id: old.id }, data: { name: to } });
+  }
   for (const [name, code, sla, priority, icon, description] of cats) {
     const d = dept(code);
     if (!d) continue;
@@ -87,7 +92,7 @@ export async function applyChatbotSeed(orgId: string) {
   if (!wa.dataRequestCategoryId || !wa.verificationCategoryId) {
     const all = await prisma.caseCategory.findMany({ where: { orgId }, select: { id: true, name: true } });
     const find = (re: RegExp) => all.find((c) => re.test(c.name))?.id;
-    settings.cases = { ...(settings.cases || {}), whatsapp: { odpUrl: ODP, ...wa, dataRequestCategoryId: wa.dataRequestCategoryId || find(/statistical data request|data request/i), verificationCategoryId: wa.verificationCategoryId || find(/field officer verification/i), liveChatCategoryId: wa.liveChatCategoryId || null, greeting: wa.greeting || "Welcome to ZIMSTAT, the Zimbabwe National Statistics Agency. How can we help you today?" } };
+    settings.cases = { ...(settings.cases || {}), whatsapp: { odpUrl: ODP, ...wa, dataRequestCategoryId: wa.dataRequestCategoryId || find(/statistical data request|data request/i), verificationCategoryId: wa.verificationCategoryId || find(/field officer (concern|verification)/i), liveChatCategoryId: wa.liveChatCategoryId || null, greeting: wa.greeting || "Welcome to ZIMSTAT, the Zimbabwe National Statistics Agency. How can we help you today?" } };
     await prisma.organization.update({ where: { id: orgId }, data: { settings: JSON.stringify(settings) } });
   }
   return added;

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ok, parseBody, withAuth } from "@/lib/api";
-import { logMessage, normalizePhone } from "@/lib/whatsapp/client";
+import { clipForWhatsApp, logMessage, normalizePhone } from "@/lib/whatsapp/client";
 import { handleInbound, type Inbound } from "@/lib/whatsapp/bot";
 
 const schema = z.object({
@@ -23,5 +23,5 @@ export const POST = withAuth(async (req, { user }) => {
   await logMessage({ orgId: user.orgId, phone: p, direction: "IN", kind: `sim-${input.kind}`, body: shown, status: "simulated" });
   const inbound: Inbound = input.kind === "media" ? { kind: "media", mediaId: `sandbox-${Date.now()}`, mimeType: input.mimeType, fileName: input.fileName, caption: input.caption } : (input as Inbound);
   const replies = await handleInbound(user.orgId, p, name || "Sandbox user", inbound, { simulate: true });
-  return ok({ replies });
+  return ok({ replies: replies.map(clipForWhatsApp) });
 }, "ADMIN");
