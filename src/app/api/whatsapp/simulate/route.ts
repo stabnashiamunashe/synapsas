@@ -11,14 +11,17 @@ const schema = z.object({
     z.object({ kind: z.literal("button"), id: z.string(), title: z.string().optional() }),
     z.object({ kind: z.literal("list"), id: z.string(), title: z.string().optional() }),
     z.object({ kind: z.literal("location"), latitude: z.number(), longitude: z.number(), name: z.string().optional(), address: z.string().optional() }),
+    z.object({ kind: z.literal("media"), fileName: z.string().min(1).max(200), mimeType: z.string().max(100).default("application/pdf"), caption: z.string().max(500).optional() }),
   ]),
 });
 
-/** In-app sandbox: runs the real conversation engine without calling Meta. Replies are returned as structured messages. */
+/** In-app sandbox: runs the real conversation engine without calling Meta. Replies are returned as structured messages. Sandbox attachments are noted on the case but not stored. */
 export const POST = withAuth(async (req, { user }) => {
   const { phone, name, input } = await parseBody(req, schema);
   const p = normalizePhone(phone);
-  await logMessage({ orgId: user.orgId, phone: p, direction: "IN", kind: `sim-${input.kind}`, body: input.kind === "text" ? input.text : input.kind === "location" ? `location ${input.latitude},${input.longitude}` : `[${input.title || input.id}]`, status: "simulated" });
-  const replies = await handleInbound(user.orgId, p, name || "Sandbox user", input as Inbound, { simulate: true });
+  const shown = input.kind === "text" ? input.text : input.kind === "location" ? `location ${input.latitude},${input.longitude}` : input.kind === "media" ? `[file: ${input.fileName}]` : `[${input.title || input.id}]`;
+  await logMessage({ orgId: user.orgId, phone: p, direction: "IN", kind: `sim-${input.kind}`, body: shown, status: "simulated" });
+  const inbound: Inbound = input.kind === "media" ? { kind: "media", mediaId: `sandbox-${Date.now()}`, mimeType: input.mimeType, fileName: input.fileName, caption: input.caption } : (input as Inbound);
+  const replies = await handleInbound(user.orgId, p, name || "Sandbox user", inbound, { simulate: true });
   return ok({ replies });
 }, "ADMIN");

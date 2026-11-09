@@ -51,10 +51,15 @@ model Organization {
   assets         Asset[]
   vehicles       Vehicle[]
 
-  savedViews SavedView[]
-  advances   Advance[]
-  notices    Notice[]
-  trips      VehicleTrip[]
+  savedViews        SavedView[]
+  advances          Advance[]
+  notices           Notice[]
+  trips             VehicleTrip[]
+  statIndicators    StatIndicator[]
+  statReleases      StatRelease[]
+  statSubscriptions StatSubscription[]
+  surveys           Survey[]
+  fieldOfficers     FieldOfficer[]
 }
 
 model User {
@@ -846,4 +851,112 @@ model VehicleTrip {
 
   @@index([orgId, startsAt])
   @@index([vehicleId, startsAt])
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Public WhatsApp chatbot content: headline statistics, the release calendar and alert subscriptions, and the
+// field-staff / survey register used to verify enumerators (docs/WHATSAPP.md).
+// ---------------------------------------------------------------------------------------------------------------
+
+/// One headline figure the bot can quote: topic -> indicator -> latest value, period, release date and ODP 2.0 link.
+model StatIndicator {
+  id          String    @id @default(cuid())
+  orgId       String
+  topic       String    @db.VarChar(40) // key from STAT_TOPICS (CPI, GDP, POP, LAB, TRADE, AGRI, HEALTH)
+  name        String    @db.VarChar(80)
+  value       String    @db.VarChar(80) // "3.1%" / "US$ 2.4 bn" / "15 178 957"
+  period      String?   @db.VarChar(60) // reference period, e.g. "September 2026"
+  releaseDate DateTime?
+  url         String?   @db.VarChar(500) // indicator page on the Open Data Portal
+  note        String?   @db.VarChar(255)
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+  updatedById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, topic, sortOrder])
+}
+
+/// A scheduled (or published) statistical release on the advance release calendar.
+model StatRelease {
+  id          String    @id @default(cuid())
+  orgId       String
+  title       String    @db.VarChar(160)
+  topic       String    @db.VarChar(40)
+  scheduledAt DateTime
+  url         String?   @db.VarChar(500)
+  summary     String?   @db.VarChar(500) // one line sent with the alert
+  publishedAt DateTime?
+  notifiedAt  DateTime? // when subscribers were alerted
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, scheduledAt])
+}
+
+/// A WhatsApp number that asked for release alerts.
+model StatSubscription {
+  id         String    @id @default(cuid())
+  orgId      String
+  phone      String    @db.VarChar(32)
+  topics     String    @default("[]") @db.Text // JSON string[] of topic keys; empty = all topics
+  frequency  String    @default("EVERY") // EVERY | MONTHLY
+  language   String    @default("en") @db.VarChar(5)
+  isActive   Boolean   @default(true)
+  lastSentAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, phone])
+  @@index([orgId, isActive])
+}
+
+/// A survey or census currently in the field, so the public can check that a visit is genuine.
+model Survey {
+  id          String    @id @default(cuid())
+  orgId       String
+  code        String    @db.VarChar(24) // e.g. ZDHS-2026
+  name        String    @db.VarChar(160)
+  description String?   @db.Text // what respondents will be asked, how long it takes
+  areas       String?   @db.VarChar(255) // provinces / districts covered
+  startsOn    DateTime?
+  endsOn      DateTime?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  org      Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  officers FieldOfficer[]
+
+  @@unique([orgId, code])
+  @@index([orgId, isActive])
+}
+
+/// The active field-staff register: badge number -> name, survey and deployment area.
+model FieldOfficer {
+  id        String    @id @default(cuid())
+  orgId     String
+  badgeNo   String    @db.VarChar(32) // printed on the ZIMSTAT badge
+  name      String    @db.VarChar(120)
+  role      String?   @db.VarChar(60) // Enumerator, Supervisor, Listing officer
+  surveyId  String?
+  area      String?   @db.VarChar(160) // province / district / wards
+  validFrom DateTime?
+  validTo   DateTime?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  org    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  survey Survey?      @relation(fields: [surveyId], references: [id], onDelete: SetNull)
+
+  @@unique([orgId, badgeNo])
+  @@index([surveyId])
 }

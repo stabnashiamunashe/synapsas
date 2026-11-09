@@ -10,7 +10,7 @@ export interface WaConfig {
   appSecret: string;
   verifyToken: string;
   apiVersion: string;
-  templates: { caseCreated: string; caseUpdate: string; language: string };
+  templates: { caseCreated: string; caseUpdate: string; releaseAlert: string; language: string };
 }
 
 export function waConfig(): WaConfig {
@@ -26,6 +26,7 @@ export function waConfig(): WaConfig {
     templates: {
       caseCreated: process.env.WHATSAPP_TEMPLATE_CASE_CREATED || "",
       caseUpdate: process.env.WHATSAPP_TEMPLATE_CASE_UPDATE || "",
+      releaseAlert: process.env.WHATSAPP_TEMPLATE_RELEASE || "",
       language: process.env.WHATSAPP_TEMPLATE_LANG || "en",
     },
   };
@@ -152,6 +153,30 @@ export async function sendWhatsApp(to: string, m: WaOutgoing, opts: { orgId?: st
 }
 
 /** Mark delivered/read from status webhooks. */
+/** Inbound media (photo or document): resolve the media id to a download URL and fetch the bytes with the access token. */
+export async function downloadMedia(mediaId: string): Promise<{ bytes: Buffer; mimeType: string } | null> {
+  const cfg = waConfig();
+  if (!cfg.configured || !mediaId) return null;
+  try {
+    const meta = await fetch(`https://graph.facebook.com/${cfg.apiVersion}/${mediaId}`, { headers: { authorization: `Bearer ${cfg.accessToken}` }, signal: AbortSignal.timeout(8000) });
+    const info = (await meta.json().catch(() => ({}))) as { url?: string; mime_type?: string; file_size?: number };
+    if (!meta.ok || !info.url) return null;
+    if ((info.file_size || 0) > 25 * 1024 * 1024) return null;
+    const res = await fetch(info.url, { headers: { authorization: `Bearer ${cfg.accessToken}` }, signal: AbortSignal.timeout(20000) });
+    if (!res.ok) return null;
+    return { bytes: Buffer.from(await res.arrayBuffer()), mimeType: info.mime_type || res.headers.get("content-type") || "application/octet-stream" };
+  } catch (e) {
+    console.error("[whatsapp] media download failed", e);
+    return null;
+  }
+}
+
+/** True when this number messaged us in the last 24 hours, so a free-form (non-template) reply is allowed. */
+export async function inSessionWindow(phone: string) {
+  const last = await prisma.whatsAppMessage.findFirst({ where: { phone: normalizePhone(phone), direction: "IN", createdAt: { gte: new Date(Date.now() - 23.5 * 3600_000) } }, select: { id: true } });
+  return !!last;
+}
+
 export async function recordStatus(waMessageId: string, status: string, error?: string) {
   try {
     await prisma.whatsAppMessage.updateMany({ where: { waMessageId }, data: { status, ...(error ? { error } : {}) } });

@@ -56,7 +56,17 @@ export interface CaseSettings {
   defaultView?: "board" | "table";
   boardColumns?: CaseStatus[];
   /** WhatsApp Business intake (credentials live in the environment; these are behaviour switches) */
-  whatsapp?: { enabled?: boolean; greeting?: string; notifyAllReporters?: boolean; helpText?: string };
+  whatsapp?: {
+    enabled?: boolean; greeting?: string; notifyAllReporters?: boolean; helpText?: string;
+    /** chatbot routing: which service-desk categories receive data requests, field-verification concerns and live-chat requests */
+    dataRequestCategoryId?: string; verificationCategoryId?: string; liveChatCategoryId?: string; erasureCategoryId?: string;
+    /** Open Data Portal link quoted by the bot */
+    odpUrl?: string;
+    /** optional override for the office-hours message ("Officers reply Monday to Friday, 08:00 to 16:30") */
+    officeHoursNote?: string;
+    /** switch individual menu options off while they are not ready (phased rollout) */
+    disabledOptions?: ("stats" | "data" | "verify" | "alerts" | "enquiry" | "chat")[];
+  };
 }
 
 export const DEFAULT_CASE_SETTINGS: Required<Pick<CaseSettings, "prefix" | "autoAssign" | "requireTriage" | "requireTransitionReason" | "slaWarningHours" | "publicPortal" | "defaultView" | "boardColumns">> = {

@@ -108,6 +108,8 @@ export interface CreateCaseInput {
   title: string; description: string; categoryId?: string | null; departmentId?: string | null; priority?: CasePriority | null; projectId?: string | null;
   reporterName: string; reporterPhone?: string | null; reporterEmail?: string | null; reporterUserId?: string | null; source?: string;
   locationAddress?: string | null; latitude?: number | null; longitude?: number | null; office?: string | null; customFields?: Record<string, unknown>;
+  /** override the organisation prefix (chatbot flows number data requests DR-, verification concerns VR- and tickets TK-) */
+  referencePrefix?: string | null;
 }
 
 export async function createCase(orgId: string, input: CreateCaseInput, actor: { id: string; name: string } | null, ctx?: { ip?: string; userAgent?: string }) {
@@ -130,7 +132,7 @@ export async function createCase(orgId: string, input: CreateCaseInput, actor: {
   }
   const source = input.source || (actor ? "STAFF" : "PUBLIC");
   for (let attempt = 0; attempt < 3; attempt++) {
-    const referenceNo = await nextCaseReference(orgId, settings.prefix);
+    const referenceNo = await nextCaseReference(orgId, input.referencePrefix || settings.prefix);
     try {
       const c = await prisma.case.create({
         data: {

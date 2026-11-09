@@ -2,12 +2,13 @@
 
 import { Alert, App, Button, Card, Col, Descriptions, Form, Input, Row, Space, Statistic, Switch, Table, Tag, Typography } from "antd";
 import { SendOutlined, WhatsAppOutlined } from "@ant-design/icons";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { api, formatDate, useApi, useMe } from "@/lib/client";
 
 interface Status {
   configured: boolean; phoneNumberId: string | null; tokenSet: boolean; appSecretSet: boolean; verifyTokenSet: boolean; apiVersion: string;
-  templates: { caseCreated: string; caseUpdate: string; language: string }; webhookUrl: string;
+  templates: { caseCreated: string; caseUpdate: string; releaseAlert: string; language: string }; webhookUrl: string;
   last7days: { sent: number; failed: number; conversations: number; cases: number };
   messages: { id: string; direction: string; phone: string; kind: string; body: string; status: string; error?: string | null; createdAt: string }[];
 }
@@ -48,7 +49,6 @@ export default function WhatsAppSettingsPage() {
   };
 
   const renderReply = (r: Reply) => {
-    if (r.type === "text") return <div style={{ whiteSpace: "pre-wrap" }}>{r.text}</div>;
     if (r.type === "buttons") return (
       <div>{r.header && <b>{r.header}<br /></b>}<div style={{ whiteSpace: "pre-wrap" }}>{r.body}</div>
         <Space wrap style={{ marginTop: 8 }}>{r.buttons.map((b) => <Button key={b.id} size="small" disabled={busy} onClick={() => send({ kind: "button", id: b.id, title: b.title }, b.title)}>{b.title}</Button>)}</Space>
@@ -61,6 +61,7 @@ export default function WhatsAppSettingsPage() {
       </div>
     );
     if (r.type === "location_request") return <div>{r.body}<div style={{ marginTop: 8 }}><Button size="small" disabled={busy} onClick={() => send({ kind: "location", latitude: -17.8292, longitude: 31.0522, name: "Kaguvi Building", address: "Harare" }, "📍 Shared location (Harare)")}>Send location</Button></div></div>;
+    if (r.type === "text") return <div style={{ whiteSpace: "pre-wrap" }}>{r.text}</div>;
     return <div className="muted">Template {r.name}({r.bodyParams.join(", ")})</div>;
   };
 
@@ -79,6 +80,7 @@ export default function WhatsAppSettingsPage() {
               { key: "api", label: "Graph API version", children: st?.apiVersion },
               { key: "t1", label: "Template: case received", children: st?.templates.caseCreated || <span className="muted">WHATSAPP_TEMPLATE_CASE_CREATED not set</span> },
               { key: "t2", label: "Template: case update", children: st?.templates.caseUpdate || <span className="muted">WHATSAPP_TEMPLATE_CASE_UPDATE not set</span> },
+              { key: "t3", label: "Template: release alert", children: st?.templates.releaseAlert || <span className="muted">WHATSAPP_TEMPLATE_RELEASE not set (alerts only reach people who messaged in the last 24 h)</span> },
             ]} />
             <Space style={{ marginTop: 12 }} wrap>
               <Input placeholder="Test number, e.g. 2637…" value={testTo} onChange={(e) => setTestTo(e.target.value)} style={{ width: 200 }} />
@@ -89,18 +91,18 @@ export default function WhatsAppSettingsPage() {
           <Card title="Behaviour" style={{ marginTop: 16 }}>
             <Form layout="vertical" initialValues={{ greeting: wa.greeting, helpText: wa.helpText }} onFinish={(v) => saveWa(v)}>
               <Space size="large" wrap style={{ marginBottom: 8 }}>
-                <span><Switch checked={wa.enabled !== false} onChange={(v) => saveWa({ enabled: v })} /> Accept reports on WhatsApp</span>
+                <span><Switch checked={wa.enabled !== false} onChange={(v) => saveWa({ enabled: v })} /> Chatbot switched on</span>
                 <span><Switch checked={!!wa.notifyAllReporters} onChange={(v) => saveWa({ notifyAllReporters: v })} /> Also message reporters who used the website or phone</span>
               </Space>
-              <Form.Item name="greeting" label="Greeting (main menu text)"><Input placeholder="Welcome to ZimStat. How can we help you today?" /></Form.Item>
+              <Form.Item name="greeting" label="Greeting (English main menu text; Shona and Ndebele use fixed translations)"><Input placeholder="Welcome to ZIMSTAT. How can we help you today?" /></Form.Item>
               <Form.Item name="helpText" label="Help text"><Input.TextArea autoSize={{ minRows: 2 }} placeholder="Shown when the user taps Help" /></Form.Item>
-              <Button htmlType="submit">Save texts</Button>
+              <Space><Button htmlType="submit">Save texts</Button><Link href="/app/settings/chatbot"><Button type="link">Statistics, releases, field register and routing →</Button></Link></Space>
             </Form>
           </Card>
         </Col>
         <Col xs={24} lg={12}>
           <Card title="Sandbox (no Meta account needed)" extra={<Button size="small" onClick={() => setChat([])}>Clear</Button>}>
-            <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>This runs the real conversation engine for the number {simPhone}. Tap the buttons exactly as a WhatsApp user would; a case is created in the service desk at the end.</Typography.Paragraph>
+            <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>This runs the real conversation engine for the number {simPhone}. Tap the buttons and list rows exactly as a WhatsApp user would; data requests, concerns and enquiries create DR-, VR- and TK- cases in the service desk. Use <b>Send a file</b> where the bot asks for a document or photo (sandbox files are noted, not stored).</Typography.Paragraph>
             <div style={{ background: "#e5ddd5", borderRadius: 8, padding: 12, height: 420, overflowY: "auto", overflowX: "hidden" }}>
               {chat.length === 0 && <div className="muted" style={{ textAlign: "center", marginTop: 160 }}>Say “Hi” to start.</div>}
               {chat.map((b, i) => (
@@ -114,6 +116,11 @@ export default function WhatsAppSettingsPage() {
               <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Type a message (only needed for the description step)" onPressEnter={() => { if (text.trim()) { send({ kind: "text", text: text.trim() }, text.trim()); setText(""); } }} />
               <Button type="primary" loading={busy} onClick={() => { const t = text.trim() || "Hi"; send({ kind: "text", text: t }, t); setText(""); }}>Send</Button>
             </Space.Compact>
+            <Space wrap style={{ marginTop: 8 }}>
+              <Button size="small" disabled={busy} onClick={() => send({ kind: "media", fileName: "institutional-letter.pdf", mimeType: "application/pdf" }, "📎 institutional-letter.pdf")}>Send a file</Button>
+              <Button size="small" disabled={busy} onClick={() => send({ kind: "media", fileName: "badge-photo.jpg", mimeType: "image/jpeg" }, "📷 badge-photo.jpg")}>Send a photo</Button>
+              <span className="muted" style={{ fontSize: 12 }}>Commands: menu · back · cancel · exit · language · stop alerts · status DR-2026-0001</span>
+            </Space>
           </Card>
         </Col>
       </Row>

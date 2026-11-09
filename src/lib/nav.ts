@@ -47,6 +47,7 @@ export const NAV: NavItem[] = [
   { key: "/app/cases/new", label: "Log a case", icon: "plus", group: "Service desk", description: "Raise a ticket on behalf of a member of the public or a colleague", keywords: "new ticket report issue" },
   { key: "/app/cases/categories", label: "Categories & SLAs", icon: "tags", group: "Service desk", minRole: "ADMIN", description: "Case categories, owning sections and service targets", keywords: "sla targets routing" },
   { key: "/app/settings/whatsapp", label: "WhatsApp channel", icon: "whatsapp", group: "Service desk", minRole: "ADMIN", description: "Meta Business API connection, templates, sandbox simulator and message log", keywords: "whatsapp mock simulator sandbox meta bot chat" },
+  { key: "/app/settings/chatbot", label: "Chatbot content", icon: "robot", group: "Service desk", minRole: "MANAGER", description: "What the WhatsApp bot answers: headline statistics, release calendar and alert subscribers, surveys and the field-staff register, routing of requests", keywords: "chatbot statistics indicators cpi inflation releases alerts subscribers enumerator badge field officer survey register odp" },
   { key: "/app/settings/service-desk", label: "Portal & desk settings", icon: "sliders", group: "Service desk", minRole: "ADMIN", description: "Reference prefix, auto-assignment, board columns and the public portal text", keywords: "portal settings triage assignment" },
 
   // Staff & notices
@@ -66,7 +67,7 @@ export const NAV: NavItem[] = [
   { key: "/app/users", label: "People", icon: "team", group: "Administration", minRole: "ADMIN", description: "Staff accounts, roles, line managers, invitations", keywords: "users staff accounts invite roles" },
   { key: "/app/departments", label: "Sections & divisions", icon: "apartment", group: "Administration", minRole: "ADMIN", description: "Organisation structure and heads of section", keywords: "departments units heads" },
   { key: "/app/audit", label: "Audit log", icon: "audit", group: "Administration", minRole: "ADMIN", description: "Immutable record of every action, sign-in and change", keywords: "security log trail compliance" },
-  { key: "/app/settings/branding", label: "Settings", icon: "setting", group: "Administration", minRole: "ADMIN", description: "Branding, organisation, security, portal, WhatsApp, API", keywords: "configuration preferences", match: "/app/settings(?!/delegations|/whatsapp|/service-desk)" },
+  { key: "/app/settings/branding", label: "Settings", icon: "setting", group: "Administration", minRole: "ADMIN", description: "Branding, organisation, security, portal, WhatsApp, API", keywords: "configuration preferences", match: "/app/settings(?!/delegations|/whatsapp|/chatbot|/service-desk)" },
   { key: "/app/settings/organization", label: "Organisation & security", icon: "safety", group: "Administration", minRole: "ADMIN", sidebar: false, description: "Name, currency, password and session rules, leave entitlement, public holidays", keywords: "security policy holidays entitlement lockout 2fa" },
   { key: "/app/settings/api", label: "API & webhooks", icon: "api", group: "Administration", minRole: "ADMIN", sidebar: false, description: "API keys and signed webhooks for integrations", keywords: "integration keys webhook finance system" },
 

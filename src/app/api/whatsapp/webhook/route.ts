@@ -18,7 +18,7 @@ type WaWebhook = {
   entry?: { changes?: { field?: string; value?: {
     metadata?: { phone_number_id?: string };
     contacts?: { wa_id: string; profile?: { name?: string } }[];
-    messages?: { id: string; from: string; type: string; timestamp?: string; text?: { body: string }; interactive?: { type: string; button_reply?: { id: string; title: string }; list_reply?: { id: string; title: string } }; button?: { payload?: string; text?: string }; location?: { latitude: number; longitude: number; name?: string; address?: string } }[];
+    messages?: { id: string; from: string; type: string; timestamp?: string; text?: { body: string }; interactive?: { type: string; button_reply?: { id: string; title: string }; list_reply?: { id: string; title: string } }; button?: { payload?: string; text?: string }; location?: { latitude: number; longitude: number; name?: string; address?: string }; image?: { id: string; mime_type?: string; sha256?: string; caption?: string }; document?: { id: string; mime_type?: string; sha256?: string; filename?: string; caption?: string } }[];
     statuses?: { id: string; status: string; errors?: { title?: string; message?: string }[] }[];
   } }[] }[];
 };
@@ -76,11 +76,14 @@ function toInbound(m: M): Inbound {
   if (m.type === "interactive" && m.interactive?.list_reply) return { kind: "list", id: m.interactive.list_reply.id, title: m.interactive.list_reply.title };
   if (m.type === "button" && m.button) return { kind: "button", id: m.button.payload || m.button.text || "", title: m.button.text };
   if (m.type === "location" && m.location) return { kind: "location", latitude: m.location.latitude, longitude: m.location.longitude, name: m.location.name, address: m.location.address };
+  if (m.type === "image" && m.image) return { kind: "media", mediaId: m.image.id, mimeType: m.image.mime_type || "image/jpeg", fileName: `photo-${m.id.slice(-8)}.jpg`, caption: m.image.caption };
+  if (m.type === "document" && m.document) return { kind: "media", mediaId: m.document.id, mimeType: m.document.mime_type || "application/octet-stream", fileName: m.document.filename || `document-${m.id.slice(-8)}`, caption: m.document.caption };
   return { kind: "other" };
 }
 function inboundText(m: M, i: Inbound) {
   if (i.kind === "text") return i.text;
   if (i.kind === "button" || i.kind === "list") return `[${i.title || i.id}]`;
   if (i.kind === "location") return `location ${i.latitude},${i.longitude}${i.address ? ` ${i.address}` : ""}`;
+  if (i.kind === "media") return `[${m.type}: ${i.fileName}]${i.caption ? ` ${i.caption}` : ""}`;
   return `(${m.type})`;
 }

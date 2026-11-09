@@ -9,6 +9,7 @@
  */
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { applyChatbotSeed } from "./seed-chatbot";
 
 const prisma = new PrismaClient();
 const j = (v: unknown) => JSON.stringify(v);
@@ -455,6 +456,8 @@ async function main() {
   await prisma.vehicleTrip.create({ data: { orgId: org.id, requesterId: officer1.id, driverUserId: registry.id, vehicleId: v1.id, projectId: zdhs.id, purpose: "ZDHS dissemination workshop set-up", destination: "Kadoma", passengers: 3, startsAt: d(1), endsAt: d(1, 18), status: "ASSIGNED" } });
   await prisma.vehicleTrip.create({ data: { orgId: org.id, requesterId: supervisor.id, driverUserId: supervisor.id, vehicleId: v2.id, projectId: mics.id, purpose: "MICS cluster 11 enumeration", destination: "Chegutu", passengers: 4, startsAt: d(-6), endsAt: d(-4, 17), status: "COMPLETED", odometerStart: 91010, odometerEnd: 91530, fuelLitres: 58.5, notes: "Rear left tyre slow puncture; repaired in Chegutu." } });
   await prisma.workflowTemplate.update({ where: { id: vehicleReq.id }, data: { counter: 1 } });
+
+  await applyChatbotSeed(org.id); // WhatsApp chatbot: headline statistics, release calendar, surveys and field-staff register, enquiry categories
 
   console.log("Seeded ZimStat organisation. Logins (password: Password123!):");
   for (const u of [ict, dg, dirFinance, accountant, cashier, hrHead, registry, auditor, ictHead, surveysHead, supervisor, officer1, officer2]) {
