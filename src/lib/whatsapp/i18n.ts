@@ -45,6 +45,11 @@ const en: Dict = {
   // statistics
   stats_header: "Latest statistics", stats_topic: "Choose a topic.", stats_ind: "Choose an indicator.", stats_none: "No figures are loaded for this topic yet. Please try another topic or ask an officer.",
   stats_period: "Reference period", stats_released: "Released", stats_odp: "More on the Open Data Portal", stats_after: "What would you like next?",
+  // files the bot sends (Excel/PDF tables generated from the indicators, and uploaded publications)
+  stats_files: "Download Excel or PDF", stats_files_d: "Tables of these figures and published reports", stats_files_body: "Choose a file. It will be sent here as an attachment you can open or forward.",
+  fx_xlsx: "Excel table", fx_xlsx_d: "Latest {topic} figures (.xlsx)", fx_pdf: "PDF table", fx_pdf_d: "Latest {topic} figures (.pdf)", fx_all: "All topics (Excel)", fx_all_d: "Every headline figure in one workbook",
+  fx_caption: "{topic} – latest headline figures from {org}, generated {date}.", fx_doc_caption: "{title} ({org})", fx_failed: "Sorry, the file could not be sent right now. Please try again later or download it from {url}.",
+  fx_generated: "Generated", fx_topic: "Topic", fx_indicator: "Indicator", fx_value: "Latest value", fx_note: "Note", fx_source: "Source",
   alerts_added: "You will be notified here when new {topic} figures are released. Type *stop alerts* at any time to opt out.",
   // data requests
   dr_intro: "Published data is free on the Open Data Portal: {url}\n\nUse this form for custom tables, unpublished tabulations or microdata. You will get a DR reference and status updates here.",
@@ -112,6 +117,10 @@ const sn: Dict = {
   too_many_tries: "Izvi hazvisi kuita. Mungade kutaura nemushandi here?",
   stats_header: "Zvemanhamba zvichangoburwa", stats_topic: "Sarudzai musoro.", stats_ind: "Sarudzai chiratidzo.", stats_none: "Hapasati pane manhamba emusoro uyu. Edzai umwe musoro kana bvunzai mushandi.",
   stats_period: "Nguva", stats_released: "Yakaburitswa", stats_odp: "Zvimwe paOpen Data Portal", stats_after: "Munoda chii zvino?",
+  stats_files: "Tora Excel kana PDF", stats_files_d: "Matafura emanhamba aya nemabhuku akaburitswa", stats_files_body: "Sarudzai faira. Richatumirwa pano sechinyorwa chamunogona kuvhura kana kutumira.",
+  fx_xlsx: "Tafura yeExcel", fx_xlsx_d: "Manhamba matsva e{topic} (.xlsx)", fx_pdf: "Tafura yePDF", fx_pdf_d: "Manhamba matsva e{topic} (.pdf)", fx_all: "Misoro yose (Excel)", fx_all_d: "Manhamba ose mubhuku rimwe",
+  fx_caption: "{topic} – manhamba matsva kubva ku{org}, yagadzirwa {date}.", fx_doc_caption: "{title} ({org})", fx_failed: "Ndine urombo, faira harina kukwanisa kutumirwa izvozvi. Edzai zvakare gare gare kana muritore pa{url}.",
+  fx_generated: "Yagadzirwa", fx_topic: "Musoro", fx_indicator: "Chiratidzo", fx_value: "Nhamba yazvino", fx_note: "Tsananguro", fx_source: "Kwayabva",
   alerts_added: "Tichakuzivisai pano kana manhamba matsva e{topic} aburitswa. Nyorai *stop alerts* kuti mumire.",
   dr_intro: "Data yakaburitswa inowanikwa pachena paOpen Data Portal: {url}\n\nShandisai fomu iyi kumatafura akagadzirirwa imi kana microdata. Muchawana nhamba yeDR nemashoko ezvinenge zvichiitika pano.",
   dr_type: "Ndiani ari kukumbira data?", dr_name: "Zita renyu rizere?", dr_org: "Sangano renyu? (nyorai *none* kana risipo)", dr_email: "Email yenyu yekupindura?",
@@ -162,6 +171,10 @@ const nd: Dict = {
   too_many_tries: "Lokhu kulokhu kungalungi. Ungathanda ukukhuluma lesikhulu?",
   stats_header: "Izibalo zakamuva", stats_topic: "Khetha isihloko.", stats_ind: "Khetha isibalo.", stats_none: "Akulazibalo zalesi sihloko okwakhathesi. Zama esinye isihloko loba ubuze isikhulu.",
   stats_period: "Isikhathi", stats_released: "Kukhutshwe", stats_odp: "Okunye ku-Open Data Portal", stats_after: "Ufuna ini okulandelayo?",
+  stats_files: "Thatha i-Excel loba PDF", stats_files_d: "Amathebula alezi zibalo lemibiko ekhutshiweyo", stats_files_body: "Khetha ifayili. Izathunyelwa lapha njengesinamathiselo ongasivula loba usidlulisele.",
+  fx_xlsx: "Ithebula le-Excel", fx_xlsx_d: "Izibalo zakamuva ze{topic} (.xlsx)", fx_pdf: "Ithebula le-PDF", fx_pdf_d: "Izibalo zakamuva ze{topic} (.pdf)", fx_all: "Zonke izihloko (Excel)", fx_all_d: "Zonke izibalo encwadini eyodwa",
+  fx_caption: "{topic} – izibalo zakamuva ezivela ku-{org}, kwenziwe {date}.", fx_doc_caption: "{title} ({org})", fx_failed: "Uxolo, ifayili ayithunyelwanga khathesi. Zama futhi muva loba uyithathe ku-{url}.",
+  fx_generated: "Kwenziwe", fx_topic: "Isihloko", fx_indicator: "Isibalo", fx_value: "Inani lakamuva", fx_note: "Inothi", fx_source: "Umthombo",
   alerts_added: "Uzakwaziswa lapha nxa izibalo ezintsha ze{topic} zikhutshwa. Bhala *stop alerts* ukuma.",
   dr_intro: "Idatha ekhutshiweyo itholakala mahala ku-Open Data Portal: {url}\n\nSebenzisa leli fomu emathebuleni akho loba i-microdata. Uzathola inombolo ye-DR lezaziso lapha.",
   dr_type: "Ngubani ocela idatha?", dr_name: "Ibizo lakho eligcweleyo?", dr_org: "Inhlanganiso yakho? (bhala *none* nxa ingekho)", dr_email: "I-imeyili yakho yempendulo?",

@@ -70,6 +70,21 @@ export function inlineAllowed(name: string) {
   return ["pdf", "png", "jpg", "jpeg", "gif", "webp"].includes(extensionOf(name));
 }
 
+/** Serve bytes as a download (or inline for images/PDF) with the same hardening as attachment routes. */
+export function fileResponse(bytes: Buffer, filename: string, opts: { inline?: boolean; mimeType?: string } = {}) {
+  const inline = !!opts.inline && inlineAllowed(filename);
+  return new Response(new Uint8Array(bytes), {
+    headers: {
+      "content-type": opts.mimeType || safeMimeFor(filename),
+      "content-disposition": contentDisposition(inline ? "inline" : "attachment", filename),
+      "content-length": String(bytes.length),
+      "x-content-type-options": "nosniff",
+      "content-security-policy": "sandbox; default-src 'none'; style-src 'unsafe-inline'",
+      "cache-control": "private, no-store",
+    },
+  });
+}
+
 /** RFC 5987 filename for Content-Disposition (ASCII fallback + UTF-8). */
 export function contentDisposition(kind: "inline" | "attachment", filename: string) {
   const ascii = filename.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");

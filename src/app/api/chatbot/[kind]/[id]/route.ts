@@ -1,3 +1,5 @@
+import { unlink } from "fs/promises";
+import path from "path";
 import { prisma } from "@/lib/prisma";
 import { badRequest, notFound, ok, parseBody, withAuth } from "@/lib/api";
 import { audit } from "@/lib/notify";
@@ -43,6 +45,12 @@ export const PATCH = withAuth(async (req, { params, user }) => {
       const r = await prisma.survey.update({ where: { id }, data: { code: b.code, name: b.name, description: opt(b.description), areas: opt(b.areas), startsOn: d(b.startsOn), endsOn: d(b.endsOn), isActive: b.isActive } });
       await audit(orgId, user.id, "chatbot.survey_updated", "Survey", id, { code: r.code }); return ok(r);
     }
+    case "documents": {
+      const cur = await prisma.statDocument.findFirst({ where: { id, orgId } }); if (!cur) throw notFound();
+      const b = await parseBody(req, SCHEMAS.documents.partial());
+      const r = await prisma.statDocument.update({ where: { id }, data: { topic: b.topic, title: b.title, description: opt(b.description), period: opt(b.period), sortOrder: b.sortOrder, isActive: b.isActive } });
+      await audit(orgId, user.id, "chatbot.document_updated", "StatDocument", id, { title: r.title, isActive: r.isActive }); return ok(r);
+    }
     case "officers": {
       const cur = await prisma.fieldOfficer.findFirst({ where: { id, orgId } }); if (!cur) throw notFound();
       const b = await parseBody(req, SCHEMAS.officers.partial());
@@ -64,6 +72,14 @@ export const DELETE = withAuth(async (_req, { params, user }) => {
     case "subscriptions": if (!(await prisma.statSubscription.findFirst({ where }))) throw notFound(); await prisma.statSubscription.delete({ where: { id } }); break;
     case "surveys": if (!(await prisma.survey.findFirst({ where }))) throw notFound(); await prisma.survey.delete({ where: { id } }); break;
     case "officers": if (!(await prisma.fieldOfficer.findFirst({ where }))) throw notFound(); await prisma.fieldOfficer.delete({ where: { id } }); break;
+    case "documents": {
+      const d = await prisma.statDocument.findFirst({ where }); if (!d) throw notFound();
+      await prisma.statDocument.delete({ where: { id } });
+      const root = path.resolve(/*turbopackIgnore: true*/ process.env.UPLOAD_DIR || "./uploads");
+      const abs = path.resolve(root, d.storagePath);
+      if (abs.startsWith(root + path.sep)) await unlink(/*turbopackIgnore: true*/ abs).catch(() => {});
+      break;
+    }
   }
   await audit(orgId, user.id, `chatbot.${kind.slice(0, -1)}_deleted`, kind, id, {});
   return ok({ id });

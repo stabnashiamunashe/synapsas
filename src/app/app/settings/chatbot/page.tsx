@@ -1,23 +1,25 @@
 "use client";
 
-import { Alert, App, Button, Card, Checkbox, Col, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Switch, Table, Tabs, Tag, Typography } from "antd";
-import { NotificationOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
+import { Alert, App, Button, Card, Checkbox, Col, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Switch, Table, Tabs, Tag, Typography, Upload } from "antd";
+import { DownloadOutlined, FileExcelOutlined, FilePdfOutlined, NotificationOutlined, PlusOutlined, SearchOutlined, UploadOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import Link from "next/link";
 import { useState } from "react";
 import { api, formatDate, useApi, useMe } from "@/lib/client";
 import { STAT_TOPICS } from "@/lib/whatsapp/i18n";
 
-type Kind = "indicators" | "releases" | "subscriptions" | "surveys" | "officers";
+type Kind = "indicators" | "releases" | "subscriptions" | "surveys" | "officers" | "documents";
 interface Indicator { id: string; topic: string; name: string; value: string; period?: string | null; releaseDate?: string | null; url?: string | null; note?: string | null; sortOrder: number; isActive: boolean; updatedAt: string }
 interface Release { id: string; title: string; topic: string; scheduledAt: string; url?: string | null; summary?: string | null; publishedAt?: string | null; notifiedAt?: string | null }
 interface Subscription { id: string; phone: string; topics: string; frequency: string; language: string; isActive: boolean; createdAt: string; lastSentAt?: string | null }
 interface Survey { id: string; code: string; name: string; description?: string | null; areas?: string | null; startsOn?: string | null; endsOn?: string | null; isActive: boolean; _count: { officers: number } }
 interface Officer { id: string; badgeNo: string; name: string; role?: string | null; area?: string | null; validFrom?: string | null; validTo?: string | null; isActive: boolean; survey?: { id: string; name: string; code: string } | null }
 interface Category { id: string; name: string; department?: { name: string } | null }
+interface StatDoc { id: string; topic: string; title: string; description?: string | null; period?: string | null; fileName: string; mimeType: string; size: number; sortOrder: number; isActive: boolean; sentCount: number; createdAt: string }
 
 const topicOptions = STAT_TOPICS.map((t) => ({ value: t.key, label: t.en }));
-const topicName = (k: string) => STAT_TOPICS.find((t) => t.key === k)?.en || k;
+const topicName = (k: string) => (k === "ALL" ? "All topics" : STAT_TOPICS.find((t) => t.key === k)?.en || k);
+const fmtSize = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 const D = (v?: string | null) => (v ? dayjs(v) : null);
 const S = (v?: dayjs.Dayjs | null) => (v ? v.format("YYYY-MM-DD") : null);
 
@@ -49,6 +51,66 @@ function Editor<T extends { id: string }>({ kind, title, intro, columns, fields,
         <Form form={form} layout="vertical">{fields}</Form>
       </Modal>
     </Card>
+  );
+}
+
+/** Files the bot can send as WhatsApp attachments: uploaded publications per topic, plus a preview of the generated Excel/PDF tables. */
+function Documents() {
+  const { message } = App.useApp();
+  const { data, isLoading, mutate } = useApi<StatDoc[]>("/api/chatbot/documents");
+  const [editing, setEditing] = useState<StatDoc | "new" | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [previewTopic, setPreviewTopic] = useState("CPI");
+  const [form] = Form.useForm();
+  const open = (r: StatDoc | "new") => { setEditing(r); setFile(null); form.resetFields(); form.setFieldsValue(r === "new" ? { topic: "CPI", isActive: true } : r); };
+  const save = async () => {
+    const v = await form.validateFields();
+    setSaving(true);
+    try {
+      if (editing === "new") {
+        if (!file) throw new Error("Choose a PDF, Excel, CSV or Word file");
+        const fd = new FormData();
+        fd.append("file", file);
+        for (const k of ["topic", "title", "period", "description"]) if (v[k]) fd.append(k, String(v[k]));
+        fd.append("isActive", String(v.isActive !== false));
+        await api("/api/chatbot/documents", { method: "POST", body: fd });
+      } else if (editing) await api(`/api/chatbot/documents/${editing.id}`, { method: "PATCH", json: { topic: v.topic, title: v.title, period: v.period || null, description: v.description || null, isActive: v.isActive } });
+      setEditing(null); mutate(); message.success("Saved");
+    } catch (e) { message.error((e as Error).message); } finally { setSaving(false); }
+  };
+  const remove = async (r: StatDoc) => { try { await api(`/api/chatbot/documents/${r.id}`, { method: "DELETE" }); mutate(); } catch (e) { message.error((e as Error).message); } };
+  const docTopics = [...topicOptions, { value: "ALL", label: "All topics (offered under every topic)" }];
+  return (
+    <Space orientation="vertical" size={16} style={{ width: "100%" }}>
+      <Card title="Generated tables" extra={<Space><Select value={previewTopic} onChange={setPreviewTopic} options={[...topicOptions, { value: "ALL", label: "All topics" }]} style={{ width: 220 }} /><Button icon={<FileExcelOutlined />} href={`/api/chatbot/export?topic=${previewTopic}&format=xlsx`}>Excel</Button><Button icon={<FilePdfOutlined />} href={`/api/chatbot/export?topic=${previewTopic}&format=pdf&inline=1`} target="_blank">PDF</Button></Space>}>
+        <Typography.Paragraph type="secondary" style={{ margin: 0 }}>Under every topic the bot offers <b>Excel table</b> and <b>PDF table</b>: a file built on the spot from the live indicators above (name, latest value, reference period, release date, note, ODP link), in the person&apos;s language, and <b>All topics (Excel)</b> with every headline figure in one workbook. Nothing to maintain here; the preview shows exactly what WhatsApp delivers.</Typography.Paragraph>
+      </Card>
+      <Card title="Uploaded publications" extra={<Button type="primary" icon={<UploadOutlined />} onClick={() => open("new")}>Upload file</Button>}>
+        <Typography.Paragraph type="secondary">Bulletins, full tables and reports (PDF, Excel, CSV or Word, up to 25 MB) that the bot lists under <i>Download Excel or PDF</i> for their topic and sends as a WhatsApp attachment. Files on <i>All topics</i> appear under every topic. Up to six files are shown per topic, in the order below.</Typography.Paragraph>
+        <Table<StatDoc> rowKey="id" size="small" loading={isLoading} dataSource={data || []} pagination={{ pageSize: 20, hideOnSinglePage: true }} scroll={{ x: 800 }} columns={[
+          { title: "Topic", width: 170, render: (_, r) => topicName(r.topic) },
+          { title: "Title", render: (_, r) => <span>{r.title}{r.description ? <div className="muted" style={{ fontSize: 12 }}>{r.description}</div> : null}</span> },
+          { title: "File", width: 260, render: (_, r) => <a href={`/api/chatbot/documents/${r.id}/download`} style={{ wordBreak: "break-all" }}><DownloadOutlined /> {r.fileName} <span className="muted">({fmtSize(r.size)})</span></a> },
+          { title: "Period", width: 130, render: (_, r) => r.period || "–" },
+          { title: "Sent", width: 70, align: "right", render: (_, r) => r.sentCount },
+          { title: "", width: 70, render: (_, r) => r.isActive ? <Tag color="green">live</Tag> : <Tag>hidden</Tag> },
+          { title: "", width: 130, align: "right", render: (_, r) => <Space size={4}><Button size="small" onClick={() => open(r)}>Edit</Button><Popconfirm title="Delete this file?" onConfirm={() => remove(r)}><Button size="small" danger>Delete</Button></Popconfirm></Space> },
+        ]} />
+      </Card>
+      <Modal open={!!editing} title={editing === "new" ? "Upload a publication" : "Edit publication"} onCancel={() => setEditing(null)} onOk={save} okText={editing === "new" ? "Upload" : "Save"} okButtonProps={{ loading: saving }} width={640} destroyOnHidden>
+        <Form form={form} layout="vertical">
+          <Row gutter={12}>
+            <Col span={12}><Form.Item name="topic" label="Topic" rules={[{ required: true }]}><Select options={docTopics} /></Form.Item></Col>
+            <Col span={12}><Form.Item name="period" label="Period or edition"><Input placeholder="September 2026" /></Form.Item></Col>
+            <Col span={24}><Form.Item name="title" label="Title shown in the WhatsApp list (24 characters fit on one line)" rules={[{ required: true, min: 2 }]}><Input maxLength={120} showCount placeholder="CPI bulletin Sept 2026" /></Form.Item></Col>
+            <Col span={24}><Form.Item name="description" label="Description"><Input maxLength={255} /></Form.Item></Col>
+            {editing === "new" && <Col span={24}><Form.Item label="File" required><Upload.Dragger maxCount={1} accept=".pdf,.xlsx,.xls,.csv,.docx" beforeUpload={(f) => { setFile(f as unknown as File); return false; }} onRemove={() => setFile(null)}><p style={{ margin: 8 }}><UploadOutlined /> Click or drop a PDF, Excel, CSV or Word file here (max 25 MB)</p></Upload.Dragger></Form.Item></Col>}
+            <Col span={8}><Form.Item name="isActive" label="Offered on WhatsApp" valuePropName="checked"><Switch /></Form.Item></Col>
+          </Row>
+        </Form>
+      </Modal>
+    </Space>
   );
 }
 
@@ -199,6 +261,7 @@ export default function ChatbotContentPage() {
               toForm={(r) => ({ ...r, startsOn: D(r.startsOn), endsOn: D(r.endsOn) })} fromForm={(v) => ({ ...v, _count: undefined, startsOn: S(v.startsOn as dayjs.Dayjs | null), endsOn: S(v.endsOn as dayjs.Dayjs | null) })} />
           </Space>
         ) },
+        { key: "files", label: "Publications & files", children: <Documents /> },
         { key: "routing", label: "Routing & options", children: <Routing /> },
       ]} />
     </Space>

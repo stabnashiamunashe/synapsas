@@ -56,6 +56,7 @@ model Organization {
   notices           Notice[]
   trips             VehicleTrip[]
   statIndicators    StatIndicator[]
+  statDocuments     StatDocument[]
   statReleases      StatRelease[]
   statSubscriptions StatSubscription[]
   surveys           Survey[]
@@ -881,6 +882,30 @@ model StatIndicator {
 }
 
 /// A scheduled (or published) statistical release on the advance release calendar.
+/** Publications and tables (PDF, Excel) the chatbot can send as a WhatsApp attachment for a topic. Files live under UPLOAD_DIR/{org}/chatbot. */
+model StatDocument {
+  id           String   @id @default(cuid())
+  orgId        String
+  topic        String   @db.VarChar(40)
+  title        String   @db.VarChar(120)
+  description  String?  @db.VarChar(255)
+  period       String?  @db.VarChar(60)
+  fileName     String   @db.VarChar(200)
+  mimeType     String   @db.VarChar(120)
+  size         Int
+  storagePath  String   @db.VarChar(500)
+  sortOrder    Int      @default(0)
+  isActive     Boolean  @default(true)
+  sentCount    Int      @default(0)
+  uploadedById String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, topic, sortOrder])
+}
+
 model StatRelease {
   id          String    @id @default(cuid())
   orgId       String

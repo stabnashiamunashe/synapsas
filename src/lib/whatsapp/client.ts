@@ -2,6 +2,7 @@
 // swallowed, so a missing token, an expired token or a Meta outage never breaks case handling.
 import { createHmac, timingSafeEqual } from "crypto";
 import { prisma } from "../prisma";
+import { resolveDocument, type DocSource } from "./documents";
 
 export interface WaConfig {
   configured: boolean;
@@ -53,7 +54,9 @@ export type WaOutgoing =
   | { type: "buttons"; body: string; buttons: WaButton[]; header?: string; footer?: string }
   | { type: "list"; body: string; button: string; sections: { title?: string; rows: WaListRow[] }[]; header?: string; footer?: string }
   | { type: "location_request"; body: string }
-  | { type: "template"; name: string; language: string; bodyParams: string[]; urlButtonParam?: string };
+  | { type: "template"; name: string; language: string; bodyParams: string[]; urlButtonParam?: string }
+  /** A file. `source` is resolved to bytes and uploaded to Meta at send time; `fallback` is sent as text when that fails. */
+  | { type: "document"; filename: string; caption?: string; mediaId?: string; link?: string; source?: DocSource; fallback?: string };
 
 /** WhatsApp's interactive-message limits: headers/footers 60, body 1024, button labels 20, list rows 24 (title) / 72 (description), 3 buttons, 10 rows. The sandbox applies the same clipping so what you see is what WhatsApp shows. */
 const fit = (s: string, max: number) => (s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s);
@@ -63,6 +66,7 @@ export function clipForWhatsApp(m: WaOutgoing): WaOutgoing {
     case "buttons": return { ...m, header: m.header?.slice(0, 60), footer: m.footer?.slice(0, 60), body: m.body.slice(0, 1024), buttons: m.buttons.slice(0, 3).map((b) => ({ id: b.id.slice(0, 256), title: fit(b.title, 20) })) };
     case "list": return { ...m, header: m.header?.slice(0, 60), footer: m.footer?.slice(0, 60), body: m.body.slice(0, 1024), button: fit(m.button, 20), sections: m.sections.slice(0, 10).map((s) => ({ ...(s.title ? { title: fit(s.title, 24) } : {}), rows: s.rows.slice(0, 10).map((r) => ({ id: r.id.slice(0, 200), title: fit(r.title, 24), ...(r.description ? { description: fit(r.description, 72) } : {}) })) })) };
     case "location_request": return { ...m, body: m.body.slice(0, 1024) };
+    case "document": return { ...m, filename: m.filename.slice(0, 240), caption: m.caption?.slice(0, 1024) };
     default: return m;
   }
 }
@@ -98,6 +102,8 @@ export function toPayload(to: string, raw: WaOutgoing): Record<string, unknown> 
       };
     case "location_request":
       return { ...base, type: "interactive", interactive: { type: "location_request_message", body: { text: m.body.slice(0, 1024) }, action: { name: "send_location" } } };
+    case "document":
+      return { ...base, type: "document", document: { ...(m.mediaId ? { id: m.mediaId } : { link: m.link || "" }), filename: m.filename, ...(m.caption ? { caption: m.caption } : {}) } };
     case "template": {
       const components: unknown[] = [];
       if (m.bodyParams.length) components.push({ type: "body", parameters: m.bodyParams.map((t) => ({ type: "text", text: t.slice(0, 1024) })) });
@@ -115,6 +121,7 @@ export function describe(m: WaOutgoing): string {
     case "list": return `${m.header ? `*${m.header}*\n` : ""}${m.body}\n(${m.button}) ${m.sections.flatMap((s) => s.rows.map((r) => `• ${r.title}`)).join("  ")}`;
     case "location_request": return `${m.body}\n[Send location]`;
     case "template": return `template ${m.name}(${m.bodyParams.join(", ")})`;
+    case "document": return `📎 ${m.filename}${m.caption ? `\n${m.caption}` : ""}`;
   }
 }
 
@@ -143,11 +150,23 @@ export async function sendWhatsApp(to: string, m: WaOutgoing, opts: { orgId?: st
     await log({ orgId: opts.orgId, phone, direction: "OUT", kind: m.type, body, status: "skipped", error: "WhatsApp not configured", caseId: opts.caseId });
     return false;
   }
+  let msg = m;
+  if (m.type === "document" && !m.mediaId && !m.link) {
+    // generate or read the file now, push it to Meta's media store, then send by media id
+    const file = m.source ? await resolveDocument(m.source) : null;
+    const mediaId = file ? await uploadMedia(file.bytes, file.mimeType, file.filename) : null;
+    if (!mediaId) {
+      await log({ orgId: opts.orgId, phone, direction: "OUT", kind: m.type, body, status: "failed", error: file ? "Media upload to Meta failed" : "Document could not be generated or read", caseId: opts.caseId });
+      if (m.fallback) return sendWhatsApp(phone, { type: "text", text: m.fallback }, opts);
+      return false;
+    }
+    msg = { ...m, mediaId, filename: m.filename || file!.filename };
+  }
   try {
     const res = await fetch(`https://graph.facebook.com/${cfg.apiVersion}/${cfg.phoneNumberId}/messages`, {
       method: "POST",
       headers: { authorization: `Bearer ${cfg.accessToken}`, "content-type": "application/json" },
-      body: JSON.stringify(toPayload(phone, m)),
+      body: JSON.stringify(toPayload(phone, msg)),
       signal: AbortSignal.timeout(8000),
     });
     const json = (await res.json().catch(() => ({}))) as { messages?: { id: string }[]; error?: { message?: string; code?: number } };
@@ -165,7 +184,25 @@ export async function sendWhatsApp(to: string, m: WaOutgoing, opts: { orgId?: st
   }
 }
 
-/** Mark delivered/read from status webhooks. */
+/** Upload a file to Meta's media store (documents up to 100 MB); returns the media id to send with. */
+export async function uploadMedia(bytes: Buffer, mimeType: string, filename: string): Promise<string | null> {
+  const cfg = waConfig();
+  if (!cfg.configured) return null;
+  try {
+    const form = new FormData();
+    form.append("messaging_product", "whatsapp");
+    form.append("type", mimeType);
+    form.append("file", new Blob([new Uint8Array(bytes)], { type: mimeType }), filename);
+    const res = await fetch(`https://graph.facebook.com/${cfg.apiVersion}/${cfg.phoneNumberId}/media`, { method: "POST", headers: { authorization: `Bearer ${cfg.accessToken}` }, body: form, signal: AbortSignal.timeout(30000) });
+    const json = (await res.json().catch(() => ({}))) as { id?: string; error?: { message?: string } };
+    if (!res.ok || !json.id) { console.error(`[whatsapp] media upload failed ${res.status}: ${json.error?.message}`); return null; }
+    return json.id;
+  } catch (e) {
+    console.error("[whatsapp] media upload error", e);
+    return null;
+  }
+}
+
 /** Inbound media (photo or document): resolve the media id to a download URL and fetch the bytes with the access token. */
 export async function downloadMedia(mediaId: string): Promise<{ bytes: Buffer; mimeType: string } | null> {
   const cfg = waConfig();

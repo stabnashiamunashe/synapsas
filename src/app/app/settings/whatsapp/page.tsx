@@ -1,7 +1,7 @@
 "use client";
 
 import { Alert, App, Button, Card, Col, Descriptions, Form, Input, Row, Space, Statistic, Switch, Table, Tag, Typography } from "antd";
-import { SendOutlined, WhatsAppOutlined } from "@ant-design/icons";
+import { FileTextOutlined, SendOutlined, WhatsAppOutlined } from "@ant-design/icons";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { api, formatDate, useApi, useMe } from "@/lib/client";
@@ -17,6 +17,7 @@ type Reply =
   | { type: "buttons"; body: string; header?: string; footer?: string; buttons: { id: string; title: string }[] }
   | { type: "list"; body: string; header?: string; button: string; sections: { title?: string; rows: { id: string; title: string; description?: string }[] }[] }
   | { type: "location_request"; body: string }
+  | { type: "document"; filename: string; caption?: string; url?: string }
   | { type: "template"; name: string; bodyParams: string[] };
 type Bubble = { from: "user" | "bot"; reply?: Reply; text?: string };
 
@@ -62,6 +63,15 @@ export default function WhatsAppSettingsPage() {
     );
     if (r.type === "location_request") return <div>{r.body}<div style={{ marginTop: 8 }}><Button size="small" disabled={busy} onClick={() => send({ kind: "location", latitude: -17.8292, longitude: 31.0522, name: "Kaguvi Building", address: "Harare" }, "📍 Shared location (Harare)")}>Send location</Button></div></div>;
     if (r.type === "text") return <div style={{ whiteSpace: "pre-wrap" }}>{r.text}</div>;
+    if (r.type === "document") return (
+      <div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "6px 8px", border: "1px solid var(--ant-color-border, #d9d9d9)", borderRadius: 6, background: "rgba(0,0,0,0.03)" }}>
+          <FileTextOutlined style={{ fontSize: 22 }} />
+          <div style={{ minWidth: 0 }}><a href={r.url} target="_blank" rel="noreferrer" style={{ fontWeight: 600, wordBreak: "break-all" }}>{r.filename}</a><div className="muted" style={{ fontSize: 11 }}>Document · opens as the attachment WhatsApp delivers</div></div>
+        </div>
+        {r.caption && <div style={{ whiteSpace: "pre-wrap", marginTop: 6 }}>{r.caption}</div>}
+      </div>
+    );
     return <div className="muted">Template {r.name}({r.bodyParams.join(", ")})</div>;
   };
 

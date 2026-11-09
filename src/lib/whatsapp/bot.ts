@@ -14,6 +14,7 @@ import { notify } from "../notify";
 import type { OrgSettings } from "../types";
 import { extensionOf, safeMimeFor, validateUpload } from "../uploads";
 import { describe, downloadMedia, logMessage, normalizePhone, sendWhatsApp, type WaOutgoing } from "./client";
+import { exportFilename, type DocSource } from "./documents";
 import { LANG_LABELS, LANGS, STAT_TOPICS, isLang, t, topicLabel, type Lang } from "./i18n";
 
 export type Inbound =
@@ -24,7 +25,7 @@ export type Inbound =
   | { kind: "media"; mediaId: string; mimeType: string; fileName: string; caption?: string }
   | { kind: "other" };
 
-type Step = "IDLE" | "LANG" | "MENU" | "EXIT_CONFIRM" | "STATS_TOPIC" | "STATS_IND" | "STATS_AFTER" | "FLOW" | "FLOW_SUMMARY" | "FLOW_EDIT" | "VR_KIND" | "VR_BADGE" | "VR_FOUND" | "VR_SURVEY" | "REL_TOPICS" | "REL_FREQ" | "CHAT_TOPIC" | "CHAT" | "TRACK" | "RATE";
+type Step = "IDLE" | "LANG" | "MENU" | "EXIT_CONFIRM" | "STATS_TOPIC" | "STATS_IND" | "STATS_AFTER" | "STATS_FILES" | "FLOW" | "FLOW_SUMMARY" | "FLOW_EDIT" | "VR_KIND" | "VR_BADGE" | "VR_FOUND" | "VR_SURVEY" | "REL_TOPICS" | "REL_FREQ" | "CHAT_TOPIC" | "CHAT" | "TRACK" | "RATE";
 type FlowKey = "DR" | "VR" | "TK";
 type Media = { mediaId: string; mimeType: string; fileName: string; simulated?: boolean };
 type Answers = Record<string, unknown>;
@@ -38,7 +39,7 @@ const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 const B = {
   STATS: "m_stats", DATA: "m_data", VERIFY: "m_verify", ALERTS: "m_alerts", ENQUIRY: "m_enquiry", CHAT: "m_chat", TRACK: "m_track", RESUME: "m_resume",
   MENU: "go_menu", CANCEL: "go_cancel", BACK: "nav_back", SKIP: "nav_skip", SUBMIT: "flow_submit", EDIT: "flow_edit", YES: "yes", NO: "no", OFFICER: "go_officer", DISCARD: "exit_discard", CONTINUE: "exit_continue",
-  ANOTHER: "stats_another", GET_ALERTS: "stats_alerts", VR_OFFICER: "vr_officer", VR_SURVEY: "vr_survey", VR_MATCH: "vr_match", VR_CONCERN: "vr_concern", VR_RETRY: "vr_retry",
+  ANOTHER: "stats_another", GET_ALERTS: "stats_alerts", FILES: "stats_files", XLSX: "file_xlsx", PDF: "file_pdf", ALLX: "file_all", VR_OFFICER: "vr_officer", VR_SURVEY: "vr_survey", VR_MATCH: "vr_match", VR_CONCERN: "vr_concern", VR_RETRY: "vr_retry",
   REL_DONE: "rel_done", REL_EVERY: "rel_every", REL_MONTHLY: "rel_monthly", CHAT_LOG: "chat_log", ANON: "tk_anon", RATE: "rate_", LANG: "lang_",
 };
 
@@ -321,19 +322,30 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
         break;
       case "STATS_IND": {
         if (id === B.BACK) { await save("STATS_TOPIC", data); say(await statsTopics(c)); break; }
+        if (id === B.FILES) { await save("STATS_FILES", data); say(await filesMenu(c, data.topic || "")); break; }
         const ind = id.startsWith("ind_") ? await prisma.statIndicator.findFirst({ where: { id: id.slice(4), orgId, isActive: true } }) : null;
         if (!ind) { say(await indicatorList(c, data.topic || "")); break; }
         await save("STATS_AFTER", { ...data, indicatorId: ind.id });
         const body = [`*${ind.name}*: ${ind.value}`, ind.period ? `${t(c.lang, "stats_period")}: ${ind.period}` : "", ind.releaseDate ? `${t(c.lang, "stats_released")}: ${ind.releaseDate.toISOString().slice(0, 10)}` : "", ind.note || "", ind.url ? `\n${t(c.lang, "stats_odp")}: ${ind.url}` : wa.odpUrl ? `\n${t(c.lang, "stats_odp")}: ${wa.odpUrl}` : ""].filter(Boolean).join("\n");
         say({ type: "text", text: body });
-        say({ type: "buttons", body: t(c.lang, "stats_after"), buttons: [{ id: B.ANOTHER, title: t(c.lang, "btn_another") }, { id: B.GET_ALERTS, title: t(c.lang, "btn_alerts") }, { id: B.MENU, title: t(c.lang, "btn_menu") }] });
+        say(afterMenu(c));
         break;
       }
       case "STATS_AFTER":
         if (id === B.ANOTHER || id === B.BACK) { await save("STATS_IND", data); say(await indicatorList(c, data.topic || "")); }
+        else if (id === B.FILES) { await save("STATS_FILES", data); say(await filesMenu(c, data.topic || "")); }
         else if (id === B.GET_ALERTS && data.topic) { await subscribe(c, [data.topic], undefined); say({ type: "buttons", body: t(c.lang, "alerts_added", { topic: topicLabel(data.topic, c.lang) }), buttons: [{ id: B.ANOTHER, title: t(c.lang, "btn_another") }, { id: B.MENU, title: t(c.lang, "btn_menu") }] }); }
-        else say({ type: "buttons", body: t(c.lang, "stats_after"), buttons: [{ id: B.ANOTHER, title: t(c.lang, "btn_another") }, { id: B.GET_ALERTS, title: t(c.lang, "btn_alerts") }, { id: B.MENU, title: t(c.lang, "btn_menu") }] });
+        else say(afterMenu(c));
         break;
+      case "STATS_FILES": {
+        const topic = data.topic || "";
+        if (id === B.BACK) { await save("STATS_IND", data); say(await indicatorList(c, topic)); break; }
+        const file = await fileMessage(c, topic, id);
+        if (!file) { say(await filesMenu(c, topic)); break; }
+        await save("STATS_AFTER", data);
+        say(file, afterMenu(c));
+        break;
+      }
 
       // ---- 2, 3 (concern), 5: question flows ----
       case "FLOW": await onFlowAnswer(c, input, id, text, save); break;
@@ -567,7 +579,44 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
   async function indicatorList(c: Ctx, topic: string): Promise<WaOutgoing> {
     const list = await prisma.statIndicator.findMany({ where: { orgId: c.orgId, topic, isActive: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }], take: 9 });
     if (!list.length) return { type: "buttons", body: t(c.lang, "stats_none"), buttons: [{ id: B.BACK, title: t(c.lang, "btn_back") }, { id: B.OFFICER, title: t(c.lang, "btn_officer") }, { id: B.MENU, title: t(c.lang, "btn_menu") }] };
-    return { type: "list", header: topicLabel(topic, c.lang).slice(0, 60), body: t(c.lang, "stats_ind"), button: t(c.lang, "menu_button"), sections: [{ rows: [...list.map((i) => ({ id: `ind_${i.id}`, title: i.name, description: `${i.value}${i.period ? ` · ${i.period}` : ""}`.slice(0, 72) })), { id: B.BACK, title: t(c.lang, "btn_back") }] }] };
+    return { type: "list", header: topicLabel(topic, c.lang).slice(0, 60), body: t(c.lang, "stats_ind"), button: t(c.lang, "menu_button"), sections: [{ rows: [...list.map((i) => ({ id: `ind_${i.id}`, title: i.name, description: `${i.value}${i.period ? ` · ${i.period}` : ""}`.slice(0, 72) })), { id: B.FILES, title: t(c.lang, "stats_files"), description: t(c.lang, "stats_files_d") }, { id: B.BACK, title: t(c.lang, "btn_back") }] }] };
+  }
+  function afterMenu(c: Ctx): WaOutgoing {
+    return { type: "list", body: t(c.lang, "stats_after"), button: t(c.lang, "menu_button"), sections: [{ rows: [{ id: B.ANOTHER, title: t(c.lang, "btn_another") }, { id: B.FILES, title: t(c.lang, "stats_files"), description: t(c.lang, "stats_files_d") }, { id: B.GET_ALERTS, title: t(c.lang, "btn_alerts") }, { id: B.MENU, title: t(c.lang, "btn_menu") }] }] };
+  }
+  /** Excel and PDF tables generated from the topic's indicators, plus publications uploaded for the topic (or for all topics). */
+  async function filesMenu(c: Ctx, topic: string): Promise<WaOutgoing> {
+    const docs = await prisma.statDocument.findMany({ where: { orgId: c.orgId, isActive: true, OR: [{ topic }, { topic: "ALL" }] }, orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }], take: 6 });
+    const label = topicLabel(topic, c.lang);
+    const size = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+    const rows: Option[] = [
+      { id: B.XLSX, title: t(c.lang, "fx_xlsx"), description: t(c.lang, "fx_xlsx_d", { topic: label }) },
+      { id: B.PDF, title: t(c.lang, "fx_pdf"), description: t(c.lang, "fx_pdf_d", { topic: label }) },
+      ...docs.map((d) => ({ id: `doc_${d.id}`, title: d.title, description: [d.period, extensionOf(d.fileName).toUpperCase(), size(d.size)].filter(Boolean).join(" · ") })),
+      { id: B.ALLX, title: t(c.lang, "fx_all"), description: t(c.lang, "fx_all_d") },
+      { id: B.BACK, title: t(c.lang, "btn_back") },
+    ];
+    return { type: "list", header: label.slice(0, 60), body: t(c.lang, "stats_files_body"), button: t(c.lang, "menu_button"), sections: [{ rows }] };
+  }
+  /** Build the document message for a files-menu choice; the bytes are produced when the message is sent. */
+  async function fileMessage(c: Ctx, topic: string, id: string): Promise<WaOutgoing | null> {
+    const wa = c.settings.whatsapp || {};
+    const orgName = (await prisma.organization.findUnique({ where: { id: c.orgId }, select: { name: true } }))?.name || "";
+    const fallback = t(c.lang, "fx_failed", { url: wa.odpUrl || process.env.APP_URL || "" });
+    const mk = (source: DocSource, filename: string, caption: string): WaOutgoing => ({ type: "document", filename, caption, source, fallback });
+    if (id === B.XLSX || id === B.PDF || id === B.ALLX) {
+      const format = id === B.PDF ? "pdf" : "xlsx";
+      const tp = id === B.ALLX ? "ALL" : topic;
+      const label = id === B.ALLX ? t(c.lang, "stats_header") : topicLabel(topic, c.lang);
+      return mk({ kind: "export", orgId: c.orgId, topic: tp, format, lang: c.lang }, exportFilename(orgName, tp, format), t(c.lang, "fx_caption", { topic: label, org: orgName, date: new Date().toISOString().slice(0, 10) }));
+    }
+    if (id.startsWith("doc_")) {
+      const d = await prisma.statDocument.findFirst({ where: { id: id.slice(4), orgId: c.orgId, isActive: true } });
+      if (!d) return null;
+      await prisma.statDocument.update({ where: { id: d.id }, data: { sentCount: { increment: 1 } } });
+      return mk({ kind: "stored", documentId: d.id }, d.fileName, t(c.lang, "fx_doc_caption", { title: d.title, org: orgName }));
+    }
+    return null;
   }
   async function releaseCalendar(c: Ctx): Promise<WaOutgoing> {
     const next = await prisma.statRelease.findMany({ where: { orgId: c.orgId, publishedAt: null, scheduledAt: { gte: new Date(Date.now() - 86400_000) } }, orderBy: { scheduledAt: "asc" }, take: 5 });
