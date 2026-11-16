@@ -15,7 +15,11 @@ import type { OrgSettings } from "../types";
 import { extensionOf, safeMimeFor, validateUpload } from "../uploads";
 import { describe, downloadMedia, logMessage, normalizePhone, sendWhatsApp, type WaOutgoing } from "./client";
 import { exportFilename, type DocSource } from "./documents";
-import { LANG_LABELS, LANGS, STAT_TOPICS, isLang, t, topicLabel, type Lang } from "./i18n";
+import { LANG_LABELS, LANGS, STAT_GROUPS, groupOf, isLang, t, topicAliases, topicLabel, topicsInGroup, type Lang } from "./i18n";
+import { MAX_LIST, datasetUrl, datasetsForTopic, findDataset, odpBase, odpFilename, topicPage, type OdpDataset } from "./odp";
+
+/** Zimbabwe's SDG indicator site, quoted under the SDGs area (overridable in settings). */
+export const SDG_URL = "https://sdg-zimstat.github.io/";
 
 export type Inbound =
   | { kind: "text"; text: string }
@@ -25,21 +29,21 @@ export type Inbound =
   | { kind: "media"; mediaId: string; mimeType: string; fileName: string; caption?: string }
   | { kind: "other" };
 
-type Step = "IDLE" | "LANG" | "MENU" | "EXIT_CONFIRM" | "STATS_TOPIC" | "STATS_IND" | "STATS_AFTER" | "STATS_FILES" | "FLOW" | "FLOW_SUMMARY" | "FLOW_EDIT" | "VR_KIND" | "VR_BADGE" | "VR_FOUND" | "VR_SURVEY" | "REL_TOPICS" | "REL_FREQ" | "CHAT_TOPIC" | "CHAT" | "TRACK" | "RATE";
+type Step = "IDLE" | "LANG" | "MENU" | "EXIT_CONFIRM" | "STATS_GROUP" | "STATS_TOPIC" | "STATS_IND" | "STATS_AFTER" | "STATS_FILES" | "STATS_DS" | "STATS_DS_FMT" | "FLOW" | "FLOW_SUMMARY" | "FLOW_EDIT" | "VR_KIND" | "VR_BADGE" | "VR_FOUND" | "VR_SURVEY" | "REL_TOPICS" | "REL_FREQ" | "CHAT_TOPIC" | "CHAT" | "TRACK" | "RATE";
 type FlowKey = "DR" | "VR" | "TK";
 type Media = { mediaId: string; mimeType: string; fileName: string; simulated?: boolean };
 type Answers = Record<string, unknown>;
 type Draft = { flow: FlowKey; qi: number; answers: Answers };
 type Data = {
   lang?: Lang; flow?: FlowKey; qi?: number; answers?: Answers; tries?: number; editing?: boolean; draft?: Draft;
-  topic?: string; indicatorId?: string; topics?: string[]; badge?: string; trackCaseId?: string; rateCaseId?: string; chatCaseId?: string; chatRef?: string; chatAcked?: boolean; prevStep?: Step;
+  group?: string; topic?: string; indicatorId?: string; datasetId?: string; topics?: string[]; badge?: string; trackCaseId?: string; rateCaseId?: string; chatCaseId?: string; chatRef?: string; chatAcked?: boolean; prevStep?: Step;
 };
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 const B = {
   STATS: "m_stats", DATA: "m_data", VERIFY: "m_verify", ALERTS: "m_alerts", ENQUIRY: "m_enquiry", CHAT: "m_chat", TRACK: "m_track", RESUME: "m_resume",
   MENU: "go_menu", CANCEL: "go_cancel", BACK: "nav_back", SKIP: "nav_skip", SUBMIT: "flow_submit", EDIT: "flow_edit", YES: "yes", NO: "no", OFFICER: "go_officer", DISCARD: "exit_discard", CONTINUE: "exit_continue",
-  ANOTHER: "stats_another", GET_ALERTS: "stats_alerts", FILES: "stats_files", XLSX: "file_xlsx", PDF: "file_pdf", ALLX: "file_all", VR_OFFICER: "vr_officer", VR_SURVEY: "vr_survey", VR_MATCH: "vr_match", VR_CONCERN: "vr_concern", VR_RETRY: "vr_retry",
+  ANOTHER: "stats_another", GET_ALERTS: "stats_alerts", FILES: "stats_files", XLSX: "file_xlsx", PDF: "file_pdf", ALLX: "file_all", ODP: "stats_odp", DS_CSV: "ds_csv", DS_XLSX: "ds_xlsx", DS_PNG: "ds_png", DS_LINK: "ds_link", DS_MORE: "ds_more", DS_ANOTHER: "ds_another", VR_OFFICER: "vr_officer", VR_SURVEY: "vr_survey", VR_MATCH: "vr_match", VR_CONCERN: "vr_concern", VR_RETRY: "vr_retry",
   REL_DONE: "rel_done", REL_EVERY: "rel_every", REL_MONTHLY: "rel_monthly", CHAT_LOG: "chat_log", ANON: "tk_anon", RATE: "rate_", LANG: "lang_",
 };
 
@@ -62,7 +66,8 @@ const DATE = /^(\d{4}-\d{2}-\d{2}|today|nhasi|lamuhla)$/i;
 const REF = /^(?:status\s+)?([A-Z]{2,6}-\d{4}-\d{3,6})$/i;
 
 const opt = (c: Ctx, ids: string[]): Option[] => ids.map((id) => ({ id, title: t(c.lang, `opt_${id}`) }));
-const topicOptions = (c: Ctx): Option[] => STAT_TOPICS.map((x) => ({ id: x.key, title: x[c.lang] || x.en }));
+// subject areas for the data-request form (the four areas; WhatsApp lists hold at most nine answers)
+const topicOptions = (c: Ctx): Option[] => STAT_GROUPS.map((x) => ({ id: x.key, title: x[c.lang] || x.en }));
 const publicCategories = async (c: Ctx): Promise<Option[]> => {
   const cats = await prisma.caseCategory.findMany({ where: { orgId: c.orgId, isActive: true, isPublic: true }, orderBy: { name: "asc" }, select: { id: true, name: true, description: true }, take: 9 });
   return cats.map((x) => ({ id: x.id, title: x.name, description: (x.description || "").slice(0, 72) }));
@@ -247,6 +252,7 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
     phoneForFlush = phone;
     const save = async (s: Step, d: Data = data) => { d.lang = d.lang || data.lang; session = await setStep(phone, s, d, profileName); step = s; data = d; c.data = d; };
     const toMenu = async (keep: Partial<Data> = {}) => { await save("MENU", { lang: c.lang, draft: data.draft, ...keep }); say(mainMenu(c)); };
+    const base = odpBase(wa.odpUrl);
 
     const id = input.kind === "button" || input.kind === "list" ? input.id : "";
     const text = input.kind === "text" ? input.text.trim() : "";
@@ -303,7 +309,7 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
         break;
 
       case "MENU":
-        if (id === B.STATS) { await save("STATS_TOPIC", { lang: c.lang, draft: data.draft }); say(await statsTopics(c)); }
+        if (id === B.STATS) { await save("STATS_GROUP", { lang: c.lang, draft: data.draft }); say(groupMenu(c)); }
         else if (id === B.DATA) { say({ type: "text", text: t(c.lang, "dr_intro", { url: wa.odpUrl || "https://data.zimstat.co.zw" }) }); await startFlow(c, "DR", {}); }
         else if (id === B.VERIFY) { await save("VR_KIND", { lang: c.lang, draft: data.draft }); say({ type: "list", header: t(c.lang, "m_verify"), body: t(c.lang, "vr_kind"), button: t(c.lang, "menu_button"), sections: [{ rows: [{ id: B.VR_OFFICER, title: t(c.lang, "vr_officer"), description: t(c.lang, "vr_officer_d") }, { id: B.VR_SURVEY, title: t(c.lang, "vr_survey"), description: t(c.lang, "vr_survey_d") }, { id: B.MENU, title: t(c.lang, "btn_menu") }] }] }); }
         else if (id === B.ALERTS) { say(await releaseCalendar(c)); await save("REL_TOPICS", { lang: c.lang, draft: data.draft, topics: [] }); say(topicsPicker(c, [])); }
@@ -314,17 +320,28 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
         else say(mainMenu(c));
         break;
 
-      // ---- 1. latest statistics ----
-      case "STATS_TOPIC":
+      // ---- 1. latest statistics: area → topic → indicators, portal datasets (CSV / Excel / chart) and files ----
+      case "STATS_GROUP":
         if (id === B.BACK) { await toMenu(); break; }
-        if (id.startsWith("topic_")) { const topic = id.slice(6); await save("STATS_IND", { ...data, topic }); say(await indicatorList(c, topic)); }
-        else say(await statsTopics(c));
+        if (id.startsWith("grp_")) {
+          const group = id.slice(4);
+          if (!STAT_GROUPS.some((g) => g.key === group)) { say(groupMenu(c)); break; }
+          if (group === "SDG") { await save("STATS_IND", { ...data, group, topic: "SDG" }); say(...(await topicView(c, "SDG"))); break; }
+          await save("STATS_TOPIC", { ...data, group }); say(topicMenu(c, group));
+        } else say(groupMenu(c));
+        break;
+      case "STATS_TOPIC":
+        if (id === B.BACK) { await save("STATS_GROUP", data); say(groupMenu(c)); break; }
+        if (id.startsWith("topic_")) { const topic = id.slice(6); await save("STATS_IND", { ...data, topic, group: groupOf(topic) || data.group }); say(...(await topicView(c, topic))); }
+        else say(topicMenu(c, data.group || "MAC"));
         break;
       case "STATS_IND": {
-        if (id === B.BACK) { await save("STATS_TOPIC", data); say(await statsTopics(c)); break; }
-        if (id === B.FILES) { await save("STATS_FILES", data); say(await filesMenu(c, data.topic || "")); break; }
+        const topic = data.topic || "";
+        if (id === B.BACK) { if (!data.group || data.group === "SDG") { await save("STATS_GROUP", data); say(groupMenu(c)); } else { await save("STATS_TOPIC", data); say(topicMenu(c, data.group)); } break; }
+        if (id === B.FILES) { await save("STATS_FILES", data); say(await filesMenu(c, topic)); break; }
+        if (id === B.ODP) { await save("STATS_DS", data); say(await datasetList(c, topic)); break; }
         const ind = id.startsWith("ind_") ? await prisma.statIndicator.findFirst({ where: { id: id.slice(4), orgId, isActive: true } }) : null;
-        if (!ind) { say(await indicatorList(c, data.topic || "")); break; }
+        if (!ind) { say(...(await topicView(c, topic))); break; }
         await save("STATS_AFTER", { ...data, indicatorId: ind.id });
         const body = [`*${ind.name}*: ${ind.value}`, ind.period ? `${t(c.lang, "stats_period")}: ${ind.period}` : "", ind.releaseDate ? `${t(c.lang, "stats_released")}: ${ind.releaseDate.toISOString().slice(0, 10)}` : "", ind.note || "", ind.url ? `\n${t(c.lang, "stats_odp")}: ${ind.url}` : wa.odpUrl ? `\n${t(c.lang, "stats_odp")}: ${wa.odpUrl}` : ""].filter(Boolean).join("\n");
         say({ type: "text", text: body });
@@ -332,18 +349,43 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
         break;
       }
       case "STATS_AFTER":
-        if (id === B.ANOTHER || id === B.BACK) { await save("STATS_IND", data); say(await indicatorList(c, data.topic || "")); }
+        if (id === B.ANOTHER || id === B.BACK) { await save("STATS_IND", data); say(...(await topicView(c, data.topic || ""))); }
         else if (id === B.FILES) { await save("STATS_FILES", data); say(await filesMenu(c, data.topic || "")); }
+        else if (id === B.ODP) { await save("STATS_DS", data); say(await datasetList(c, data.topic || "")); }
         else if (id === B.GET_ALERTS && data.topic) { await subscribe(c, [data.topic], undefined); say({ type: "buttons", body: t(c.lang, "alerts_added", { topic: topicLabel(data.topic, c.lang) }), buttons: [{ id: B.ANOTHER, title: t(c.lang, "btn_another") }, { id: B.MENU, title: t(c.lang, "btn_menu") }] }); }
         else say(afterMenu(c));
         break;
       case "STATS_FILES": {
         const topic = data.topic || "";
-        if (id === B.BACK) { await save("STATS_IND", data); say(await indicatorList(c, topic)); break; }
+        if (id === B.BACK) { await save("STATS_IND", data); say(...(await topicView(c, topic))); break; }
         const file = await fileMessage(c, topic, id);
         if (!file) { say(await filesMenu(c, topic)); break; }
         await save("STATS_AFTER", data);
         say(file, afterMenu(c));
+        break;
+      }
+      case "STATS_DS": {
+        const topic = data.topic || "";
+        if (id === B.BACK) { await save("STATS_IND", data); say(...(await topicView(c, topic))); break; }
+        if (id === B.DS_MORE) { say({ type: "text", text: t(c.lang, "odp_more_text", { url: await topicPage(base, topic) }) }); say(await datasetList(c, topic)); break; }
+        const ds = id.startsWith("ds_") ? await findDataset(base, id.slice(3)) : null;
+        if (!ds) { say(await datasetList(c, topic)); break; }
+        await save("STATS_DS_FMT", { ...data, datasetId: ds.id });
+        say(formatMenu(c, ds));
+        break;
+      }
+      case "STATS_DS_FMT": {
+        const ds = data.datasetId ? await findDataset(base, data.datasetId) : null;
+        if (id === B.BACK || id === B.DS_ANOTHER || !ds) { await save("STATS_DS", data); say(await datasetList(c, data.topic || "")); break; }
+        const url = await datasetUrl(base, ds);
+        if (id === B.DS_LINK) { say({ type: "text", text: t(c.lang, "odp_link_text", { url }) }); say(formatMenu(c, ds)); break; }
+        const format = id === B.DS_CSV ? "csv" : id === B.DS_XLSX ? "xlsx" : id === B.DS_PNG ? "png" : null;
+        if (!format) { say(formatMenu(c, ds)); break; }
+        // the bytes are fetched from the portal when the message is sent; the caption is replaced by the dataset's details then
+        const source: DocSource = { kind: "odp", base, datasetId: ds.id, format, lang: c.lang };
+        const caption = `*${ds.title}*\n${t(c.lang, "odp_source")}: ${url}`;
+        const fallback = t(c.lang, "odp_failed", { url });
+        say(format === "png" ? { type: "image", caption, source, fallback } : { type: "document", filename: odpFilename(ds.id, format), caption, source, fallback }, formatMenu(c, ds, "odp_again"));
         break;
       }
 
@@ -570,23 +612,72 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
   }
 
   // ---------------- look-ups ----------------
-  async function statsTopics(c: Ctx): Promise<WaOutgoing> {
-    const have = await prisma.statIndicator.groupBy({ by: ["topic"], where: { orgId: c.orgId, isActive: true } });
-    const keys = new Set(have.map((h) => h.topic));
-    const rows = STAT_TOPICS.filter((x) => keys.size === 0 || keys.has(x.key)).map((x) => ({ id: `topic_${x.key}`, title: x[c.lang] || x.en }));
-    return { type: "list", header: t(c.lang, "stats_header"), body: t(c.lang, "stats_topic"), button: t(c.lang, "menu_button"), sections: [{ rows: [...rows, { id: B.BACK, title: t(c.lang, "btn_back") }] }] };
+  function groupMenu(c: Ctx): WaOutgoing {
+    const rows = STAT_GROUPS.map((g) => ({ id: `grp_${g.key}`, title: g[c.lang] || g.en, description: t(c.lang, `g_${g.key}_d`) }));
+    return { type: "list", header: t(c.lang, "stats_header"), body: t(c.lang, "stats_group"), button: t(c.lang, "menu_button"), sections: [{ rows: [...rows, { id: B.BACK, title: t(c.lang, "btn_back") }] }] };
   }
-  async function indicatorList(c: Ctx, topic: string): Promise<WaOutgoing> {
-    const list = await prisma.statIndicator.findMany({ where: { orgId: c.orgId, topic, isActive: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }], take: 9 });
-    if (!list.length) return { type: "buttons", body: t(c.lang, "stats_none"), buttons: [{ id: B.BACK, title: t(c.lang, "btn_back") }, { id: B.OFFICER, title: t(c.lang, "btn_officer") }, { id: B.MENU, title: t(c.lang, "btn_menu") }] };
-    return { type: "list", header: topicLabel(topic, c.lang).slice(0, 60), body: t(c.lang, "stats_ind"), button: t(c.lang, "menu_button"), sections: [{ rows: [...list.map((i) => ({ id: `ind_${i.id}`, title: i.name, description: `${i.value}${i.period ? ` · ${i.period}` : ""}`.slice(0, 72) })), { id: B.FILES, title: t(c.lang, "stats_files"), description: t(c.lang, "stats_files_d") }, { id: B.BACK, title: t(c.lang, "btn_back") }] }] };
+  function topicMenu(c: Ctx, group: string): WaOutgoing {
+    const rows = topicsInGroup(group).map((x) => ({ id: `topic_${x.key}`, title: topicLabel(x.key, c.lang, true), description: x.short?.[c.lang] ? x[c.lang] : undefined }));
+    return { type: "list", header: topicLabel(group, c.lang).slice(0, 60), body: t(c.lang, "stats_topic_in", { group: topicLabel(group, c.lang) }), button: t(c.lang, "menu_button"), sections: [{ rows: [...rows, { id: B.BACK, title: t(c.lang, "btn_back") }] }] };
+  }
+  /** A topic: its headline indicators, then rows for the portal's datasets (when it has any) and for files. SDGs quote the SDG site first. */
+  async function topicView(c: Ctx, topic: string): Promise<WaOutgoing[]> {
+    const wa = c.settings.whatsapp || {};
+    const [list, datasets] = await Promise.all([
+      prisma.statIndicator.findMany({ where: { orgId: c.orgId, topic: { in: topicAliases(topic) }, isActive: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }], take: 7 }),
+      datasetsForTopic(odpBase(wa.odpUrl), topic),
+    ]);
+    const out: WaOutgoing[] = [];
+    if (topic === "SDG") out.push({ type: "text", text: t(c.lang, "sdg_intro", { url: wa.sdgUrl || SDG_URL }) });
+    const rows: Option[] = [
+      ...list.map((i) => ({ id: `ind_${i.id}`, title: i.name, description: `${i.value}${i.period ? ` · ${i.period}` : ""}`.slice(0, 72) })),
+      ...(datasets.length ? [{ id: B.ODP, title: t(c.lang, "odp_row"), description: t(c.lang, "odp_row_d") }] : []),
+      { id: B.FILES, title: t(c.lang, "stats_files"), description: t(c.lang, "stats_files_d") },
+      { id: B.BACK, title: t(c.lang, "btn_back") },
+    ];
+    out.push({ type: "list", header: topicLabel(topic, c.lang).slice(0, 60), body: t(c.lang, list.length ? "stats_ind" : "stats_topic_empty"), button: t(c.lang, "menu_button"), sections: [{ rows }] });
+    return out;
   }
   function afterMenu(c: Ctx): WaOutgoing {
-    return { type: "list", body: t(c.lang, "stats_after"), button: t(c.lang, "menu_button"), sections: [{ rows: [{ id: B.ANOTHER, title: t(c.lang, "btn_another") }, { id: B.FILES, title: t(c.lang, "stats_files"), description: t(c.lang, "stats_files_d") }, { id: B.GET_ALERTS, title: t(c.lang, "btn_alerts") }, { id: B.MENU, title: t(c.lang, "btn_menu") }] }] };
+    return { type: "list", body: t(c.lang, "stats_after"), button: t(c.lang, "menu_button"), sections: [{ rows: [{ id: B.ANOTHER, title: t(c.lang, "btn_another") }, { id: B.ODP, title: t(c.lang, "odp_row"), description: t(c.lang, "odp_row_d") }, { id: B.FILES, title: t(c.lang, "stats_files"), description: t(c.lang, "stats_files_d") }, { id: B.GET_ALERTS, title: t(c.lang, "btn_alerts") }, { id: B.MENU, title: t(c.lang, "btn_menu") }] }] };
+  }
+  /** Datasets the Open Data Portal files under the topic, newest first (the first eight; the rest via the portal link). */
+  async function datasetList(c: Ctx, topic: string): Promise<WaOutgoing> {
+    const all = await datasetsForTopic(odpBase(c.settings.whatsapp?.odpUrl), topic);
+    if (!all.length) return { type: "buttons", body: t(c.lang, "odp_none"), buttons: [{ id: B.BACK, title: t(c.lang, "btn_back") }, { id: B.MENU, title: t(c.lang, "btn_menu") }] };
+    const shown = all.slice(0, MAX_LIST);
+    const titles = distinctTitles(shown.map((d) => d.title));
+    const rows: Option[] = [
+      ...shown.map((d, i) => ({ id: `ds_${d.id}`, title: titles[i], description: d.title.length > 24 ? d.title : d.lastUpdate ? `${t(c.lang, "odp_updated")} ${d.lastUpdate.slice(0, 10)}` : undefined })),
+      ...(all.length > shown.length ? [{ id: B.DS_MORE, title: t(c.lang, "odp_more"), description: t(c.lang, "odp_more_d", { n: String(all.length) }) }] : []),
+      { id: B.BACK, title: t(c.lang, "btn_back") },
+    ];
+    return { type: "list", header: topicLabel(topic, c.lang).slice(0, 60), body: t(c.lang, "odp_pick"), button: t(c.lang, "menu_button"), sections: [{ rows }] };
+  }
+  /** Row titles have 24 characters: drop the words all titles share ("Gross Domestic Product by Income Approach at…") so the distinctive part shows. */
+  function distinctTitles(titles: string[]): string[] {
+    const abbreviated = titles.map((x) => x.replace(/gross domestic product/gi, "GDP").replace(/consumer price index/gi, "CPI").replace(/producer price index/gi, "PPI").replace(/\s*-\s*/g, " - "));
+    if (titles.length < 2) return abbreviated;
+    const words = abbreviated.map((x) => x.split(/\s+/));
+    let n = 0;
+    while (n < words[0].length - 1 && words.every((w) => w[n] && w[n].toLowerCase() === words[0][n].toLowerCase())) n++;
+    if (n === 0 || n >= Math.min(...words.map((w) => w.length))) return abbreviated;
+    return words.map((w) => { const rest = w.slice(n).join(" ").replace(/^[^\p{L}\p{N}(]+/u, ""); return rest.length >= 3 ? rest[0].toUpperCase() + rest.slice(1) : w.join(" "); });
+  }
+  function formatMenu(c: Ctx, ds: OdpDataset, bodyKey = "odp_fmt_body"): WaOutgoing {
+    const rows: Option[] = [
+      { id: B.DS_CSV, title: t(c.lang, "odp_csv"), description: t(c.lang, "odp_csv_d") },
+      { id: B.DS_XLSX, title: t(c.lang, "odp_xlsx"), description: t(c.lang, "odp_xlsx_d") },
+      { id: B.DS_PNG, title: t(c.lang, "odp_png"), description: t(c.lang, "odp_png_d") },
+      { id: B.DS_LINK, title: t(c.lang, "odp_link"), description: t(c.lang, "odp_link_d") },
+      { id: B.DS_ANOTHER, title: t(c.lang, "odp_another") },
+      { id: B.MENU, title: t(c.lang, "btn_menu") },
+    ];
+    return { type: "list", header: ds.title.slice(0, 60), body: t(c.lang, bodyKey, { date: ds.lastUpdate ? ds.lastUpdate.slice(0, 10) : "—" }), button: t(c.lang, "menu_button"), sections: [{ rows }] };
   }
   /** Excel and PDF tables generated from the topic's indicators, plus publications uploaded for the topic (or for all topics). */
   async function filesMenu(c: Ctx, topic: string): Promise<WaOutgoing> {
-    const docs = await prisma.statDocument.findMany({ where: { orgId: c.orgId, isActive: true, OR: [{ topic }, { topic: "ALL" }] }, orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }], take: 6 });
+    const docs = await prisma.statDocument.findMany({ where: { orgId: c.orgId, isActive: true, OR: [{ topic: { in: topicAliases(topic) } }, { topic: "ALL" }] }, orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }], take: 6 });
     const label = topicLabel(topic, c.lang);
     const size = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
     const rows: Option[] = [
@@ -624,7 +715,8 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
     return { type: "text", text: body };
   }
   function topicsPicker(c: Ctx, chosen: string[]): WaOutgoing {
-    const rows = STAT_TOPICS.map((x) => ({ id: `topic_${x.key}`, title: `${chosen.includes(x.key) ? "✅ " : ""}${x[c.lang] || x.en}` }));
+    // alerts are per area (four rows) so the picker fits WhatsApp's ten-row limit; "Get alerts" after an indicator subscribes to that topic
+    const rows = STAT_GROUPS.map((x) => ({ id: `topic_${x.key}`, title: `${chosen.includes(x.key) ? "✅ " : ""}${x[c.lang] || x.en}`, description: t(c.lang, `g_${x.key}_d`) }));
     return { type: "list", header: t(c.lang, "m_alerts").slice(0, 60), body: `${t(c.lang, "rel_topics")}${chosen.length ? `\n\n${t(c.lang, "rel_selected", { topics: chosen.map((k) => topicLabel(k, c.lang)).join(", ") })}` : ""}`, button: t(c.lang, "menu_button"), sections: [{ rows: [...rows, { id: B.REL_DONE, title: `✔ ${t(c.lang, "btn_done")}` }, { id: B.CANCEL, title: t(c.lang, "btn_cancel") }] }] };
   }
   async function subscribe(c: Ctx, topics: string[], frequency: string | undefined) {

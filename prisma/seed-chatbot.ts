@@ -10,7 +10,10 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 const inDays = (n: number) => { const x = new Date(); x.setDate(x.getDate() + n); x.setHours(10, 0, 0, 0); return x; };
-const ODP = "https://data.zimstat.co.zw";
+const ODP = "https://zimstat.opendataforafrica.org";
+const SDG = "https://sdg-zimstat.github.io/";
+// topic keys used before the taxonomy followed the portal catalogue
+const LEGACY: Record<string, string> = { CPI: "PI", GDP: "NA", POP: "PC", LAB: "LB", TRADE: "ET", AGRI: "AG", HEALTH: "HS" };
 
 export async function applyChatbotSeed(orgId: string) {
   let added = 0;
@@ -37,21 +40,33 @@ export async function applyChatbotSeed(orgId: string) {
     if (!exists) { await prisma.caseCategory.create({ data: { orgId, name, departmentId: d.id, defaultSlaHours: sla, defaultPriority: priority, icon, description, isPublic: true } }); added++; }
   }
 
+  // figures, releases, files and subscriptions saved under the old topic keys move to the new ones
+  for (const [from, to] of Object.entries(LEGACY)) {
+    added += (await prisma.statIndicator.updateMany({ where: { orgId, topic: from }, data: { topic: to } })).count;
+    added += (await prisma.statRelease.updateMany({ where: { orgId, topic: from }, data: { topic: to } })).count;
+    added += (await prisma.statDocument.updateMany({ where: { orgId, topic: from }, data: { topic: to } })).count;
+  }
+  for (const s of await prisma.statSubscription.findMany({ where: { orgId } })) {
+    const topics = JSON.parse(s.topics || "[]") as string[];
+    const next = Array.from(new Set(topics.map((k) => LEGACY[k] || k)));
+    if (next.join() !== topics.join()) await prisma.statSubscription.update({ where: { id: s.id }, data: { topics: JSON.stringify(next) } });
+  }
+
   if (!(await prisma.statIndicator.count({ where: { orgId } }))) {
     const rows: [string, string, string, string, string, string][] = [
-      ["CPI", "Month-on-month inflation", "0.9%", "September 2026", "2026-10-15", `${ODP}/indicator/cpi-mom`],
-      ["CPI", "Year-on-year inflation", "3.1%", "September 2026", "2026-10-15", `${ODP}/indicator/cpi-yoy`],
-      ["CPI", "CPI index (Jan 2025 = 100)", "118.4", "September 2026", "2026-10-15", `${ODP}/indicator/cpi-index`],
-      ["GDP", "Real GDP growth", "5.2%", "2025 (annual)", "2026-06-30", `${ODP}/indicator/gdp-growth`],
-      ["GDP", "GDP at current prices", "US$ 44.4 billion", "2025", "2026-06-30", `${ODP}/indicator/gdp-current`],
-      ["POP", "Total population (2022 Census)", "15 178 957", "Census night, April 2022", "2022-07-26", `${ODP}/census-2022`],
-      ["POP", "Population projection", "16.3 million", "Mid-2026", "2026-03-31", `${ODP}/indicator/population-projection`],
-      ["LAB", "Unemployment rate (strict)", "21.0%", "Q2 2026", "2026-09-30", `${ODP}/indicator/unemployment`],
-      ["LAB", "Labour force participation rate", "45.6%", "Q2 2026", "2026-09-30", `${ODP}/indicator/lfpr`],
-      ["TRADE", "Merchandise exports", "US$ 740 million", "September 2026", "2026-10-28", `${ODP}/indicator/exports`],
-      ["TRADE", "Merchandise imports", "US$ 810 million", "September 2026", "2026-10-28", `${ODP}/indicator/imports`],
-      ["AGRI", "Maize production estimate", "2.3 million tonnes", "2025/26 season", "2026-05-15", `${ODP}/indicator/maize`],
-      ["HEALTH", "Under-five mortality rate", "56 per 1 000 live births", "ZDHS 2023-24", "2025-02-20", `${ODP}/zdhs-2023`],
+      ["PI", "Month-on-month inflation", "0.9%", "September 2026", "2026-10-15", `${ODP}/indicator/cpi-mom`],
+      ["PI", "Year-on-year inflation", "3.1%", "September 2026", "2026-10-15", `${ODP}/indicator/cpi-yoy`],
+      ["PI", "CPI index (Jan 2025 = 100)", "118.4", "September 2026", "2026-10-15", `${ODP}/indicator/cpi-index`],
+      ["NA", "Real GDP growth", "5.2%", "2025 (annual)", "2026-06-30", `${ODP}/indicator/gdp-growth`],
+      ["NA", "GDP at current prices", "US$ 44.4 billion", "2025", "2026-06-30", `${ODP}/indicator/gdp-current`],
+      ["PC", "Total population (2022 Census)", "15 178 957", "Census night, April 2022", "2022-07-26", `${ODP}/census-2022`],
+      ["PC", "Population projection", "16.3 million", "Mid-2026", "2026-03-31", `${ODP}/indicator/population-projection`],
+      ["LB", "Unemployment rate (strict)", "21.0%", "Q2 2026", "2026-09-30", `${ODP}/indicator/unemployment`],
+      ["LB", "Labour force participation rate", "45.6%", "Q2 2026", "2026-09-30", `${ODP}/indicator/lfpr`],
+      ["ET", "Merchandise exports", "US$ 740 million", "September 2026", "2026-10-28", `${ODP}/indicator/exports`],
+      ["ET", "Merchandise imports", "US$ 810 million", "September 2026", "2026-10-28", `${ODP}/indicator/imports`],
+      ["AG", "Maize production estimate", "2.3 million tonnes", "2025/26 season", "2026-05-15", `${ODP}/indicator/maize`],
+      ["HS", "Under-five mortality rate", "56 per 1 000 live births", "ZDHS 2023-24", "2025-02-20", `${ODP}/zdhs-2023`],
     ];
     for (const [i, [topic, name, value, period, releaseDate, url]] of rows.entries()) {
       await prisma.statIndicator.create({ data: { orgId, topic, name, value, period, releaseDate: new Date(releaseDate), url, sortOrder: i, note: "Sample figure for the demo; replace under Settings → Chatbot content." } }); added++;
@@ -60,12 +75,12 @@ export async function applyChatbotSeed(orgId: string) {
 
   if (!(await prisma.statRelease.count({ where: { orgId } }))) {
     const rel: [string, string, number, string][] = [
-      ["Consumer Price Index, October 2026", "CPI", 6, "Monthly CPI and inflation rates"],
-      ["Merchandise trade statistics, October 2026", "TRADE", 19, "Exports, imports and trade balance"],
-      ["Quarterly Labour Force Survey, Q3 2026", "LAB", 27, "Employment, unemployment and informality"],
-      ["Quarterly GDP estimates, Q3 2026", "GDP", 41, "Production and expenditure estimates"],
-      ["Consumer Price Index, November 2026", "CPI", 36, "Monthly CPI and inflation rates"],
-      ["Crop and livestock assessment, second round", "AGRI", 55, "Planted area and production estimates"],
+      ["Consumer Price Index, October 2026", "PI", 6, "Monthly CPI and inflation rates"],
+      ["Merchandise trade statistics, October 2026", "ET", 19, "Exports, imports and trade balance"],
+      ["Quarterly Labour Force Survey, Q3 2026", "LB", 27, "Employment, unemployment and informality"],
+      ["Quarterly GDP estimates, Q3 2026", "NA", 41, "Production and expenditure estimates"],
+      ["Consumer Price Index, November 2026", "PI", 36, "Monthly CPI and inflation rates"],
+      ["Crop and livestock assessment, second round", "AG", 55, "Planted area and production estimates"],
     ];
     for (const [title, topic, days, summary] of rel) { await prisma.statRelease.create({ data: { orgId, title, topic, scheduledAt: inDays(days), summary, url: `${ODP}/releases` } }); added++; }
   }
@@ -89,6 +104,11 @@ export async function applyChatbotSeed(orgId: string) {
   const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } });
   const settings = JSON.parse(org?.settings || "{}") as { cases?: { whatsapp?: Record<string, unknown> } };
   const wa = settings.cases?.whatsapp || {};
+  // older databases pointed the bot at the placeholder portal address; the Data Browser is where the datasets live
+  if (!wa.odpUrl || wa.odpUrl === "https://data.zimstat.co.zw" || !wa.sdgUrl) {
+    settings.cases = { ...(settings.cases || {}), whatsapp: { ...wa, odpUrl: !wa.odpUrl || wa.odpUrl === "https://data.zimstat.co.zw" ? ODP : wa.odpUrl, sdgUrl: wa.sdgUrl || SDG } };
+    await prisma.organization.update({ where: { id: orgId }, data: { settings: JSON.stringify(settings) } });
+  }
   if (!wa.dataRequestCategoryId || !wa.verificationCategoryId) {
     const all = await prisma.caseCategory.findMany({ where: { orgId }, select: { id: true, name: true } });
     const find = (re: RegExp) => all.find((c) => re.test(c.name))?.id;

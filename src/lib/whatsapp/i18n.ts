@@ -6,17 +6,59 @@ export type Lang = (typeof LANGS)[number];
 export const LANG_LABELS: Record<Lang, string> = { en: "English", sn: "ChiShona", nd: "isiNdebele" };
 
 /** Statistical topics shared by the statistics, data-request and alerts flows (keys are stored in the database). */
-export const STAT_TOPICS = [
-  { key: "CPI", en: "CPI and inflation", sn: "CPI nemitengo", nd: "I-CPI lamanani" },
-  { key: "GDP", en: "GDP & national accounts", sn: "GDP nehupfumi hwenyika", nd: "I-GDP lomnotho welizwe" },
-  { key: "POP", en: "Population and census", sn: "Vanhu nesenzasi", nd: "Abantu lokubalwa" },
-  { key: "LAB", en: "Labour and employment", sn: "Basa nemabasa", nd: "Abasebenzi lemisebenzi" },
-  { key: "TRADE", en: "Trade", sn: "Kutengeserana", nd: "Ezokuthengiselana" },
-  { key: "AGRI", en: "Agriculture", sn: "Kurima", nd: "Ezolimo" },
-  { key: "HEALTH", en: "Health and demographics", sn: "Hutano nevanhu", nd: "Ezempilakahle labantu" },
+/**
+ * Statistics taxonomy, mirroring the Open Data Portal catalogue: four areas, each with topics. `odp` lists the portal
+ * category ids whose datasets the bot offers under the topic; `short` is the label used where WhatsApp allows 24 characters.
+ */
+export const STAT_GROUPS = [
+  { key: "MAC", en: "Macroeconomics", sn: "Hupfumi hwenyika", nd: "Umnotho welizwe" },
+  { key: "DS", en: "Demographic & Social", sn: "Vanhu nemagariro", nd: "Abantu lenhlalakahle" },
+  { key: "PROD", en: "Production", sn: "Kugadzira nekurima", nd: "Ukukhiqiza" },
+  { key: "SDG", en: "SDGs", sn: "SDGs", nd: "SDGs" },
 ] as const;
-export type TopicKey = (typeof STAT_TOPICS)[number]["key"];
-export const topicLabel = (key: string, lang: Lang) => { const t = STAT_TOPICS.find((x) => x.key === key); return t ? t[lang] || t.en : key; };
+export type GroupKey = (typeof STAT_GROUPS)[number]["key"];
+export type StatTopic = { key: string; group: GroupKey; en: string; sn: string; nd: string; short?: Partial<Record<Lang, string>>; odp: readonly string[] };
+export const STAT_TOPICS: readonly StatTopic[] = [
+  { key: "NA", group: "MAC", en: "National Accounts", sn: "Hupfumi hwenyika (GDP)", nd: "Umnotho welizwe (GDP)", odp: ["MAC_NA_Q", "MAC_NA_A"] },
+  { key: "ET", group: "MAC", en: "External Trade", sn: "Kutengeserana nedzimwe nyika", nd: "Ukuthengiselana lamanye amazwe", short: { sn: "Kutengeserana kunze", nd: "Ukuthengiselana" }, odp: ["MAC_ET"] },
+  { key: "LB", group: "MAC", en: "Labour Statistics", sn: "Basa nemabasa", nd: "Abasebenzi lemisebenzi", odp: ["MAC_LB"] },
+  { key: "PI", group: "MAC", en: "Price Indices", sn: "Mitengo (CPI)", nd: "Amanani (CPI)", odp: ["MAC_PI"] },
+  { key: "PV", group: "MAC", en: "Poverty Statistics", sn: "Hurombo", nd: "Ubuyanga", odp: ["MAC_PV"] },
+  { key: "PC", group: "DS", en: "Population Census", sn: "Senzasi yevanhu", nd: "Ukubalwa kwabantu", odp: ["DS_PC"] },
+  { key: "GE", group: "DS", en: "Gender", sn: "Zvemadzimai nevarume", nd: "Ubulili", odp: ["DS_GE"] },
+  { key: "ED", group: "DS", en: "Education", sn: "Dzidzo", nd: "Imfundo", odp: ["DS_ED"] },
+  { key: "CU", group: "DS", en: "Culture", sn: "Tsika nemagariro", nd: "Amasiko", odp: ["DS_CU"] },
+  { key: "PR", group: "DS", en: "Prison", sn: "Majeri", nd: "Amajele", odp: ["DS_PR"] },
+  { key: "CR", group: "DS", en: "Crime", sn: "Mhosva", nd: "Ubugebengu", odp: ["DS_CR"] },
+  { key: "VS", group: "DS", en: "Vital", sn: "Kuzvarwa nekufa", nd: "Ukuzalwa lokufa", odp: ["DS_VS"] },
+  { key: "MG", group: "DS", en: "Migration", sn: "Kutama", nd: "Ukuthutha", odp: ["DS_MG"] },
+  { key: "HS", group: "DS", en: "Health Statistics", sn: "Hutano", nd: "Ezempilakahle", odp: ["DS_HS"] },
+  { key: "AG", group: "PROD", en: "Agriculture", sn: "Kurima", nd: "Ezolimo", odp: ["PROD_AG"] },
+  { key: "EC", group: "PROD", en: "Economic Census", sn: "Senzasi yehupfumi", nd: "Ukubalwa komnotho", odp: ["PROD_EC"] },
+  { key: "EN", group: "PROD", en: "Energy", sn: "Simba nemagetsi", nd: "Amandla lagetsi", odp: ["PROD_EN"] },
+  { key: "EV", group: "PROD", en: "Environment", sn: "Zvakatipoteredza", nd: "Imvelo", odp: ["PROD_EV"] },
+  { key: "IN", group: "PROD", en: "Industrial", sn: "Maindasitiri", nd: "Imboni", odp: ["PROD_IN"] },
+  { key: "ICT", group: "PROD", en: "ICT", sn: "ICT", nd: "ICT", odp: ["PROD_ICT"] },
+  { key: "TR", group: "PROD", en: "Transport and Infrastructure", sn: "Zvekufambisa nezvivakwa", nd: "Ezokuthutha lezakhiwo", short: { en: "Transport" }, odp: ["PROD_TR"] },
+  { key: "TO", group: "PROD", en: "Tourism", sn: "Vashanyi", nd: "Ezokuvakatsha", odp: ["PROD_TO"] },
+  { key: "SDG", group: "SDG", en: "Sustainable Development Goals", sn: "Zvinangwa zveSDG", nd: "Izinhloso ze-SDG", short: { en: "SDG indicators" }, odp: ["GOAL_ALL", "SDG"] },
+];
+export type TopicKey = string;
+/** Topic keys used before the taxonomy followed the portal (figures saved under them still show under the new topic). */
+export const LEGACY_TOPICS: Record<string, string> = { CPI: "PI", GDP: "NA", POP: "PC", LAB: "LB", TRADE: "ET", AGRI: "AG", HEALTH: "HS" };
+export const normalizeTopic = (key: string) => LEGACY_TOPICS[key] || key;
+/** The key plus any legacy keys that map to it, for database lookups. */
+export const topicAliases = (key: string) => [key, ...Object.entries(LEGACY_TOPICS).filter(([, v]) => v === key).map(([k]) => k)];
+export const groupOf = (key: string): GroupKey | undefined => STAT_TOPICS.find((x) => x.key === normalizeTopic(key))?.group || STAT_GROUPS.find((g) => g.key === key)?.key;
+export const topicsInGroup = (group: string) => STAT_TOPICS.filter((x) => x.group === group);
+/** Label for a topic, an area or a legacy key; `short` picks the 24-character form used in WhatsApp list rows. */
+export const topicLabel = (key: string, lang: Lang, short = false) => {
+  const k = normalizeTopic(key);
+  const tp = STAT_TOPICS.find((x) => x.key === k);
+  if (tp) return (short && tp.short?.[lang]) || tp[lang] || tp.en;
+  const g = STAT_GROUPS.find((x) => x.key === k);
+  return g ? g[lang] || g.en : key;
+};
 
 type Dict = Record<string, string>;
 
@@ -25,7 +67,7 @@ const en: Dict = {
   menu_header: "ZIMSTAT services", menu_body: "How can we help you today?",
   menu_button: "Choose a service",
   menu_footer: "Type menu, back, cancel or exit at any time",
-  m_stats: "Latest statistics", m_stats_d: "CPI, inflation, GDP, population, trade",
+  m_stats: "Latest statistics", m_stats_d: "Macroeconomics, population, production, SDGs",
   m_data: "Request data or a table", m_data_d: "Custom tables, tabulations, microdata",
   m_verify: "Verify officer or survey", m_verify_d: "Check a ZIMSTAT badge or a survey visit",
   m_alerts: "Releases and alerts", m_alerts_d: "Upcoming releases; subscribe to alerts",
@@ -50,6 +92,16 @@ const en: Dict = {
   fx_xlsx: "Excel table", fx_xlsx_d: "Latest {topic} figures (.xlsx)", fx_pdf: "PDF table", fx_pdf_d: "Latest {topic} figures (.pdf)", fx_all: "All topics (Excel)", fx_all_d: "Every headline figure in one workbook",
   fx_caption: "{topic} – latest headline figures from {org}, generated {date}.", fx_doc_caption: "{title} ({org})", fx_failed: "Sorry, the file could not be sent right now. Please try again later or download it from {url}.",
   fx_generated: "Generated", fx_topic: "Topic", fx_indicator: "Indicator", fx_value: "Latest value", fx_note: "Note", fx_source: "Source",
+  // areas and the Open Data Portal datasets offered under each topic
+  stats_group: "Choose an area.", g_MAC_d: "GDP, trade, labour, prices, poverty", g_DS_d: "Census, health, education, vital, migration", g_PROD_d: "Agriculture, industry, ICT, energy, tourism", g_SDG_d: "SDG indicators and the SDG portal",
+  stats_topic_in: "Choose a topic under {group}.", stats_topic_empty: "No headline figures are loaded for this topic yet, but the data files below are available.",
+  odp_row: "Data from the portal", odp_row_d: "CSV, Excel or chart from the Open Data Portal",
+  odp_pick: "Choose a dataset from the Open Data Portal. You can receive it as a CSV file, an Excel workbook or a chart image.", odp_none: "The Open Data Portal has no datasets under this topic yet.",
+  odp_more: "More on the portal", odp_more_d: "{n} datasets under this topic online", odp_more_text: "All datasets for this topic on the Open Data Portal:\n{url}",
+  odp_fmt_body: "Updated {date}. How would you like it?", odp_csv: "CSV file", odp_csv_d: "All figures; opens in Excel or any spreadsheet", odp_xlsx: "Excel workbook", odp_xlsx_d: "Formatted table with an About sheet", odp_png: "Chart image", odp_png_d: "Picture of the main series over time",
+  odp_link: "Open on the portal", odp_link_d: "Browse, filter and download online", odp_link_text: "Open this dataset on the Open Data Portal:\n{url}", odp_again: "Anything else from this dataset?", odp_another: "Another dataset",
+  odp_failed: "Sorry, that dataset could not be fetched from the Open Data Portal right now. You can open it here: {url}", odp_updated: "Updated", odp_source: "Source", odp_chart_footer: "Source: ZIMSTAT Open Data Portal · {url} · {date}",
+  sdg_intro: "Zimbabwe's SDG indicators are published on the SDG portal: {url}\n\nThe SDG figures and datasets available here are listed below.",
   alerts_added: "You will be notified here when new {topic} figures are released. Type *stop alerts* at any time to opt out.",
   // data requests
   dr_intro: "Published data is free on the Open Data Portal: {url}\n\nUse this form for custom tables, unpublished tabulations or microdata. You will get a DR reference and status updates here.",
@@ -102,7 +154,7 @@ const en: Dict = {
 const sn: Dict = {
   lang_prompt: "Mauya kuZIMSTAT, Zimbabwe National Statistics Agency. Sarudzai mutauro.",
   menu_header: "Masevhisi eZIMSTAT", menu_body: "Tingakubatsirei sei nhasi?", menu_button: "Sarudzai sevhisi", menu_footer: "Nyorai menu, back, cancel kana exit chero nguva",
-  m_stats: "Manhamba matsva", m_stats_d: "CPI, kukwira kwemitengo, GDP, huwandu hwevanhu",
+  m_stats: "Manhamba matsva", m_stats_d: "Hupfumi, vanhu, kugadzira, SDGs",
   m_data: "Kumbirai data", m_data_d: "Matafura akagadzirirwa imi, microdata",
   m_verify: "Simbisai mushandi/sevhei", m_verify_d: "Tarisai bheji reZIMSTAT kana sevhei",
   m_alerts: "Kalenda nemayambiro", m_alerts_d: "Zvichaburitswa; nyoresai mayambiro",
@@ -121,6 +173,15 @@ const sn: Dict = {
   fx_xlsx: "Tafura yeExcel", fx_xlsx_d: "Manhamba matsva e{topic} (.xlsx)", fx_pdf: "Tafura yePDF", fx_pdf_d: "Manhamba matsva e{topic} (.pdf)", fx_all: "Misoro yose (Excel)", fx_all_d: "Manhamba ose mubhuku rimwe",
   fx_caption: "{topic} – manhamba matsva kubva ku{org}, yagadzirwa {date}.", fx_doc_caption: "{title} ({org})", fx_failed: "Ndine urombo, faira harina kukwanisa kutumirwa izvozvi. Edzai zvakare gare gare kana muritore pa{url}.",
   fx_generated: "Yagadzirwa", fx_topic: "Musoro", fx_indicator: "Chiratidzo", fx_value: "Nhamba yazvino", fx_note: "Tsananguro", fx_source: "Kwayabva",
+  stats_group: "Sarudzai chikamu.", g_MAC_d: "GDP, kutengeserana, basa, mitengo, hurombo", g_DS_d: "Senzasi, hutano, dzidzo, kuzvarwa, kutama", g_PROD_d: "Kurima, maindasitiri, ICT, simba, vashanyi", g_SDG_d: "Zviratidzo zveSDG nesaiti yeSDG",
+  stats_topic_in: "Sarudzai musoro pasi pe{group}.", stats_topic_empty: "Hapasati pane manhamba makuru emusoro uyu, asi mafaira edata ari pazasi aripo.",
+  odp_row: "Data kubva papotari", odp_row_d: "CSV, Excel kana chati kubva paOpen Data Portal",
+  odp_pick: "Sarudzai dataset kubva paOpen Data Portal. Munogona kuigamuchira sefaira reCSV, bhuku reExcel kana mufananidzo wechati.", odp_none: "Open Data Portal haisati yaine madataset emusoro uyu.",
+  odp_more: "Zvimwe papotari", odp_more_d: "Madataset {n} emusoro uyu pamhepo", odp_more_text: "Madataset ese emusoro uyu paOpen Data Portal:\n{url}",
+  odp_fmt_body: "Yakagadziridzwa {date}. Munoida sei?", odp_csv: "Faira reCSV", odp_csv_d: "Manhamba ese; rinovhurika muExcel", odp_xlsx: "Bhuku reExcel", odp_xlsx_d: "Tafura yakarongwa ine peji reAbout", odp_png: "Mufananidzo wechati", odp_png_d: "Chati yemanhamba makuru nenguva",
+  odp_link: "Vhurai papotari", odp_link_d: "Tarisai, sefai uye dhaunirodhai pamhepo", odp_link_text: "Vhurai dataset iyi paOpen Data Portal:\n{url}", odp_again: "Pane chimwe chamunoda kubva padataset iyi?", odp_another: "Imwe dataset",
+  odp_failed: "Tine urombo, dataset iyi haina kukwanisa kutorwa paOpen Data Portal izvozvi. Munogona kuivhura pano: {url}", odp_updated: "Yakagadziridzwa", odp_source: "Kwayabva", odp_chart_footer: "Kwayabva: ZIMSTAT Open Data Portal · {url} · {date}",
+  sdg_intro: "Zviratidzo zveSDG zveZimbabwe zvinoburitswa pasaiti yeSDG: {url}\n\nManhamba nemadataset eSDG aripo pano ari pazasi.",
   alerts_added: "Tichakuzivisai pano kana manhamba matsva e{topic} aburitswa. Nyorai *stop alerts* kuti mumire.",
   dr_intro: "Data yakaburitswa inowanikwa pachena paOpen Data Portal: {url}\n\nShandisai fomu iyi kumatafura akagadzirirwa imi kana microdata. Muchawana nhamba yeDR nemashoko ezvinenge zvichiitika pano.",
   dr_type: "Ndiani ari kukumbira data?", dr_name: "Zita renyu rizere?", dr_org: "Sangano renyu? (nyorai *none* kana risipo)", dr_email: "Email yenyu yekupindura?",
@@ -156,7 +217,7 @@ const sn: Dict = {
 const nd: Dict = {
   lang_prompt: "Siyalemukela kuZIMSTAT, Zimbabwe National Statistics Agency. Khetha ulimi.",
   menu_header: "Izinsiza zeZIMSTAT", menu_body: "Singakusiza njani lamuhla?", menu_button: "Khetha insiza", menu_footer: "Bhala menu, back, cancel loba exit loba nini",
-  m_stats: "Izibalo zakamuva", m_stats_d: "I-CPI, ukukhwela kwamanani, i-GDP, abantu",
+  m_stats: "Izibalo zakamuva", m_stats_d: "Umnotho, abantu, ukukhiqiza, SDGs",
   m_data: "Cela idatha", m_data_d: "Amathebula akho, i-microdata",
   m_verify: "Qinisekisa isikhulu", m_verify_d: "Hlola ibheji leZIMSTAT loba isaveyi",
   m_alerts: "Ikhalenda lezaziso", m_alerts_d: "Okuzakhutshwa; bhalisa izaziso",
@@ -175,6 +236,15 @@ const nd: Dict = {
   fx_xlsx: "Ithebula le-Excel", fx_xlsx_d: "Izibalo zakamuva ze{topic} (.xlsx)", fx_pdf: "Ithebula le-PDF", fx_pdf_d: "Izibalo zakamuva ze{topic} (.pdf)", fx_all: "Zonke izihloko (Excel)", fx_all_d: "Zonke izibalo encwadini eyodwa",
   fx_caption: "{topic} – izibalo zakamuva ezivela ku-{org}, kwenziwe {date}.", fx_doc_caption: "{title} ({org})", fx_failed: "Uxolo, ifayili ayithunyelwanga khathesi. Zama futhi muva loba uyithathe ku-{url}.",
   fx_generated: "Kwenziwe", fx_topic: "Isihloko", fx_indicator: "Isibalo", fx_value: "Inani lakamuva", fx_note: "Inothi", fx_source: "Umthombo",
+  stats_group: "Khetha isigaba.", g_MAC_d: "I-GDP, ukuthengiselana, imisebenzi, amanani, ubuyanga", g_DS_d: "Ukubalwa, impilakahle, imfundo, ukuzalwa, ukuthutha", g_PROD_d: "Ezolimo, imboni, i-ICT, amandla, ezokuvakatsha", g_SDG_d: "Izibalo ze-SDG lesiza se-SDG",
+  stats_topic_in: "Khetha isihloko ngaphansi kwe-{group}.", stats_topic_empty: "Akulazibalo ezinkulu zalesi sihloko okwakhathesi, kodwa amafayili edatha angezansi ayatholakala.",
+  odp_row: "Idatha evela kuphothali", odp_row_d: "I-CSV, i-Excel loba ishathi evela ku-Open Data Portal",
+  odp_pick: "Khetha i-dataset ku-Open Data Portal. Ungayithola njengefayili le-CSV, ibhuku le-Excel loba umfanekiso weshathi.", odp_none: "I-Open Data Portal kayikabi lama-dataset alesi sihloko.",
+  odp_more: "Okunye kuphothali", odp_more_d: "Ama-dataset angu-{n} alesi sihloko ku-inthanethi", odp_more_text: "Wonke ama-dataset alesi sihloko ku-Open Data Portal:\n{url}",
+  odp_fmt_body: "Kuvuselelwe {date}. Ufuna ini?", odp_csv: "Ifayili le-CSV", odp_csv_d: "Zonke izibalo; livuleka ku-Excel", odp_xlsx: "Ibhuku le-Excel", odp_xlsx_d: "Ithebula elilungisiweyo lekhasi le-About", odp_png: "Umfanekiso weshathi", odp_png_d: "Ishathi yezibalo ezinkulu ngesikhathi",
+  odp_link: "Vula kuphothali", odp_link_d: "Bona, hlunga njalo ulande ku-inthanethi", odp_link_text: "Vula le dataset ku-Open Data Portal:\n{url}", odp_again: "Kukhona okunye okufunayo kule dataset?", odp_another: "Enye i-dataset",
+  odp_failed: "Uxolo, le dataset ayitholakalanga ku-Open Data Portal khathesi. Ungayivula lapha: {url}", odp_updated: "Kuvuselelwe", odp_source: "Umthombo", odp_chart_footer: "Umthombo: ZIMSTAT Open Data Portal · {url} · {date}",
+  sdg_intro: "Izibalo ze-SDG zeZimbabwe zikhutshwa kusiza se-SDG: {url}\n\nIzibalo lama-dataset e-SDG atholakala lapha kungezansi.",
   alerts_added: "Uzakwaziswa lapha nxa izibalo ezintsha ze{topic} zikhutshwa. Bhala *stop alerts* ukuma.",
   dr_intro: "Idatha ekhutshiweyo itholakala mahala ku-Open Data Portal: {url}\n\nSebenzisa leli fomu emathebuleni akho loba i-microdata. Uzathola inombolo ye-DR lezaziso lapha.",
   dr_type: "Ngubani ocela idatha?", dr_name: "Ibizo lakho eligcweleyo?", dr_org: "Inhlanganiso yakho? (bhala *none* nxa ingekho)", dr_email: "I-imeyili yakho yempendulo?",

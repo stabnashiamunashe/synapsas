@@ -6,7 +6,7 @@ import dayjs from "dayjs";
 import Link from "next/link";
 import { useState } from "react";
 import { api, formatDate, useApi, useMe } from "@/lib/client";
-import { STAT_TOPICS } from "@/lib/whatsapp/i18n";
+import { STAT_GROUPS, STAT_TOPICS, topicLabel } from "@/lib/whatsapp/i18n";
 
 type Kind = "indicators" | "releases" | "subscriptions" | "surveys" | "officers" | "documents";
 interface Indicator { id: string; topic: string; name: string; value: string; period?: string | null; releaseDate?: string | null; url?: string | null; note?: string | null; sortOrder: number; isActive: boolean; updatedAt: string }
@@ -15,10 +15,12 @@ interface Subscription { id: string; phone: string; topics: string; frequency: s
 interface Survey { id: string; code: string; name: string; description?: string | null; areas?: string | null; startsOn?: string | null; endsOn?: string | null; isActive: boolean; _count: { officers: number } }
 interface Officer { id: string; badgeNo: string; name: string; role?: string | null; area?: string | null; validFrom?: string | null; validTo?: string | null; isActive: boolean; survey?: { id: string; name: string; code: string } | null }
 interface Category { id: string; name: string; department?: { name: string } | null }
+interface OdpTopic { key: string; group: string; name: string; categories: string[]; count: number; newest: string | null; page: string | null; datasets: { id: string; title: string; lastUpdate: string | null }[] }
 interface StatDoc { id: string; topic: string; title: string; description?: string | null; period?: string | null; fileName: string; mimeType: string; size: number; sortOrder: number; isActive: boolean; sentCount: number; createdAt: string }
 
-const topicOptions = STAT_TOPICS.map((t) => ({ value: t.key, label: t.en }));
-const topicName = (k: string) => (k === "ALL" ? "All topics" : STAT_TOPICS.find((t) => t.key === k)?.en || k);
+// topics grouped by area, as the bot lists them (older keys such as CPI or GDP still resolve to their new topic)
+const topicOptions = STAT_GROUPS.map((g) => ({ label: g.en, title: g.en, options: STAT_TOPICS.filter((t) => t.group === g.key).map((t) => ({ value: t.key, label: t.en })) }));
+const topicName = (k: string) => (k === "ALL" ? "All topics" : topicLabel(k, "en"));
 const fmtSize = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 const D = (v?: string | null) => (v ? dayjs(v) : null);
 const S = (v?: dayjs.Dayjs | null) => (v ? v.format("YYYY-MM-DD") : null);
@@ -54,6 +56,26 @@ function Editor<T extends { id: string }>({ kind, title, intro, columns, fields,
   );
 }
 
+/** What the Open Data Portal offers under each bot topic: the bot lists these datasets and sends them as CSV, Excel or a chart image. */
+function OdpDatasets() {
+  const { data, isLoading } = useApi<{ base: string; reachable: boolean; datasetCount: number; topics: OdpTopic[] }>("/api/chatbot/odp");
+  const groupName = (k: string) => STAT_GROUPS.find((g) => g.key === k)?.en || k;
+  return (
+    <Card title="Open Data Portal datasets" extra={data ? <a href={data.base} target="_blank" rel="noreferrer">{data.base.replace(/^https?:\/\//, "")}</a> : null} loading={isLoading}>
+      {data && !data.reachable && <Alert type="warning" showIcon style={{ marginBottom: 12 }} title="The portal could not be reached" description="The bot still shows headline figures and uploaded files; the portal rows reappear as soon as it answers again." />}
+      <Typography.Paragraph type="secondary">Under every topic the bot offers <b>Data from the portal</b>: the datasets the Open Data Portal files under that topic, read live from its catalogue ({data?.datasetCount || 0} datasets). A person picks one and receives it as a <b>CSV file</b>, an <b>Excel workbook</b> or a <b>chart image</b> built from the portal data at that moment. Nothing to maintain here; file datasets under the right category on the portal and they appear. Topics with no category yet still show their headline figures and uploaded files.</Typography.Paragraph>
+      <Table<OdpTopic> rowKey="key" size="small" dataSource={data?.topics || []} pagination={false} scroll={{ x: 800 }} columns={[
+        { title: "Area", width: 170, render: (_, r) => groupName(r.group) },
+        { title: "Topic", width: 220, render: (_, r) => r.name },
+        { title: "Portal category", width: 180, render: (_, r) => r.categories.length ? r.categories.join(", ") : <span className="muted">not on the portal yet</span> },
+        { title: "Datasets", width: 90, align: "right", render: (_, r) => r.count },
+        { title: "Newest update", width: 130, render: (_, r) => r.newest ? r.newest.slice(0, 10) : "–" },
+        { title: "", render: (_, r) => r.count ? <Space size={4} wrap>{r.datasets.slice(0, 3).map((d) => <a key={d.id} href={`/api/chatbot/odp?dataset=${encodeURIComponent(d.id)}&format=png`} target="_blank" rel="noreferrer" title={`${d.title}: preview the chart the bot sends`}>{d.title.length > 40 ? `${d.title.slice(0, 39)}…` : d.title}</a>)}{r.page && <a href={r.page} target="_blank" rel="noreferrer">all on the portal</a>}</Space> : null },
+      ]} />
+    </Card>
+  );
+}
+
 /** Files the bot can send as WhatsApp attachments: uploaded publications per topic, plus a preview of the generated Excel/PDF tables. */
 function Documents() {
   const { message } = App.useApp();
@@ -61,7 +83,7 @@ function Documents() {
   const [editing, setEditing] = useState<StatDoc | "new" | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
-  const [previewTopic, setPreviewTopic] = useState("CPI");
+  const [previewTopic, setPreviewTopic] = useState("PI");
   const [form] = Form.useForm();
   const open = (r: StatDoc | "new") => { setEditing(r); setFile(null); form.resetFields(); form.setFieldsValue(r === "new" ? { topic: "CPI", isActive: true } : r); };
   const save = async () => {
@@ -83,6 +105,7 @@ function Documents() {
   const docTopics = [...topicOptions, { value: "ALL", label: "All topics (offered under every topic)" }];
   return (
     <Space orientation="vertical" size={16} style={{ width: "100%" }}>
+      <OdpDatasets />
       <Card title="Generated tables" extra={<Space><Select value={previewTopic} onChange={setPreviewTopic} options={[...topicOptions, { value: "ALL", label: "All topics" }]} style={{ width: 220 }} /><Button icon={<FileExcelOutlined />} href={`/api/chatbot/export?topic=${previewTopic}&format=xlsx`}>Excel</Button><Button icon={<FilePdfOutlined />} href={`/api/chatbot/export?topic=${previewTopic}&format=pdf&inline=1`} target="_blank">PDF</Button></Space>}>
         <Typography.Paragraph type="secondary" style={{ margin: 0 }}>Under every topic the bot offers <b>Excel table</b> and <b>PDF table</b>: a file built on the spot from the live indicators above (name, latest value, reference period, release date, note, ODP link), in the person&apos;s language, and <b>All topics (Excel)</b> with every headline figure in one workbook. Nothing to maintain here; the preview shows exactly what WhatsApp delivers.</Typography.Paragraph>
       </Card>
@@ -129,13 +152,14 @@ function Routing() {
   return (
     <Card title="Routing and options">
       <Typography.Paragraph type="secondary">Where each WhatsApp submission lands in the service desk, the Open Data Portal link the bot quotes, and which menu options are switched on for the phased rollout. Greeting and help text are under <Link href="/app/settings/whatsapp">WhatsApp channel</Link>.</Typography.Paragraph>
-      <Form form={form} layout="vertical" initialValues={{ dataRequestCategoryId: wa.dataRequestCategoryId, verificationCategoryId: wa.verificationCategoryId, liveChatCategoryId: wa.liveChatCategoryId, erasureCategoryId: wa.erasureCategoryId, odpUrl: wa.odpUrl, officeHoursNote: wa.officeHoursNote, enabled: ["stats", "data", "verify", "alerts", "enquiry", "chat"].filter((k) => !(wa.disabledOptions || []).includes(k as never)) }} onFinish={(v) => save({ ...v, enabled: undefined, disabledOptions: ["stats", "data", "verify", "alerts", "enquiry", "chat"].filter((k) => !v.enabled.includes(k)) })}>
+      <Form form={form} layout="vertical" initialValues={{ dataRequestCategoryId: wa.dataRequestCategoryId, verificationCategoryId: wa.verificationCategoryId, liveChatCategoryId: wa.liveChatCategoryId, erasureCategoryId: wa.erasureCategoryId, odpUrl: wa.odpUrl, sdgUrl: wa.sdgUrl, officeHoursNote: wa.officeHoursNote, enabled: ["stats", "data", "verify", "alerts", "enquiry", "chat"].filter((k) => !(wa.disabledOptions || []).includes(k as never)) }} onFinish={(v) => save({ ...v, enabled: undefined, disabledOptions: ["stats", "data", "verify", "alerts", "enquiry", "chat"].filter((k) => !v.enabled.includes(k)) })}>
         <Row gutter={12}>
           <Col span={12}><Form.Item name="dataRequestCategoryId" label="Data requests (DR-) go to" extra="Dissemination queue"><Select allowClear showSearch optionFilterProp="label" options={catOpts} /></Form.Item></Col>
           <Col span={12}><Form.Item name="verificationCategoryId" label="Field verification concerns (VR-) go to" extra="Field Operations queue"><Select allowClear showSearch optionFilterProp="label" options={catOpts} /></Form.Item></Col>
           <Col span={12}><Form.Item name="liveChatCategoryId" label="Live chats are filed under" extra="Blank: the topic the user picked"><Select allowClear showSearch optionFilterProp="label" options={catOpts} /></Form.Item></Col>
           <Col span={12}><Form.Item name="erasureCategoryId" label="'Delete my data' requests go to"><Select allowClear showSearch optionFilterProp="label" options={catOpts} /></Form.Item></Col>
-          <Col span={12}><Form.Item name="odpUrl" label="Open Data Portal (ODP 2.0) link"><Input placeholder="https://data.zimstat.co.zw" /></Form.Item></Col>
+          <Col span={12}><Form.Item name="odpUrl" label="Open Data Portal link" extra="The Data Browser address; the bot reads its catalogue and datasets from here"><Input placeholder="https://zimstat.opendataforafrica.org" /></Form.Item></Col>
+          <Col span={12}><Form.Item name="sdgUrl" label="SDG indicators site" extra="Quoted under the SDGs area"><Input placeholder="https://sdg-zimstat.github.io/" /></Form.Item></Col>
           <Col span={12}><Form.Item name="officeHoursNote" label="Office hours wording for live chat" extra="Blank: built from Settings → Organisation working hours"><Input placeholder="Monday to Friday, 08:00 to 16:30" /></Form.Item></Col>
           <Col span={24}><Form.Item name="enabled" label="Menu options switched on"><Checkbox.Group options={[{ value: "stats", label: "1 Latest statistics" }, { value: "data", label: "2 Data requests" }, { value: "verify", label: "3 Verify officer / survey" }, { value: "alerts", label: "4 Release calendar & alerts" }, { value: "enquiry", label: "5 Enquiries & complaints" }, { value: "chat", label: "6 Talk to an officer" }]} /></Form.Item></Col>
         </Row>

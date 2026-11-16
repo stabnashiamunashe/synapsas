@@ -56,7 +56,9 @@ export type WaOutgoing =
   | { type: "location_request"; body: string }
   | { type: "template"; name: string; language: string; bodyParams: string[]; urlButtonParam?: string }
   /** A file. `source` is resolved to bytes and uploaded to Meta at send time; `fallback` is sent as text when that fails. */
-  | { type: "document"; filename: string; caption?: string; mediaId?: string; link?: string; source?: DocSource; fallback?: string };
+  | { type: "document"; filename: string; caption?: string; mediaId?: string; link?: string; source?: DocSource; fallback?: string }
+  /** A picture (PNG/JPEG), e.g. a chart generated from a portal dataset; resolved and uploaded like a document. */
+  | { type: "image"; caption?: string; mediaId?: string; link?: string; source?: DocSource; fallback?: string };
 
 /** WhatsApp's interactive-message limits: headers/footers 60, body 1024, button labels 20, list rows 24 (title) / 72 (description), 3 buttons, 10 rows. The sandbox applies the same clipping so what you see is what WhatsApp shows. */
 const fit = (s: string, max: number) => (s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s);
@@ -67,6 +69,7 @@ export function clipForWhatsApp(m: WaOutgoing): WaOutgoing {
     case "list": return { ...m, header: m.header?.slice(0, 60), footer: m.footer?.slice(0, 60), body: m.body.slice(0, 1024), button: fit(m.button, 20), sections: m.sections.slice(0, 10).map((s) => ({ ...(s.title ? { title: fit(s.title, 24) } : {}), rows: s.rows.slice(0, 10).map((r) => ({ id: r.id.slice(0, 200), title: fit(r.title, 24), ...(r.description ? { description: fit(r.description, 72) } : {}) })) })) };
     case "location_request": return { ...m, body: m.body.slice(0, 1024) };
     case "document": return { ...m, filename: m.filename.slice(0, 240), caption: m.caption?.slice(0, 1024) };
+    case "image": return { ...m, caption: m.caption?.slice(0, 1024) };
     default: return m;
   }
 }
@@ -104,6 +107,8 @@ export function toPayload(to: string, raw: WaOutgoing): Record<string, unknown> 
       return { ...base, type: "interactive", interactive: { type: "location_request_message", body: { text: m.body.slice(0, 1024) }, action: { name: "send_location" } } };
     case "document":
       return { ...base, type: "document", document: { ...(m.mediaId ? { id: m.mediaId } : { link: m.link || "" }), filename: m.filename, ...(m.caption ? { caption: m.caption } : {}) } };
+    case "image":
+      return { ...base, type: "image", image: { ...(m.mediaId ? { id: m.mediaId } : { link: m.link || "" }), ...(m.caption ? { caption: m.caption } : {}) } };
     case "template": {
       const components: unknown[] = [];
       if (m.bodyParams.length) components.push({ type: "body", parameters: m.bodyParams.map((t) => ({ type: "text", text: t.slice(0, 1024) })) });
@@ -122,6 +127,7 @@ export function describe(m: WaOutgoing): string {
     case "location_request": return `${m.body}\n[Send location]`;
     case "template": return `template ${m.name}(${m.bodyParams.join(", ")})`;
     case "document": return `📎 ${m.filename}${m.caption ? `\n${m.caption}` : ""}`;
+    case "image": return `🖼 ${m.caption || "image"}`;
   }
 }
 
@@ -151,7 +157,7 @@ export async function sendWhatsApp(to: string, m: WaOutgoing, opts: { orgId?: st
     return false;
   }
   let msg = m;
-  if (m.type === "document" && !m.mediaId && !m.link) {
+  if ((m.type === "document" || m.type === "image") && !m.mediaId && !m.link) {
     // generate or read the file now, push it to Meta's media store, then send by media id
     const file = m.source ? await resolveDocument(m.source) : null;
     const mediaId = file ? await uploadMedia(file.bytes, file.mimeType, file.filename) : null;
@@ -160,7 +166,8 @@ export async function sendWhatsApp(to: string, m: WaOutgoing, opts: { orgId?: st
       if (m.fallback) return sendWhatsApp(phone, { type: "text", text: m.fallback }, opts);
       return false;
     }
-    msg = { ...m, mediaId, filename: m.filename || file!.filename };
+    const caption = (file as { caption?: string }).caption || m.caption;
+    msg = m.type === "document" ? { ...m, mediaId, caption, filename: m.filename || file!.filename } : { ...m, mediaId, caption };
   }
   try {
     const res = await fetch(`https://graph.facebook.com/${cfg.apiVersion}/${cfg.phoneNumberId}/messages`, {

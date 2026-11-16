@@ -5,7 +5,7 @@ import { prisma } from "../prisma";
 import { parseJson } from "../json";
 import { CASE_STATUS_LABELS, type CaseSettings, type CaseStatus } from "../caseTypes";
 import { inSessionWindow, sendWhatsApp, waConfig } from "./client";
-import { LANG_LABELS, topicLabel, type Lang } from "./i18n";
+import { LANG_LABELS, groupOf, normalizeTopic, topicLabel, type Lang } from "./i18n";
 
 type C = { id: string; orgId: string; referenceNo: string; title: string; status: string; slaHours: number; reporterPhone: string | null; source: string };
 
@@ -48,7 +48,8 @@ export async function notifyReleaseSubscribers(r: Release, opts: { simulate?: bo
   let sent = 0;
   for (const s of subs) {
     const topics = parseJson<string[]>(s.topics, []);
-    if (topics.length && !topics.includes(r.topic)) continue;
+    const wanted = new Set([r.topic, normalizeTopic(r.topic), groupOf(r.topic) || ""]);
+    if (topics.length && !topics.some((k) => wanted.has(k))) continue;
     const lang = (["en", "sn", "nd"].includes(s.language) ? s.language : "en") as Lang;
     const line = `*${r.title}* (${topicLabel(r.topic, lang)})${r.summary ? `\n${r.summary}` : ""}${r.url ? `\n${r.url}` : ""}`;
     let ok = false;

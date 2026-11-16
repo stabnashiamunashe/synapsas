@@ -18,6 +18,7 @@ type Reply =
   | { type: "list"; body: string; header?: string; button: string; sections: { title?: string; rows: { id: string; title: string; description?: string }[] }[] }
   | { type: "location_request"; body: string }
   | { type: "document"; filename: string; caption?: string; url?: string }
+  | { type: "image"; caption?: string; url?: string }
   | { type: "template"; name: string; bodyParams: string[] };
 type Bubble = { from: "user" | "bot"; reply?: Reply; text?: string };
 
@@ -69,6 +70,13 @@ export default function WhatsAppSettingsPage() {
           <FileTextOutlined style={{ fontSize: 22 }} />
           <div style={{ minWidth: 0 }}><a href={r.url} target="_blank" rel="noreferrer" style={{ fontWeight: 600, wordBreak: "break-all" }}>{r.filename}</a><div className="muted" style={{ fontSize: 11 }}>Document · opens as the attachment WhatsApp delivers</div></div>
         </div>
+        {r.caption && <div style={{ whiteSpace: "pre-wrap", marginTop: 6 }}>{r.caption}</div>}
+      </div>
+    );
+    if (r.type === "image") return (
+      <div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <a href={r.url} target="_blank" rel="noreferrer"><img src={r.url} alt={r.caption || "image"} style={{ display: "block", maxWidth: "100%", borderRadius: 6, border: "1px solid var(--ant-color-border, #d9d9d9)" }} /></a>
         {r.caption && <div style={{ whiteSpace: "pre-wrap", marginTop: 6 }}>{r.caption}</div>}
       </div>
     );

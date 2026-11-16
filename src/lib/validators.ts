@@ -361,7 +361,7 @@ export const caseSettingsSchema = z.object({
   whatsapp: z.object({
     enabled: z.boolean().optional(), greeting: z.string().max(500).optional(), notifyAllReporters: z.boolean().optional(), helpText: z.string().max(1000).optional(),
     dataRequestCategoryId: z.string().max(64).optional().nullable(), verificationCategoryId: z.string().max(64).optional().nullable(), liveChatCategoryId: z.string().max(64).optional().nullable(), erasureCategoryId: z.string().max(64).optional().nullable(),
-    odpUrl: z.string().max(300).optional(), officeHoursNote: z.string().max(300).optional(),
+    odpUrl: z.string().max(300).optional(), sdgUrl: z.string().max(300).optional(), officeHoursNote: z.string().max(300).optional(),
     disabledOptions: z.array(z.enum(["stats", "data", "verify", "alerts", "enquiry", "chat"])).optional(),
   }).optional(),
 });

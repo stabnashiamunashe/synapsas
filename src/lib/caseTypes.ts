@@ -62,6 +62,8 @@ export interface CaseSettings {
     dataRequestCategoryId?: string; verificationCategoryId?: string; liveChatCategoryId?: string; erasureCategoryId?: string;
     /** Open Data Portal link quoted by the bot */
     odpUrl?: string;
+    /** SDG indicator site quoted under the SDGs area (default https://sdg-zimstat.github.io/) */
+    sdgUrl?: string;
     /** optional override for the office-hours message ("Officers reply Monday to Friday, 08:00 to 16:30") */
     officeHoursNote?: string;
     /** switch individual menu options off while they are not ready (phased rollout) */

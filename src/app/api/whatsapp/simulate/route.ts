@@ -25,5 +25,5 @@ export const POST = withAuth(async (req, { user }) => {
   const inbound: Inbound = input.kind === "media" ? { kind: "media", mediaId: `sandbox-${Date.now()}`, mimeType: input.mimeType, fileName: input.fileName, caption: input.caption } : (input as Inbound);
   const replies = await handleInbound(user.orgId, p, name || "Sandbox user", inbound, { simulate: true });
   // documents are not uploaded to Meta in the sandbox; link to the in-app route that serves the same bytes
-  return ok({ replies: replies.map(clipForWhatsApp).map((r) => (r.type === "document" && r.source ? { ...r, source: undefined, fallback: undefined, url: documentUrl(r.source) } : r)) });
+  return ok({ replies: replies.map(clipForWhatsApp).map((r) => ((r.type === "document" || r.type === "image") && r.source ? { ...r, source: undefined, fallback: undefined, url: documentUrl(r.source) } : r)) });
 }, "ADMIN");

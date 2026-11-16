@@ -6,13 +6,16 @@ import ExcelJS from "exceljs";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { prisma } from "../prisma";
 import { safeMimeFor } from "../uploads";
-import { STAT_TOPICS, t, topicLabel, type Lang } from "./i18n";
+import { STAT_TOPICS, t, topicAliases, topicLabel, type Lang } from "./i18n";
+import { ODP_MIME, captionFor, fetchTable, odpFilename, pickSeries, tableToCsv, tableToXlsx, type OdpFormat } from "./odp";
 
 export type ExportFormat = "xlsx" | "pdf";
 /** Where the bytes of a document message come from; resolved only when the message is actually sent. */
 export type DocSource =
   | { kind: "stored"; documentId: string }
-  | { kind: "export"; orgId: string; topic: string; format: ExportFormat; lang: Lang };
+  | { kind: "export"; orgId: string; topic: string; format: ExportFormat; lang: Lang }
+  /** a dataset fetched from the Open Data Portal when the message is sent (CSV, Excel or chart image) */
+  | { kind: "odp"; base: string; datasetId: string; format: OdpFormat; lang: Lang };
 export type DocFile = { bytes: Buffer; mimeType: string; filename: string };
 
 const MIME: Record<ExportFormat, string> = { xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", pdf: "application/pdf" };
@@ -31,7 +34,7 @@ export function exportFilename(orgName: string, topic: string, format: ExportFor
 }
 
 async function rows(orgId: string, topic: string) {
-  return prisma.statIndicator.findMany({ where: { orgId, isActive: true, ...(topic === "ALL" ? {} : { topic }) }, orderBy: [{ topic: "asc" }, { sortOrder: "asc" }, { name: "asc" }] });
+  return prisma.statIndicator.findMany({ where: { orgId, isActive: true, ...(topic === "ALL" ? {} : { topic: { in: topicAliases(topic) } }) }, orderBy: [{ topic: "asc" }, { sortOrder: "asc" }, { name: "asc" }] });
 }
 async function orgName(orgId: string) {
   return (await prisma.organization.findUnique({ where: { id: orgId }, select: { name: true } }))?.name || "Statistics";
@@ -134,6 +137,7 @@ export async function readStoredDocument(documentId: string): Promise<(DocFile &
 /** Resolve a document source to bytes (used when sending for real; the sandbox links to the download routes instead). */
 export async function resolveDocument(src: DocSource): Promise<DocFile | null> {
   if (src.kind === "stored") return readStoredDocument(src.documentId);
+  if (src.kind === "odp") return buildOdpFile(src.base, src.datasetId, src.format, src.lang);
   if (!STAT_TOPICS.some((x) => x.key === src.topic) && src.topic !== "ALL") return null;
   if (src.format === "xlsx") return buildIndicatorsXlsx(src.orgId, src.topic, src.lang);
   const org = await prisma.organization.findUnique({ where: { id: src.orgId }, select: { settings: true } });
@@ -141,7 +145,24 @@ export async function resolveDocument(src: DocSource): Promise<DocFile | null> {
   return buildIndicatorsPdf(src.orgId, src.topic, src.lang, odpUrl);
 }
 
+/** A portal dataset as the file the bot sends: CSV, Excel workbook or a PNG line chart of its main series. */
+export async function buildOdpFile(base: string, datasetId: string, format: OdpFormat, lang: Lang): Promise<(DocFile & { caption: string }) | null> {
+  const table = await fetchTable(base, datasetId).catch((e) => { console.error("[odp] dataset fetch failed", datasetId, (e as Error).message); return null; });
+  if (!table) return null;
+  const filename = odpFilename(datasetId, format);
+  const caption = captionFor(table, lang);
+  if (format === "csv") return { bytes: tableToCsv(table), mimeType: ODP_MIME.csv, filename, caption };
+  if (format === "xlsx") return { bytes: await tableToXlsx(table), mimeType: ODP_MIME.xlsx, filename, caption };
+  const series = pickSeries(table);
+  if (!series.length) return null;
+  const { renderLineChart } = await import("./odpChart");
+  const bytes = await renderLineChart({ title: table.title, subtitle: table.constants.map(([k, v]) => `${k}: ${v}`).join(" · "), series, footer: t(lang, "odp_chart_footer", { url: table.url, date: today() }) });
+  return { bytes, mimeType: ODP_MIME.png, filename, caption };
+}
+
 /** In-app URL that serves the same bytes (sandbox preview and staff downloads). */
 export function documentUrl(src: DocSource) {
-  return src.kind === "stored" ? `/api/chatbot/documents/${src.documentId}/download` : `/api/chatbot/export?topic=${encodeURIComponent(src.topic)}&format=${src.format}&lang=${src.lang}`;
+  if (src.kind === "stored") return `/api/chatbot/documents/${src.documentId}/download`;
+  if (src.kind === "odp") return `/api/chatbot/odp?dataset=${encodeURIComponent(src.datasetId)}&format=${src.format}&lang=${src.lang}`;
+  return `/api/chatbot/export?topic=${encodeURIComponent(src.topic)}&format=${src.format}&lang=${src.lang}`;
 }
