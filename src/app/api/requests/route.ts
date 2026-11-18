@@ -30,7 +30,7 @@ export const GET = withAuth(async (req, { user }) => {
     ...(projectId ? { projectId } : {}),
     ...(scope === "mine" ? { requesterId: user.id } : {}),
     ...(scope === "involved" ? { OR: [{ requesterId: user.id }, { approvals: { some: { approverId: user.id } } }] } : {}),
-    ...(search ? { OR: [{ title: { contains: search } }, { referenceNo: { contains: search } }] } : {}),
+    ...(search ? { OR: [{ title: { contains: search, mode: "insensitive" as const } }, { referenceNo: { contains: search, mode: "insensitive" as const } }] } : {}),
     ...(from || to
       ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } }
       : {}),

@@ -34,7 +34,7 @@ export const GET = withAuth(async (req, { user }) => {
   if (q.get("departmentId")) where.departmentId = q.get("departmentId")!;
   if (q.get("assignedToId")) where.assignedToId = q.get("assignedToId")!;
   const s = q.get("q")?.trim();
-  if (s) where.OR = [{ tag: { contains: s } }, { serial: { contains: s } }, { make: { contains: s } }, { model: { contains: s } }, { assignedTo: { name: { contains: s } } }];
+  if (s) where.OR = [{ tag: { contains: s, mode: "insensitive" as const } }, { serial: { contains: s, mode: "insensitive" as const } }, { make: { contains: s, mode: "insensitive" as const } }, { model: { contains: s, mode: "insensitive" as const } }, { assignedTo: { name: { contains: s, mode: "insensitive" as const } } }];
   const list = await prisma.asset.findMany({ where, include: assetInclude, orderBy: [{ category: "asc" }, { tag: "asc" }], take: 2000 });
   if (q.get("format") === "csv") {
     const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;

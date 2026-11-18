@@ -80,3 +80,15 @@ Variables are filled as: reference number, title or status, SLA hours or the off
 - Every send has an 8-second timeout and never throws; failures are recorded in the message log with Meta's error text.
 - No personal data beyond the phone number, profile name and what the person typed is stored; phone numbers are masked in the log.
 - The sandbox on the settings page runs the same engine without Meta, so the flow can be tested before go-live.
+
+## The WhatsApp desk (`/app/chatbot`)
+
+Everything the bot handles is visible and acted on in **Service desk → WhatsApp desk**:
+
+- **Overview**: live chats waiting, data requests pending, conversations in the last 24 h / 7 days, what the bot handed out this week (headline figures viewed, portal datasets, Excel/PDF tables and publications sent, data requests lodged), the latest WhatsApp cases.
+- **Live chats**: option 6 ("Talk to an officer") opens a TK- case; it appears here as a chat. Officers see the chats of their section (administrators all of them), **accept** a chat, **reply** (delivered to the person at once as a WhatsApp text, kept on the case) and **end** it (the person is told and returns to the menu). The person's messages arrive in the chat while they stay in the chat step; a yellow panel shows what they did with the bot before asking for an officer. Outside office hours the bot offers a ticket instead; when the organisation has no enquiry categories yet the chat opens without the topic question and administrators are notified.
+- **Data requests**: every DR- case with the answers given on WhatsApp (requester, organisation, subject area, geographic level, period, format, purpose, data needed, attachments). Section heads and administrators **approve** (case → In progress), **decline** (reason required; case → Rejected) or **mark as delivered** (case → Resolved); the requester is told on WhatsApp (text inside the 24-hour window, the case-update template outside it) and by email. CSV export of the list.
+- **Conversations** (managers and up): one row per number with the step the person is at, the full transcript with delivery status of every outbound message, their cases, alert subscription and the data they were given; a message box for ad-hoc replies inside the 24-hour window. Numbers are masked (administrators see the full number).
+- **Data log** (managers and up): the `ChatbotDataLog` table, one row per headline figure viewed, portal dataset or link sent, Excel/PDF table or publication sent, and data request lodged, with filters by kind, area/topic, date and text, totals by kind and topic, the most requested items, and CSV export.
+
+API: `/api/chatbot/overview`, `/api/chatbot/chats[/{id}]` (POST `{action: accept|reply|end, text}`), `/api/chatbot/data-requests[/{id}]` (POST `{action: approve|decline|deliver, note}`), `/api/chatbot/conversations[/{id}]` (POST `{text}`), `/api/chatbot/data-log` (`format=csv`).

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One-shot pull + build + (re)start for an Ubuntu server.
 #   bash scripts/deploy.sh
-# Needs: git, Node 20+, MySQL reachable via DATABASE_URL in .env, and (optionally) pm2.
+# Needs: git, Node 20+, PostgreSQL reachable via DATABASE_URL in .env, and (optionally) pm2.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

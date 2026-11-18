@@ -1,28 +1,29 @@
-# ZimStat Approvals production stack: app (UI + API) on host port 3443 and MariaDB 11. Put nginx in front for the domain (deploy/nginx/).
+# ZimStat Approvals production stack: app (UI + API) on host port 3443 and PostgreSQL 16. Put nginx in front for the domain (deploy/nginx/).
 #   cp .env.docker.example .env && nano .env
-#   docker compose up -d --build
-#   docker compose --profile seed run --rm seed      # optional demo data, first time only
+#   bash scripts/deploy-docker.sh                                           # build, start, sync the schema, create the administrator
+#   docker compose --profile seed run --rm seed npx tsx prisma/seed.ts      # optional demo workspace (never on a live system)
+#   bash scripts/backup-db.sh                                               # compressed pg_dump into backups/
 
 services:
   db:
-    # MariaDB (same family as XAMPP's bundled server): accepts the schema's TEXT column defaults, which MySQL 8 rejects.
-    image: mariadb:11
+    image: postgres:16-alpine
     restart: unless-stopped
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     environment:
-      MARIADB_DATABASE: documentdb
-      MARIADB_USER: synapsas
-      MARIADB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
-      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD in .env}
+      POSTGRES_DB: ${DB_NAME:-approvals}
+      POSTGRES_USER: ${DB_USER:-synapsas}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    # sized for a small VPS; raise shared_buffers with the server's RAM (about a quarter of it)
+    command: ["postgres", "-c", "max_connections=200", "-c", "shared_buffers=256MB", "-c", "work_mem=8MB", "-c", "log_min_duration_statement=2000"]
     volumes:
-      - db_data:/var/lib/mysql
+      - pg_data:/var/lib/postgresql/data
     security_opt:
       - no-new-privileges:true
     healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-synapsas} -d ${DB_NAME:-approvals}"]
       interval: 10s
       timeout: 5s
       retries: 12
+    mem_limit: 1g
 
   app:
     build: .
@@ -30,7 +31,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      DATABASE_URL: mysql://synapsas:${DB_PASSWORD}@db:3306/documentdb
+      DATABASE_URL: postgresql://${DB_USER:-synapsas}:${DB_PASSWORD}@db:5432/${DB_NAME:-approvals}?schema=public&connection_limit=20
       PORT: "3000"
       UPLOAD_DIR: /app/uploads
     ports:
@@ -51,7 +52,8 @@ services:
       db:
         condition: service_healthy
 
-  # One-off: load the demo workspace (ict.admin@zimstat.co.zw / Password123!).
+  # One-off tasks that need the full toolchain (tsx, Prisma CLI). Default: make sure the organisation and the
+  # administrator exist (prisma/seed-admin.ts; idempotent). Run by scripts/deploy-docker.sh after every deploy.
   seed:
     profiles: ["seed"]
     build:
@@ -59,12 +61,12 @@ services:
       target: build
     env_file: .env
     environment:
-      DATABASE_URL: mysql://synapsas:${DB_PASSWORD}@db:3306/documentdb
-    command: ["npx", "tsx", "prisma/seed.ts"]
+      DATABASE_URL: postgresql://${DB_USER:-synapsas}:${DB_PASSWORD}@db:5432/${DB_NAME:-approvals}?schema=public
+    command: ["npx", "tsx", "prisma/seed-admin.ts"]
     depends_on:
       db:
         condition: service_healthy
 
 volumes:
-  db_data:
+  pg_data:
   uploads:

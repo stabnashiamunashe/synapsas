@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Waits for MySQL, syncs the Prisma schema, then starts the Next.js server.
+# Waits for PostgreSQL, syncs the Prisma schema, then starts the Next.js server.
 set -e
 
 if [ -z "$DATABASE_URL" ]; then

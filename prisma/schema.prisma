@@ -1,5 +1,5 @@
-// Prisma schema for MySQL (database: documentdb).
-// JSON-ish columns are stored as TEXT/LONGTEXT (JSON text) so the model stays portable.
+// Prisma schema for PostgreSQL (database: approvals). JSON-ish columns are stored as TEXT (JSON text) so the model stays portable.
+// Text searches use `mode: "insensitive"` in the API (Postgres compares case-sensitively; MySQL did not).
 
 generator client {
   provider      = "prisma-client-js"
@@ -7,7 +7,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -61,6 +61,7 @@ model Organization {
   statSubscriptions StatSubscription[]
   surveys           Survey[]
   fieldOfficers     FieldOfficer[]
+  chatbotDataLogs   ChatbotDataLog[]
 }
 
 model User {
@@ -163,8 +164,8 @@ model WorkflowTemplate {
   color       String?
   prefix      String   @default("REQ")
   counter     Int      @default(0)
-  fields      String   @default("[]") @db.LongText // JSON: FieldDef[]
-  levels      String   @default("[]") @db.LongText // JSON: LevelDef[]
+  fields      String   @default("[]") @db.Text // JSON: FieldDef[]
+  levels      String   @default("[]") @db.Text // JSON: LevelDef[]
   settings    String   @default("{}") @db.Text // JSON: TemplateSettings
   isActive    Boolean  @default(true)
   version     Int      @default(1)
@@ -185,13 +186,13 @@ model Request {
   referenceNo      String
   title            String    @db.VarChar(255)
   requesterId      String
-  data             String    @default("{}") @db.LongText // JSON form values
+  data             String    @default("{}") @db.Text // JSON form values
   status           String    @default("DRAFT") // DRAFT | PENDING | APPROVED | REJECTED | RETURNED | CANCELLED
   priority         String    @default("NORMAL") // LOW | NORMAL | HIGH | URGENT
   projectId        String?
   costAmount       Decimal?  @db.Decimal(18, 2) // extracted from the workflow's cost field at save/submit
   currentLevel     Int       @default(0)
-  templateSnapshot String    @default("{}") @db.LongText // JSON: { fields, levels, name, category }
+  templateSnapshot String    @default("{}") @db.Text // JSON: { fields, levels, name, category }
   activeLevels     String    @default("[]") @db.Text // JSON: level orders applicable after conditions
   dueAt            DateTime?
   submittedAt      DateTime?
@@ -462,8 +463,8 @@ model EmailOutbox {
   orgId         String?
   toEmail       String
   subject       String    @db.VarChar(500)
-  html          String    @db.LongText
-  text          String    @db.LongText
+  html          String    @db.Text
+  text          String    @db.Text
   category      String // security | notification | invitation | billing | digest
   status        String    @default("PENDING") // PENDING | SENT | FAILED
   attempts      Int       @default(0)
@@ -719,7 +720,7 @@ model Notice {
   id            String    @id @default(cuid())
   orgId         String
   title         String    @db.VarChar(255)
-  body          String    @db.LongText
+  body          String    @db.Text
   kind          String    @default("CIRCULAR") // CIRCULAR | POLICY | ANNOUNCEMENT | MEMO
   departmentIds String    @default("[]") @db.Text // JSON: empty = whole agency
   roles         String    @default("[]") @db.Text // JSON: empty = all roles
@@ -984,4 +985,26 @@ model FieldOfficer {
 
   @@unique([orgId, badgeNo])
   @@index([surveyId])
+}
+
+/// What the WhatsApp bot handed out or was asked for: headline figures viewed, portal datasets sent (CSV/Excel/chart),
+/// Excel/PDF tables and publications sent, and data requests lodged. Read on the WhatsApp desk (/app/chatbot).
+model ChatbotDataLog {
+  id        String   @id @default(cuid())
+  orgId     String
+  phone     String   @db.VarChar(32)
+  kind      String   @db.VarChar(20) // indicator | dataset | link | export | document | request
+  topic     String?  @db.VarChar(40) // STAT_TOPICS key (or area for data requests)
+  title     String   @db.VarChar(255)
+  ref       String?  @db.VarChar(160) // dataset id, indicator id, document id or case reference
+  format    String?  @db.VarChar(20) // csv | xlsx | png | pdf | requested format
+  caseId    String?
+  createdAt DateTime @default(now())
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, createdAt])
+  @@index([orgId, kind, createdAt])
+  @@index([orgId, topic])
+  @@index([phone, createdAt])
 }

@@ -30,7 +30,7 @@ export const GET = withAuth(async (req, { user }) => {
   if (q.get("slaBreached") === "1") { where.slaDueAt = { lt: new Date() }; where.status = { notIn: ["RESOLVED", "CLOSED", "REJECTED"], ...(statuses.length ? { in: statuses } : {}) }; }
   const search = q.get("q")?.trim();
   if (search) {
-    where.AND = [{ OR: [{ referenceNo: { contains: search } }, { title: { contains: search } }, { description: { contains: search } }, { reporterName: { contains: search } }, { reporterPhone: { contains: search } }, { locationAddress: { contains: search } }] }];
+    where.AND = [{ OR: [{ referenceNo: { contains: search, mode: "insensitive" as const } }, { title: { contains: search, mode: "insensitive" as const } }, { description: { contains: search, mode: "insensitive" as const } }, { reporterName: { contains: search, mode: "insensitive" as const } }, { reporterPhone: { contains: search, mode: "insensitive" as const } }, { locationAddress: { contains: search, mode: "insensitive" as const } }] }];
   }
   const [items, total, counts, breached] = await Promise.all([
     prisma.case.findMany({ where, include: caseInclude, orderBy: [{ createdAt: "desc" }], skip, take }),

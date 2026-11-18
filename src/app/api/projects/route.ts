@@ -17,7 +17,7 @@ export const GET = withAuth(async (req, { user }) => {
     where: {
       orgId: user.orgId,
       ...(status ? { status: { in: status.split(",") } } : all ? {} : { status: { in: ["ACTIVE", "ON_HOLD"] } }),
-      ...(search ? { OR: [{ name: { contains: search } }, { code: { contains: search } }] } : {}),
+      ...(search ? { OR: [{ name: { contains: search, mode: "insensitive" as const } }, { code: { contains: search, mode: "insensitive" as const } }] } : {}),
     },
     include,
     orderBy: [{ status: "asc" }, { name: "asc" }],

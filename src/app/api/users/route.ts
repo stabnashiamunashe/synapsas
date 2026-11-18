@@ -18,7 +18,7 @@ export const GET = withAuth(async (req, { user }) => {
     where: {
       orgId: user.orgId,
       ...(includeInactive ? {} : { isActive: true }),
-      ...(search ? { OR: [{ name: { contains: search } }, { email: { contains: search } }] } : {}),
+      ...(search ? { OR: [{ name: { contains: search, mode: "insensitive" as const } }, { email: { contains: search, mode: "insensitive" as const } }] } : {}),
     },
     select: userSelect,
     orderBy: { name: "asc" },

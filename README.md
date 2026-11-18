@@ -2,7 +2,7 @@
 
 Internal approval system for the **Zimbabwe National Statistics Agency**: travelling & subsistence advances and expense claims, leave applications and internal memos, routed through the same signatures as the paper forms (Head of Section → Finance → Director General, Supervisor → Head of Office → Registry, and so on).
 
-Next.js 16 (App Router) + Ant Design + Prisma on **MariaDB/MySQL**. The API lives in `src/app/api/*` and the UI in `src/app/*`. This `master` branch is the single-organisation edition; the multi-tenant SaaS edition with subscriptions and billing lives on the `billing` branch.
+Next.js 16 (App Router) + Ant Design + Prisma on **PostgreSQL 16**. The API lives in `src/app/api/*` and the UI in `src/app/*`. This `master` branch is the single-organisation edition; the multi-tenant SaaS edition with subscriptions and billing lives on the `billing` branch.
 
 - [docs/ZIMSTAT-WORKFLOWS.md](docs/ZIMSTAT-WORKFLOWS.md): how each paper form maps to a workflow.
 - [docs/TEST-ACCOUNTS.md](docs/TEST-ACCOUNTS.md): demo officers and walk-throughs.
@@ -10,33 +10,36 @@ Next.js 16 (App Router) + Ant Design + Prisma on **MariaDB/MySQL**. The API live
 
 ## Quick start (development)
 
-1. Create the database once (MariaDB 10.4+ or MySQL 8 with `sql_mode` allowing TEXT defaults; XAMPP's MariaDB works as is):
+1. Run a PostgreSQL 16 server and create an empty database, for example with Docker Desktop:
 
-   ```sql
-   CREATE DATABASE documentdb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```bash
+   docker run -d --name approvals-pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=approvals -p 5432:5432 postgres:16-alpine
    ```
 
-2. Copy `.env.example` to `.env` and set `DATABASE_URL`.
-3. Install, create the tables and seed the Agency:
+2. Copy `.env.example` to `.env` and set `DATABASE_URL` (`postgresql://postgres:postgres@localhost:5432/approvals?schema=public` for the container above).
+3. Install, create the tables and seed:
 
    ```bash
    npm install
-   npm run setup      # prisma db push + seed
-   npm run dev        # http://localhost:3000
+   npx prisma db push
+   npm run db:seed:admin   # clean workspace: the Agency and one administrator (ADMIN_EMAIL / ADMIN_PASSWORD, see prisma/seed-admin.ts)
+   npm run db:seed         # or the demo workspace with sample officers, requests and cases
+   npm run dev             # http://localhost:3000
    ```
 
-Sign in as `ict.admin@zimstat.co.zw` / `Password123!` (full list in docs/TEST-ACCOUNTS.md).
+The demo workspace signs in as `ict.admin@zimstat.co.zw` / `Password123!` (full list in docs/TEST-ACCOUNTS.md).
 
 ## Deploying with Docker (recommended)
 
-`docker-compose.yml` runs two containers: the app (UI + API, published on host port **3443**, bound to localhost) and MariaDB 11. nginx on the host serves the domain over HTTPS and proxies to port 3443.
+`docker-compose.yml` runs two containers: the app (UI + API, published on host port **3443**, bound to localhost) and PostgreSQL 16 (volume `pg_data`). nginx on the host serves the domain over HTTPS and proxies to port 3443. One script does everything, on the first install and on every update:
 
 ```bash
 git clone https://github.com/stabnashiamunashe/synapsas.git zimstat-approvals && cd zimstat-approvals
-cp .env.docker.example .env && nano .env   # DB passwords, AUTH_SECRET, APP_URL, SMTP settings
-docker compose up -d --build
-docker compose --profile seed run --rm seed              # Agency, sections, demo officers and the four workflows
+cp .env.docker.example .env && nano .env   # DB_PASSWORD, AUTH_SECRET, APP_URL, ADMIN_EMAIL/ADMIN_PASSWORD, SMTP settings
+bash scripts/deploy-docker.sh              # pull, build, start, sync the schema, create the administrator if missing
 ```
+
+The system starts **clean**: the Agency and the administrator from `.env` (`ADMIN_EMAIL`; `ADMIN_PASSWORD`, or a generated one printed once), nothing else. Sections, people, workflows, categories and chatbot content are set up in the app. The demo workspace is only for test servers: `docker compose --profile seed run --rm seed npx tsx prisma/seed.ts`. Back up the database with `bash scripts/backup-db.sh` (compressed `pg_dump` into `backups/`; put it in cron).
 
 nginx + certificate (replace the hostname in `deploy/nginx/approvals.zimstat.co.zw.conf` with yours):
 

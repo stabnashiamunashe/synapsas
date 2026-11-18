@@ -12,7 +12,7 @@ export function auditWhere(req: Request, orgId: string) {
   const category = q.get("category"); // auth | request | admin
   return {
     orgId,
-    ...(action ? { action: { contains: action } } : {}),
+    ...(action ? { action: { contains: action, mode: "insensitive" as const } } : {}),
     ...(category === "auth" ? { action: { startsWith: "auth." } } : {}),
     ...(category === "request" ? { action: { startsWith: "request." } } : {}),
     ...(category === "admin" ? { NOT: [{ action: { startsWith: "auth." } }, { action: { startsWith: "request." } }] } : {}),

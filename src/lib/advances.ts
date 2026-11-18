@@ -93,7 +93,7 @@ export async function advanceReminderSweep() {
   for (const a of due) {
     const outstanding = Number(a.amount) - Number(a.clearedAmount);
     const daysLate = Math.floor((now.getTime() - a.dueAt.getTime()) / 86400_000);
-    const finance = await prisma.department.findFirst({ where: { orgId: a.orgId, OR: [{ code: "FIN" }, { name: { contains: "Finance" } }] }, select: { headUserId: true } });
+    const finance = await prisma.department.findFirst({ where: { orgId: a.orgId, OR: [{ code: "FIN" }, { name: { contains: "Finance", mode: "insensitive" as const } }] }, select: { headUserId: true } });
     await notify(a.orgId, [a.userId, finance?.headUserId].filter((x): x is string => !!x), { title: `Advance ${a.referenceNo} overdue by ${daysLate} day${daysLate === 1 ? "" : "s"}`, body: `USD ${outstanding.toFixed(2)} outstanding for ${a.officer.name}. Submit the claim form with receipts, or the amount is recovered from salary.`, link: `/app/advances`, type: "WARNING" });
     await prisma.advance.update({ where: { id: a.id }, data: { remindedAt: now } });
     reminded++;

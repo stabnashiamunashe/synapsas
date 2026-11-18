@@ -9,7 +9,7 @@ import { nanoid } from "nanoid";
 import { prisma } from "../prisma";
 import { parseJson, toJson } from "../json";
 import { caseSettings, createCase, type CaseSettingsFull } from "../cases";
-import { CASE_STATUS_LABELS, type CaseStatus } from "../caseTypes";
+import { CASE_DONE, CASE_STATUS_LABELS, type CaseStatus } from "../caseTypes";
 import { notify } from "../notify";
 import type { OrgSettings } from "../types";
 import { extensionOf, safeMimeFor, validateUpload } from "../uploads";
@@ -17,6 +17,7 @@ import { describe, downloadMedia, logMessage, normalizePhone, sendWhatsApp, type
 import { exportFilename, type DocSource } from "./documents";
 import { STAT_GROUPS, groupOf, t, topicAliases, topicLabel, topicsInGroup, type Lang } from "./i18n";
 import { MAX_LIST, datasetUrl, datasetsForTopic, findDataset, odpBase, odpFilename, topicPage, type OdpDataset } from "./odp";
+import { logData } from "./desk";
 
 /** Zimbabwe's SDG indicator site, quoted under the SDGs area (overridable in settings). */
 export const SDG_URL = "https://sdg-zimstat.github.io/";
@@ -102,6 +103,7 @@ const FLOWS: Record<FlowKey, Flow> = {
         reporterName: String(a.name).slice(0, 120), reporterPhone: `+${c.phone}`, reporterEmail: String(a.email).trim(), customFields: { channel: "whatsapp", ...a, document: undefined }, referencePrefix: "DR",
       }, null);
       await attachMedia(c, cs.id, cs.referenceNo, [a.document as Media | undefined]);
+      await logData(c.orgId, c.phone, { kind: "request", topic: String(a.topic || ""), title: cs.title, ref: cs.referenceNo, format: String(a.format || ""), caseId: cs.id });
       return [{ type: "buttons", header: "ZIMSTAT", body: t(c.lang, "dr_done", { ref: cs.referenceNo }), buttons: [{ id: B.TRACK, title: t(c.lang, "m_track") }, { id: B.MENU, title: t(c.lang, "btn_menu") }] }];
     },
   },
@@ -129,7 +131,7 @@ const FLOWS: Record<FlowKey, Flow> = {
   TK: {
     key: "TK",
     questions: [
-      { key: "category", label: "f_category", kind: "list", ask: (c) => t(c.lang, "tk_cat"), options: publicCategories },
+      { key: "category", label: "f_category", kind: "list", ask: (c) => t(c.lang, "tk_cat"), options: publicCategories, when: (a) => a.category !== null },
       { key: "name", label: "f_name", kind: "text", ask: (c) => t(c.lang, "tk_name"), optional: true, skipLabel: "tk_anon", validate: (s) => (s.trim().length < 2 ? "unknown" : null) },
       { key: "email", label: "f_email", kind: "text", ask: (c) => t(c.lang, "tk_email"), optional: true, validate: (s) => (EMAIL.test(s.trim()) ? null : "dr_email_bad") },
       { key: "details", label: "f_details", kind: "text", ask: (c) => t(c.lang, "tk_desc"), validate: (s) => (s.trim().length < 10 ? "dr_desc_short" : null) },
@@ -269,7 +271,7 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
       return await flush();
     }
     if (id === B.MENU || ["menu", "0", "hi", "hello", "start", "mhoro", "salibonani", "sawubona"].includes(lower)) {
-      if (step === "CHAT" && data.chatRef) say({ type: "text", text: t(c.lang, "chat_ended", { ref: data.chatRef }) });
+      if (step === "CHAT" && data.chatRef) { say({ type: "text", text: t(c.lang, "chat_ended", { ref: data.chatRef }) }); if (data.chatCaseId) await prisma.caseComment.create({ data: { caseId: data.chatCaseId, authorName: "WhatsApp", body: "The person left the chat (back to the menu).", isInternal: true } }).catch(() => undefined); }
       const draft = inFlow && data.flow ? { flow: data.flow, qi: data.qi || 0, answers: data.answers || {} } : data.draft;
       await toMenu({ draft }); return await flush();
     }
@@ -278,7 +280,7 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
       else { say({ type: "text", text: t(c.lang, "goodbye") }); await save("IDLE", { lang: c.lang }); }
       return await flush();
     }
-    if (id === B.OFFICER) { await save("CHAT_TOPIC", { lang: c.lang, draft: data.draft }); say(await categoryPrompt(c, "chat_topic")); return await flush(); }
+    if (id === B.OFFICER) { await openChat(c); return await flush(); }
     if (id === B.TRACK || /^(my requests|status)$/.test(lower)) { await save("TRACK", { lang: c.lang, draft: data.draft }); say(await trackList(c)); return await flush(); }
     const refMatch = REF.exec(text);
     if (refMatch && step !== "VR_BADGE") {
@@ -301,8 +303,8 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
         else if (id === B.DATA) { say({ type: "text", text: t(c.lang, "dr_intro", { url: wa.odpUrl || "https://data.zimstat.co.zw" }) }); await startFlow(c, "DR", {}); }
         else if (id === B.VERIFY) { await save("VR_KIND", { lang: c.lang, draft: data.draft }); say({ type: "list", header: t(c.lang, "m_verify"), body: t(c.lang, "vr_kind"), button: t(c.lang, "menu_button"), sections: [{ rows: [{ id: B.VR_OFFICER, title: t(c.lang, "vr_officer"), description: t(c.lang, "vr_officer_d") }, { id: B.VR_SURVEY, title: t(c.lang, "vr_survey"), description: t(c.lang, "vr_survey_d") }, { id: B.MENU, title: t(c.lang, "btn_menu") }] }] }); }
         else if (id === B.ALERTS) { say(await releaseCalendar(c)); await save("REL_TOPICS", { lang: c.lang, draft: data.draft, topics: [] }); say(topicsPicker(c, [])); }
-        else if (id === B.ENQUIRY) await startFlow(c, "TK", {});
-        else if (id === B.CHAT) { await save("CHAT_TOPIC", { lang: c.lang, draft: data.draft }); say(await categoryPrompt(c, "chat_topic")); }
+        else if (id === B.ENQUIRY) await startFlow(c, "TK", (await publicCategories(c)).length ? {} : { category: null });
+        else if (id === B.CHAT) await openChat(c);
         else if (id === B.RESUME && data.draft) { const d = data.draft; await save("FLOW", { lang: c.lang, flow: d.flow, qi: d.qi, answers: d.answers, tries: 0 }); say(...(await askCurrent(c))); }
         else if (wa.helpText && lower === "help") say({ type: "text", text: wa.helpText });
         else say(mainMenu(c));
@@ -331,6 +333,7 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
         const ind = id.startsWith("ind_") ? await prisma.statIndicator.findFirst({ where: { id: id.slice(4), orgId, isActive: true } }) : null;
         if (!ind) { say(...(await topicView(c, topic))); break; }
         await save("STATS_AFTER", { ...data, indicatorId: ind.id });
+        await logData(c.orgId, c.phone, { kind: "indicator", topic, title: ind.name, ref: ind.id });
         const body = [`*${ind.name}*: ${ind.value}`, ind.period ? `${t(c.lang, "stats_period")}: ${ind.period}` : "", ind.releaseDate ? `${t(c.lang, "stats_released")}: ${ind.releaseDate.toISOString().slice(0, 10)}` : "", ind.note || "", ind.url ? `\n${t(c.lang, "stats_odp")}: ${ind.url}` : wa.odpUrl ? `\n${t(c.lang, "stats_odp")}: ${wa.odpUrl}` : ""].filter(Boolean).join("\n");
         say({ type: "text", text: body });
         say(afterMenu(c));
@@ -366,13 +369,14 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
         const ds = data.datasetId ? await findDataset(base, data.datasetId) : null;
         if (id === B.BACK || id === B.DS_ANOTHER || !ds) { await save("STATS_DS", data); say(await datasetList(c, data.topic || "")); break; }
         const url = await datasetUrl(base, ds);
-        if (id === B.DS_LINK) { say({ type: "text", text: t(c.lang, "odp_link_text", { url }) }); say(formatMenu(c, ds)); break; }
+        if (id === B.DS_LINK) { await logData(c.orgId, c.phone, { kind: "link", topic: data.topic, title: ds.title, ref: ds.id }); say({ type: "text", text: t(c.lang, "odp_link_text", { url }) }); say(formatMenu(c, ds)); break; }
         const format = id === B.DS_CSV ? "csv" : id === B.DS_XLSX ? "xlsx" : id === B.DS_PNG ? "png" : null;
         if (!format) { say(formatMenu(c, ds)); break; }
         // the bytes are fetched from the portal when the message is sent; the caption is replaced by the dataset's details then
         const source: DocSource = { kind: "odp", base, datasetId: ds.id, format, lang: c.lang };
         const caption = `*${ds.title}*\n${t(c.lang, "odp_source")}: ${url}`;
         const fallback = t(c.lang, "odp_failed", { url });
+        await logData(c.orgId, c.phone, { kind: "dataset", topic: data.topic, title: ds.title, ref: ds.id, format });
         say(format === "png" ? { type: "image", caption, source, fallback } : { type: "document", filename: odpFilename(ds.id, format), caption, source, fallback }, formatMenu(c, ds, "odp_again"));
         break;
       }
@@ -449,31 +453,24 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
       // ---- 6. live chat ----
       case "CHAT_TOPIC": {
         if (id === B.BACK) { await toMenu(); break; }
-        if (id === B.CHAT_LOG) { await startFlow(c, "TK", { category: data.topic, liveChat: true }); break; }
+        if (id === B.CHAT_LOG) { await startFlow(c, "TK", { category: data.topic ?? null, liveChat: true }); break; }
         if (!id.startsWith("cat_")) { say(await categoryPrompt(c, "chat_topic")); break; }
-        const cat = await prisma.caseCategory.findFirst({ where: { id: id.slice(4), orgId, isActive: true }, include: { department: { select: { name: true, headUserId: true } } } });
+        const cat = await prisma.caseCategory.findFirst({ where: { id: id.slice(4), orgId, isActive: true }, select: { id: true, name: true } });
         if (!cat) { say(await categoryPrompt(c, "chat_topic")); break; }
-        const hours = officeHours(org);
-        if (!hours.open) { await save("CHAT_TOPIC", { ...data, topic: cat.id }); say({ type: "buttons", body: t(c.lang, "chat_closed_hours", { hours: wa.officeHoursNote || hours.label }), buttons: [{ id: B.CHAT_LOG, title: t(c.lang, "chat_log") }, { id: B.MENU, title: t(c.lang, "btn_menu") }] }); break; }
-        const recent = await prisma.whatsAppMessage.findMany({ where: { phone, createdAt: { gte: new Date(Date.now() - 3600_000) } }, orderBy: { createdAt: "desc" }, take: 12 });
-        const transcriptText = recent.reverse().map((m) => `${m.direction === "IN" ? "User" : "Bot"}: ${m.body.slice(0, 160)}`).join("\n");
-        const liveCat = wa.liveChatCategoryId ? await prisma.caseCategory.findFirst({ where: { id: wa.liveChatCategoryId, orgId, isActive: true } }) : null;
-        const cs = await createCase(orgId, { title: `Live chat: ${cat.name}`, description: `Live WhatsApp chat requested (${cat.name}). Reply with a public update; it is delivered to the user on WhatsApp. The user's messages arrive as public comments.\n\nConversation so far:\n${transcriptText}`, categoryId: (liveCat || cat).id, priority: "HIGH", source: "WHATSAPP", reporterName: profileName || "WhatsApp user", reporterPhone: `+${phone}`, customFields: { channel: "whatsapp", liveChat: true, language: c.lang }, referencePrefix: "TK" }, null);
-        await logMessage({ orgId, phone, direction: "IN", kind: "system", body: `Case ${cs.referenceNo} created (live chat)`, status: "received", caseId: cs.id });
-        await save("CHAT", { lang: c.lang, chatCaseId: cs.id, chatRef: cs.referenceNo, draft: data.draft });
-        say({ type: "text", text: t(c.lang, "chat_open", { ref: cs.referenceNo }) });
+        await startChat(c, cat);
         break;
       }
       case "CHAT": {
         const cs = data.chatCaseId ? await prisma.case.findFirst({ where: { id: data.chatCaseId, orgId } }) : null;
         if (!cs) { await toMenu(); break; }
+        if (CASE_DONE.includes(cs.status as CaseStatus)) { say({ type: "text", text: t(c.lang, "chat_ended", { ref: cs.referenceNo }) }); await toMenu(); break; }
         if (input.kind === "media") { await attachMedia(c, cs.id, cs.referenceNo, [{ mediaId: input.mediaId, mimeType: input.mimeType, fileName: input.fileName }]); }
         const body = input.kind === "text" ? text : input.kind === "media" ? `[${input.fileName}]${input.caption ? ` ${input.caption}` : ""}` : input.kind === "location" ? `Location: ${input.latitude},${input.longitude}` : "";
         if (!body) { say({ type: "text", text: t(c.lang, "unknown") }); break; }
         await prisma.caseComment.create({ data: { caseId: cs.id, authorName: `${cs.reporterName} (WhatsApp)`, body, isInternal: false } });
         await prisma.case.update({ where: { id: cs.id }, data: { lastActivityAt: new Date() } });
         const who = cs.assigneeId ? [cs.assigneeId] : cs.departmentId ? [(await prisma.department.findUnique({ where: { id: cs.departmentId }, select: { headUserId: true } }))?.headUserId || ""] : [];
-        if (who.filter(Boolean).length) await notify(orgId, who.filter(Boolean), { title: `WhatsApp chat ${cs.referenceNo}`, body: body.slice(0, 200), link: `/app/cases?open=${cs.id}`, type: "COMMENT" });
+        await notify(orgId, who.filter(Boolean).length ? who.filter(Boolean) : await deskAdmins(), { title: `WhatsApp chat ${cs.referenceNo}`, body: body.slice(0, 200), link: `/app/chatbot?tab=chats&open=${cs.id}`, type: "COMMENT" });
         if (!data.chatAcked) { say({ type: "text", text: t(c.lang, "chat_msg_sent") }); await save("CHAT", { ...data, chatAcked: true }); }
         break;
       }
@@ -687,12 +684,14 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
       const format = id === B.PDF ? "pdf" : "xlsx";
       const tp = id === B.ALLX ? "ALL" : topic;
       const label = id === B.ALLX ? t(c.lang, "stats_header") : topicLabel(topic, c.lang);
+      await logData(c.orgId, c.phone, { kind: "export", topic: tp, title: `${label} (${format})`, format });
       return mk({ kind: "export", orgId: c.orgId, topic: tp, format, lang: c.lang }, exportFilename(orgName, tp, format), t(c.lang, "fx_caption", { topic: label, org: orgName, date: new Date().toISOString().slice(0, 10) }));
     }
     if (id.startsWith("doc_")) {
       const d = await prisma.statDocument.findFirst({ where: { id: id.slice(4), orgId: c.orgId, isActive: true } });
       if (!d) return null;
       await prisma.statDocument.update({ where: { id: d.id }, data: { sentCount: { increment: 1 } } });
+      await logData(c.orgId, c.phone, { kind: "document", topic: d.topic, title: d.title, ref: d.id, format: extensionOf(d.fileName) });
       return mk({ kind: "stored", documentId: d.id }, d.fileName, t(c.lang, "fx_doc_caption", { title: d.title, org: orgName }));
     }
     return null;
@@ -716,6 +715,30 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
   async function categoryPrompt(c: Ctx, bodyKey: string): Promise<WaOutgoing> {
     const cats = await publicCategories(c);
     return { type: "list", header: t(c.lang, "m_chat").slice(0, 60), body: t(c.lang, bodyKey), button: t(c.lang, "menu_button"), sections: [{ rows: [...cats.map((x) => ({ id: `cat_${x.id}`, title: x.title, description: x.description })), { id: B.BACK, title: t(c.lang, "btn_back") }] }] };
+  }
+  /** Administrators and owners: they see every live chat on the WhatsApp desk, so they are told when nobody else is. */
+  async function deskAdmins() {
+    return (await prisma.user.findMany({ where: { orgId, isActive: true, role: { in: ["ADMIN", "OWNER"] } }, select: { id: true } })).map((u) => u.id);
+  }
+  /** Option 6: ask what the question is about when enquiry categories exist, otherwise connect straight away. */
+  async function openChat(c: Ctx) {
+    const cats = await publicCategories(c);
+    if (cats.length) { await setStepCtx(c, "CHAT_TOPIC", { lang: c.lang, draft: c.data.draft }); say(await categoryPrompt(c, "chat_topic")); return; }
+    await startChat(c, null);
+  }
+  /** Open the live chat: a TK case that officers answer from the WhatsApp desk; outside office hours offer a ticket instead. */
+  async function startChat(c: Ctx, cat: { id: string; name: string } | null) {
+    const hours = officeHours(org);
+    if (!hours.open) { await setStepCtx(c, "CHAT_TOPIC", { ...c.data, topic: cat?.id }); say({ type: "buttons", body: t(c.lang, "chat_closed_hours", { hours: wa.officeHoursNote || hours.label }), buttons: [{ id: B.CHAT_LOG, title: t(c.lang, "chat_log") }, { id: B.MENU, title: t(c.lang, "btn_menu") }] }); return; }
+    const recent = await prisma.whatsAppMessage.findMany({ where: { phone, createdAt: { gte: new Date(Date.now() - 3600_000) } }, orderBy: { createdAt: "desc" }, take: 12 });
+    const transcriptText = recent.reverse().map((m) => `${m.direction === "IN" ? "User" : "Bot"}: ${m.body.slice(0, 160)}`).join("\n");
+    const liveCat = wa.liveChatCategoryId ? await prisma.caseCategory.findFirst({ where: { id: wa.liveChatCategoryId, orgId, isActive: true }, select: { id: true, name: true } }) : null;
+    const topic = cat?.name || "General";
+    const cs = await createCase(orgId, { title: `Live chat: ${topic}`, description: `Live WhatsApp chat requested (${topic}). Answer it from the WhatsApp desk (Service desk → WhatsApp desk → Live chats): replies reach the person at once and their messages appear in the chat.\n\nConversation so far:\n${transcriptText}`, categoryId: (liveCat || cat)?.id || null, priority: "HIGH", source: "WHATSAPP", reporterName: profileName || "WhatsApp user", reporterPhone: `+${phone}`, customFields: { channel: "whatsapp", liveChat: true, language: c.lang }, referencePrefix: "TK" }, null);
+    if (!cs.assigneeId && !cs.departmentId) await notify(orgId, await deskAdmins(), { title: `WhatsApp live chat ${cs.referenceNo}`, body: `${profileName || "A member of the public"} is waiting for an officer`, link: `/app/chatbot?tab=chats&open=${cs.id}`, type: "APPROVAL" });
+    await logMessage({ orgId, phone, direction: "IN", kind: "system", body: `Case ${cs.referenceNo} created (live chat)`, status: "received", caseId: cs.id });
+    await setStepCtx(c, "CHAT", { lang: c.lang, chatCaseId: cs.id, chatRef: cs.referenceNo, draft: c.data.draft });
+    say({ type: "text", text: t(c.lang, "chat_open", { ref: cs.referenceNo }) });
   }
 }
 

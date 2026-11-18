@@ -11,7 +11,7 @@ import type { NotificationPrefs } from "./types";
 export async function sendDigests(now = new Date()) {
   if (now.getUTCHours() < 6) return { sent: 0, skipped: "before 06:00 UTC" };
   const users = await prisma.user.findMany({
-    where: { isActive: true, OR: [{ prefs: { contains: '"emailDigest":"daily"' } }, { prefs: { contains: '"emailDigest":"weekly"' } }] },
+    where: { isActive: true, OR: [{ prefs: { contains: '"emailDigest":"daily"', mode: "insensitive" as const } }, { prefs: { contains: '"emailDigest":"weekly"', mode: "insensitive" as const } }] },
     select: { id: true, email: true, name: true, orgId: true, prefs: true },
   });
   let sent = 0;

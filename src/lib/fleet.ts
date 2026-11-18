@@ -24,7 +24,7 @@ export async function onTripRequestApproved(requestId: string) {
       passengers: Math.max(1, Number(d.passengers) || 1), startsAt, endsAt, status: "PLANNED",
     },
   });
-  const transport = await prisma.department.findFirst({ where: { orgId: r.orgId, OR: [{ code: "TRN" }, { name: { contains: "Transport" } }, { code: "HRA" }] }, select: { headUserId: true, members: { select: { id: true }, where: { isActive: true } } } });
+  const transport = await prisma.department.findFirst({ where: { orgId: r.orgId, OR: [{ code: "TRN" }, { name: { contains: "Transport", mode: "insensitive" as const } }, { code: "HRA" }] }, select: { headUserId: true, members: { select: { id: true }, where: { isActive: true } } } });
   const audience = [transport?.headUserId, ...(transport?.members.map((m) => m.id) || [])].filter((x): x is string => !!x);
   if (audience.length) await notify(r.orgId, audience, { title: `Vehicle needed: ${r.referenceNo}`, body: `${trip.destination}, ${startsAt.toDateString()} to ${endsAt.toDateString()}. Assign a vehicle and driver.`, link: `/app/fleet`, type: "APPROVAL" });
   await audit(r.orgId, null, "trip.created", "VehicleTrip", trip.id, { referenceNo: r.referenceNo });
