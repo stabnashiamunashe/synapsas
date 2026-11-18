@@ -5,7 +5,7 @@ import { STAT_TOPICS, isLang, type Lang } from "@/lib/whatsapp/i18n";
 
 /**
  * The Excel/PDF table the chatbot sends for a topic, generated from the current indicators.
- * `?topic=CPI|...|ALL&format=xlsx|pdf&lang=en|sn|nd`. Used by the sandbox preview and by staff to check what goes out.
+ * `?topic=PI|...|ALL&format=xlsx|pdf&lang=en`. Used by the sandbox preview and by staff to check what goes out.
  */
 export const GET = withAuth(async (req, { user }) => {
   const q = getQuery(req);

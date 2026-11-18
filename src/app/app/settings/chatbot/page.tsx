@@ -107,7 +107,7 @@ function Documents() {
     <Space orientation="vertical" size={16} style={{ width: "100%" }}>
       <OdpDatasets />
       <Card title="Generated tables" extra={<Space><Select value={previewTopic} onChange={setPreviewTopic} options={[...topicOptions, { value: "ALL", label: "All topics" }]} style={{ width: 220 }} /><Button icon={<FileExcelOutlined />} href={`/api/chatbot/export?topic=${previewTopic}&format=xlsx`}>Excel</Button><Button icon={<FilePdfOutlined />} href={`/api/chatbot/export?topic=${previewTopic}&format=pdf&inline=1`} target="_blank">PDF</Button></Space>}>
-        <Typography.Paragraph type="secondary" style={{ margin: 0 }}>Under every topic the bot offers <b>Excel table</b> and <b>PDF table</b>: a file built on the spot from the live indicators above (name, latest value, reference period, release date, note, ODP link), in the person&apos;s language, and <b>All topics (Excel)</b> with every headline figure in one workbook. Nothing to maintain here; the preview shows exactly what WhatsApp delivers.</Typography.Paragraph>
+        <Typography.Paragraph type="secondary" style={{ margin: 0 }}>Under every topic the bot offers <b>Excel table</b> and <b>PDF table</b>: a file built on the spot from the live indicators above (name, latest value, reference period, release date, note, ODP link), and <b>All topics (Excel)</b> with every headline figure in one workbook. Nothing to maintain here; the preview shows exactly what WhatsApp delivers.</Typography.Paragraph>
       </Card>
       <Card title="Uploaded publications" extra={<Button type="primary" icon={<UploadOutlined />} onClick={() => open("new")}>Upload file</Button>}>
         <Typography.Paragraph type="secondary">Bulletins, full tables and reports (PDF, Excel, CSV or Word, up to 25 MB) that the bot lists under <i>Download Excel or PDF</i> for their topic and sends as a WhatsApp attachment. Files on <i>All topics</i> appear under every topic. Up to six files are shown per topic, in the order below.</Typography.Paragraph>
@@ -234,7 +234,6 @@ export default function ChatbotContentPage() {
                 { title: "Number", width: 160, render: (_, r) => <span className="mono">{r.phone}</span> },
                 { title: "Topics", render: (_, r) => { const ts = JSON.parse(r.topics || "[]") as string[]; return ts.length ? ts.map(topicName).join(", ") : "All topics"; } },
                 { title: "Frequency", width: 130, render: (_, r) => r.frequency === "EVERY" ? "Every release" : "Monthly summary" },
-                { title: "Language", width: 90, render: (_, r) => r.language },
                 { title: "Since", width: 110, render: (_, r) => formatDate(r.createdAt) },
                 { title: "", width: 80, render: (_, r) => r.isActive ? <Tag color="green">active</Tag> : <Tag>stopped</Tag> },
               ]}

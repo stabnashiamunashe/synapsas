@@ -1,4 +1,4 @@
-// WhatsApp chatbot for the public: language choice, then six services (latest statistics, data requests, enumerator
+// WhatsApp chatbot for the public (English): six services (latest statistics, data requests, enumerator
 // and survey verification, release calendar and alerts, enquiries and complaints, live chat with an officer), plus
 // tracking of references. Menus are lists and buttons; free text is only used for the answers that need it.
 // State is kept per phone in WhatsAppSession (24-hour drafts). Anything that needs staff action becomes a service-desk
@@ -15,7 +15,7 @@ import type { OrgSettings } from "../types";
 import { extensionOf, safeMimeFor, validateUpload } from "../uploads";
 import { describe, downloadMedia, logMessage, normalizePhone, sendWhatsApp, type WaOutgoing } from "./client";
 import { exportFilename, type DocSource } from "./documents";
-import { LANG_LABELS, LANGS, STAT_GROUPS, groupOf, isLang, t, topicAliases, topicLabel, topicsInGroup, type Lang } from "./i18n";
+import { STAT_GROUPS, groupOf, t, topicAliases, topicLabel, topicsInGroup, type Lang } from "./i18n";
 import { MAX_LIST, datasetUrl, datasetsForTopic, findDataset, odpBase, odpFilename, topicPage, type OdpDataset } from "./odp";
 
 /** Zimbabwe's SDG indicator site, quoted under the SDGs area (overridable in settings). */
@@ -29,7 +29,7 @@ export type Inbound =
   | { kind: "media"; mediaId: string; mimeType: string; fileName: string; caption?: string }
   | { kind: "other" };
 
-type Step = "IDLE" | "LANG" | "MENU" | "EXIT_CONFIRM" | "STATS_GROUP" | "STATS_TOPIC" | "STATS_IND" | "STATS_AFTER" | "STATS_FILES" | "STATS_DS" | "STATS_DS_FMT" | "FLOW" | "FLOW_SUMMARY" | "FLOW_EDIT" | "VR_KIND" | "VR_BADGE" | "VR_FOUND" | "VR_SURVEY" | "REL_TOPICS" | "REL_FREQ" | "CHAT_TOPIC" | "CHAT" | "TRACK" | "RATE";
+type Step = "IDLE" | "MENU" | "EXIT_CONFIRM" | "STATS_GROUP" | "STATS_TOPIC" | "STATS_IND" | "STATS_AFTER" | "STATS_FILES" | "STATS_DS" | "STATS_DS_FMT" | "FLOW" | "FLOW_SUMMARY" | "FLOW_EDIT" | "VR_KIND" | "VR_BADGE" | "VR_FOUND" | "VR_SURVEY" | "REL_TOPICS" | "REL_FREQ" | "CHAT_TOPIC" | "CHAT" | "TRACK" | "RATE";
 type FlowKey = "DR" | "VR" | "TK";
 type Media = { mediaId: string; mimeType: string; fileName: string; simulated?: boolean };
 type Answers = Record<string, unknown>;
@@ -44,7 +44,7 @@ const B = {
   STATS: "m_stats", DATA: "m_data", VERIFY: "m_verify", ALERTS: "m_alerts", ENQUIRY: "m_enquiry", CHAT: "m_chat", TRACK: "m_track", RESUME: "m_resume",
   MENU: "go_menu", CANCEL: "go_cancel", BACK: "nav_back", SKIP: "nav_skip", SUBMIT: "flow_submit", EDIT: "flow_edit", YES: "yes", NO: "no", OFFICER: "go_officer", DISCARD: "exit_discard", CONTINUE: "exit_continue",
   ANOTHER: "stats_another", GET_ALERTS: "stats_alerts", FILES: "stats_files", XLSX: "file_xlsx", PDF: "file_pdf", ALLX: "file_all", ODP: "stats_odp", DS_CSV: "ds_csv", DS_XLSX: "ds_xlsx", DS_PNG: "ds_png", DS_LINK: "ds_link", DS_MORE: "ds_more", DS_ANOTHER: "ds_another", VR_OFFICER: "vr_officer", VR_SURVEY: "vr_survey", VR_MATCH: "vr_match", VR_CONCERN: "vr_concern", VR_RETRY: "vr_retry",
-  REL_DONE: "rel_done", REL_EVERY: "rel_every", REL_MONTHLY: "rel_monthly", CHAT_LOG: "chat_log", ANON: "tk_anon", RATE: "rate_", LANG: "lang_",
+  REL_DONE: "rel_done", REL_EVERY: "rel_every", REL_MONTHLY: "rel_monthly", CHAT_LOG: "chat_log", ANON: "tk_anon", RATE: "rate_",
 };
 
 type Ctx = { orgId: string; phone: string; lang: Lang; profileName: string | null; settings: CaseSettingsFull; org: OrgSettings; data: Data; simulate: boolean };
@@ -67,7 +67,7 @@ const REF = /^(?:status\s+)?([A-Z]{2,6}-\d{4}-\d{3,6})$/i;
 
 const opt = (c: Ctx, ids: string[]): Option[] => ids.map((id) => ({ id, title: t(c.lang, `opt_${id}`) }));
 // subject areas for the data-request form (the four areas; WhatsApp lists hold at most nine answers)
-const topicOptions = (c: Ctx): Option[] => STAT_GROUPS.map((x) => ({ id: x.key, title: x[c.lang] || x.en }));
+const topicOptions = (): Option[] => STAT_GROUPS.map((x) => ({ id: x.key, title: x.en }));
 const publicCategories = async (c: Ctx): Promise<Option[]> => {
   const cats = await prisma.caseCategory.findMany({ where: { orgId: c.orgId, isActive: true, isPublic: true }, orderBy: { name: "asc" }, select: { id: true, name: true, description: true }, take: 9 });
   return cats.map((x) => ({ id: x.id, title: x.name, description: (x.description || "").slice(0, 72) }));
@@ -96,7 +96,7 @@ const FLOWS: Record<FlowKey, Flow> = {
     ],
     submit: async (c, a) => {
       const category = await pickCategory(c, c.settings.whatsapp?.dataRequestCategoryId, /data request|statistical data/i);
-      const lines = ["Data request submitted on WhatsApp.", "", `Requester type: ${t("en", `opt_${a.requesterType}`)}`, `Organisation: ${a.org || "none"}`, `Subject area: ${topicLabel(String(a.topic), "en")}`, `Geographic level: ${t("en", `opt_${a.geo}`)}`, `Period: ${a.period}`, `Preferred format: ${a.format}`, `Purpose: ${t("en", `opt_${a.purpose}`)}`, "", `Data needed:`, String(a.description), "", `Consent to data-use terms: yes (${new Date().toISOString().slice(0, 10)})`, `Language: ${LANG_LABELS[c.lang]}`];
+      const lines = ["Data request submitted on WhatsApp.", "", `Requester type: ${t("en", `opt_${a.requesterType}`)}`, `Organisation: ${a.org || "none"}`, `Subject area: ${topicLabel(String(a.topic), "en")}`, `Geographic level: ${t("en", `opt_${a.geo}`)}`, `Period: ${a.period}`, `Preferred format: ${a.format}`, `Purpose: ${t("en", `opt_${a.purpose}`)}`, "", `Data needed:`, String(a.description), "", `Consent to data-use terms: yes (${new Date().toISOString().slice(0, 10)})`];
       const cs = await createCase(c.orgId, {
         title: `Data request: ${String(a.description).split(/[.\n]/)[0].slice(0, 100)}`, description: lines.join("\n"), categoryId: category?.id || null, priority: "MEDIUM", source: "WHATSAPP",
         reporterName: String(a.name).slice(0, 120), reporterPhone: `+${c.phone}`, reporterEmail: String(a.email).trim(), customFields: { channel: "whatsapp", ...a, document: undefined }, referencePrefix: "DR",
@@ -116,7 +116,7 @@ const FLOWS: Record<FlowKey, Flow> = {
     submit: async (c, a) => {
       const category = await pickCategory(c, c.settings.whatsapp?.verificationCategoryId, /verif|field|enumerator|complaint/i);
       const date = /today|nhasi|lamuhla/i.test(String(a.date)) ? new Date().toISOString().slice(0, 10) : String(a.date);
-      const lines = ["Field verification concern reported on WhatsApp.", "", `Badge ID given: ${a.badge || "not given"}`, `Register check: ${a.officerFound ? "ID found; member of public disputes the match" : "no active officer with this ID"}`, `Date of incident: ${date}`, `Location: ${a.location}`, "", "What happened:", String(a.details), "", `Language: ${LANG_LABELS[c.lang]}`];
+      const lines = ["Field verification concern reported on WhatsApp.", "", `Badge ID given: ${a.badge || "not given"}`, `Register check: ${a.officerFound ? "ID found; member of public disputes the match" : "no active officer with this ID"}`, `Date of incident: ${date}`, `Location: ${a.location}`, "", "What happened:", String(a.details)];
       const cs = await createCase(c.orgId, {
         title: `Field officer concern: badge ${a.badge || "unknown"} (${String(a.location).slice(0, 60)})`, description: lines.join("\n"), categoryId: category?.id || null, priority: "HIGH", source: "WHATSAPP",
         reporterName: c.profileName || "WhatsApp user", reporterPhone: `+${c.phone}`, locationAddress: String(a.location).slice(0, 500), latitude: (a.latitude as number) ?? null, longitude: (a.longitude as number) ?? null,
@@ -138,7 +138,7 @@ const FLOWS: Record<FlowKey, Flow> = {
     submit: async (c, a) => {
       const cat = await prisma.caseCategory.findFirst({ where: { id: String(a.category), orgId: c.orgId }, include: { department: { select: { name: true } } } });
       if (await isComplaint(a) && !a.name) return [{ type: "buttons", body: t(c.lang, "tk_name_required"), buttons: [{ id: B.EDIT, title: t(c.lang, "btn_edit") }, { id: B.CANCEL, title: t(c.lang, "btn_cancel") }] }];
-      const lines = [`${a.liveChat ? "Question logged after hours from the live-chat option." : "Enquiry submitted on WhatsApp."}`, "", String(a.details), "", `Language: ${LANG_LABELS[c.lang]}`];
+      const lines = [`${a.liveChat ? "Question logged after hours from the live-chat option." : "Enquiry submitted on WhatsApp."}`, "", String(a.details)];
       const cs = await createCase(c.orgId, {
         title: String(a.details).split(/[.\n]/)[0].slice(0, 120) || cat?.name || "WhatsApp enquiry", description: lines.join("\n"), categoryId: cat?.id || null, source: "WHATSAPP",
         reporterName: a.name ? String(a.name).slice(0, 120) : "Anonymous (WhatsApp)", reporterPhone: `+${c.phone}`, reporterEmail: a.email ? String(a.email).trim() : null, customFields: { channel: "whatsapp" }, referencePrefix: "TK",
@@ -184,10 +184,6 @@ async function attachMedia(c: Ctx, caseId: string, referenceNo: string, items: (
 // ------------------------------------------------------------------------------------------------------------------
 const nav = (c: Ctx, extra: { id: string; title: string }[] = []): { id: string; title: string }[] => [...extra, { id: B.BACK, title: t(c.lang, "btn_back") }, { id: B.CANCEL, title: t(c.lang, "btn_cancel") }].slice(0, 3);
 
-function langPrompt(): WaOutgoing {
-  return { type: "buttons", header: "ZIMSTAT", body: `${t("en", "lang_prompt")}\n\n1 English · 2 ChiShona · 3 isiNdebele`, buttons: LANGS.map((l) => ({ id: `${B.LANG}${l}`, title: LANG_LABELS[l] })) };
-}
-
 function mainMenu(c: Ctx): WaOutgoing {
   const disabled = new Set(c.settings.whatsapp?.disabledOptions || []);
   const all: (Option | false | undefined)[] = [
@@ -201,7 +197,7 @@ function mainMenu(c: Ctx): WaOutgoing {
     c.data.draft && { id: B.RESUME, title: t(c.lang, "btn_continue"), description: `${c.data.draft.flow}: ${t(c.lang, "btn_continue").toLowerCase()}` },
   ];
   const rows = all.filter((r): r is Option => !!r);
-  const greeting = c.lang === "en" ? c.settings.whatsapp?.greeting || "Welcome to ZIMSTAT. How can we help you today?" : t(c.lang, "menu_body");
+  const greeting = c.settings.whatsapp?.greeting || "Welcome to ZIMSTAT, the Zimbabwe National Statistics Agency. How can we help you today?";
   return { type: "list", header: t(c.lang, "menu_header"), body: greeting, button: t(c.lang, "menu_button"), footer: t(c.lang, "menu_footer"), sections: [{ rows }] };
 }
 
@@ -246,8 +242,8 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
     if (!session) session = await prisma.whatsAppSession.create({ data: { orgId, phone, profileName, step: "IDLE", data: "{}" } });
     let data = parseJson<Data>(session.data, {});
     if (Date.now() - session.lastInteractionAt.getTime() > SESSION_TTL_MS && session.step !== "IDLE") { data = { lang: data.lang }; session = await setStep(phone, "IDLE", data); }
-    let step = session.step as Step;
-    const lang: Lang = data.lang && isLang(data.lang) ? data.lang : "en";
+    let step = (session.step === "LANG" ? "IDLE" : session.step) as Step; // LANG was the language step, since removed
+    const lang: Lang = "en";
     const c: Ctx = { orgId, phone, lang, profileName, settings, org, data, simulate: !!opts.simulate };
     phoneForFlush = phone;
     const save = async (s: Step, d: Data = data) => { d.lang = d.lang || data.lang; session = await setStep(phone, s, d, profileName); step = s; data = d; c.data = d; };
@@ -260,12 +256,6 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
     const inFlow = step === "FLOW" || step === "FLOW_SUMMARY" || step === "FLOW_EDIT";
 
     // ---- global commands ----
-    if (id.startsWith(B.LANG) || (step === "LANG" && /^[123]$/.test(lower))) {
-      const l = id ? id.slice(B.LANG.length) : LANGS[Number(lower) - 1];
-      if (isLang(l)) { c.lang = l; await save("MENU", { ...data, lang: l }); say(mainMenu(c)); return await flush(); }
-    }
-    if (!data.lang && step !== "LANG") { await save("LANG", { ...data }); say(langPrompt()); return await flush(); }
-    if (["language", "mutauro", "ulimi"].includes(lower)) { await save("LANG", data); say(langPrompt()); return await flush(); }
     if (id === B.CANCEL || ["cancel", "stop", "kanzura", "khansela"].includes(lower)) { if (step === "CHAT" && data.chatRef) say({ type: "text", text: t(c.lang, "chat_ended", { ref: data.chatRef }) }); say({ type: "text", text: t(c.lang, "cancelled") }); await toMenu({ draft: undefined }); return await flush(); }
     if (lower === "stop alerts" || lower === "stop") {
       const sub = await prisma.statSubscription.findUnique({ where: { orgId_phone: { orgId, phone } } });
@@ -299,8 +289,6 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
 
     switch (step) {
       case "IDLE":
-      case "LANG":
-        if (!data.lang) { await save("LANG", data); say(langPrompt()); break; }
         await toMenu(); break;
 
       case "EXIT_CONFIRM":
@@ -519,7 +507,7 @@ export async function handleInbound(orgId: string, rawPhone: string, profileName
     try { await setStep(phone, "MENU", { lang: "en" }); } catch { /* ignore */ }
     replies.length = 0;
     say({ type: "text", text: t("en", "error") });
-    say(langPrompt());
+    say({ type: "buttons", header: "ZIMSTAT", body: t("en", "menu_body"), buttons: [{ id: B.MENU, title: t("en", "btn_menu") }] });
   }
   return await flush();
 

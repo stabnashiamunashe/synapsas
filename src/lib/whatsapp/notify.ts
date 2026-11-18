@@ -5,7 +5,7 @@ import { prisma } from "../prisma";
 import { parseJson } from "../json";
 import { CASE_STATUS_LABELS, type CaseSettings, type CaseStatus } from "../caseTypes";
 import { inSessionWindow, sendWhatsApp, waConfig } from "./client";
-import { LANG_LABELS, groupOf, normalizeTopic, topicLabel, type Lang } from "./i18n";
+import { groupOf, normalizeTopic, topicLabel, type Lang } from "./i18n";
 
 type C = { id: string; orgId: string; referenceNo: string; title: string; status: string; slaHours: number; reporterPhone: string | null; source: string };
 
@@ -50,11 +50,11 @@ export async function notifyReleaseSubscribers(r: Release, opts: { simulate?: bo
     const topics = parseJson<string[]>(s.topics, []);
     const wanted = new Set([r.topic, normalizeTopic(r.topic), groupOf(r.topic) || ""]);
     if (topics.length && !topics.some((k) => wanted.has(k))) continue;
-    const lang = (["en", "sn", "nd"].includes(s.language) ? s.language : "en") as Lang;
+    const lang: Lang = "en";
     const line = `*${r.title}* (${topicLabel(r.topic, lang)})${r.summary ? `\n${r.summary}` : ""}${r.url ? `\n${r.url}` : ""}`;
     let ok = false;
     if (opts.simulate || (await inSessionWindow(s.phone))) ok = await sendWhatsApp(s.phone, { type: "text", text: line }, { orgId: r.orgId, simulate: opts.simulate });
-    else if (cfg.templates.releaseAlert) ok = await sendWhatsApp(s.phone, { type: "template", name: cfg.templates.releaseAlert, language: cfg.templates.language, bodyParams: [r.title.slice(0, 100), topicLabel(r.topic, lang), (r.summary || r.url || LANG_LABELS[lang]).slice(0, 200)] }, { orgId: r.orgId });
+    else if (cfg.templates.releaseAlert) ok = await sendWhatsApp(s.phone, { type: "template", name: cfg.templates.releaseAlert, language: cfg.templates.language, bodyParams: [r.title.slice(0, 100), topicLabel(r.topic, lang), (r.summary || r.url || "ZIMSTAT").slice(0, 200)] }, { orgId: r.orgId });
     if (ok) { sent++; await prisma.statSubscription.update({ where: { id: s.id }, data: { lastSentAt: new Date() } }); }
   }
   return sent;

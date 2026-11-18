@@ -112,7 +112,7 @@ export default function WhatsAppSettingsPage() {
                 <span><Switch checked={wa.enabled !== false} onChange={(v) => saveWa({ enabled: v })} /> Chatbot switched on</span>
                 <span><Switch checked={!!wa.notifyAllReporters} onChange={(v) => saveWa({ notifyAllReporters: v })} /> Also message reporters who used the website or phone</span>
               </Space>
-              <Form.Item name="greeting" label="Greeting (English main menu text; Shona and Ndebele use fixed translations)"><Input placeholder="Welcome to ZIMSTAT. How can we help you today?" /></Form.Item>
+              <Form.Item name="greeting" label="Greeting (the main menu text, sent as the first reply)"><Input placeholder="Welcome to ZIMSTAT, the Zimbabwe National Statistics Agency. How can we help you today?" /></Form.Item>
               <Form.Item name="helpText" label="Help text"><Input.TextArea autoSize={{ minRows: 2 }} placeholder="Shown when the user taps Help" /></Form.Item>
               <Space><Button htmlType="submit">Save texts</Button><Link href="/app/settings/chatbot"><Button type="link">Statistics, releases, field register and routing →</Button></Link></Space>
             </Form>
@@ -137,7 +137,7 @@ export default function WhatsAppSettingsPage() {
             <Space wrap style={{ marginTop: 8 }}>
               <Button size="small" disabled={busy} onClick={() => send({ kind: "media", fileName: "institutional-letter.pdf", mimeType: "application/pdf" }, "📎 institutional-letter.pdf")}>Send a file</Button>
               <Button size="small" disabled={busy} onClick={() => send({ kind: "media", fileName: "badge-photo.jpg", mimeType: "image/jpeg" }, "📷 badge-photo.jpg")}>Send a photo</Button>
-              <span className="muted" style={{ fontSize: 12 }}>Commands: menu · back · cancel · exit · language · stop alerts · status DR-2026-0001</span>
+              <span className="muted" style={{ fontSize: 12 }}>Commands: menu · back · cancel · exit · stop alerts · status DR-2026-0001</span>
             </Space>
           </Card>
         </Col>
